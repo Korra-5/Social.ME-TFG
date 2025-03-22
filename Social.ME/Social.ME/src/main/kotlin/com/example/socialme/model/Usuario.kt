@@ -1,8 +1,9 @@
 package com.example.socialme.model
 
 import org.bson.codecs.pojo.annotations.BsonId
+import java.util.*
 
-data class Usuario (
+data class Usuario(
     @BsonId
     val _id: String?,
     val username:String,
@@ -14,9 +15,10 @@ data class Usuario (
     val email:String,
     val intereses: List<String>,
     val fotoPerfil:String,
-    val comunidades: List <String>,
-    val actividades: List<String>,
-    val direccion:Direccion
+    val comunidades: List <String>?,
+    val actividades: List<String>?,
+    val direccion: Direccion?,
+    val fechaUnion: Date
 
 ) {
 }

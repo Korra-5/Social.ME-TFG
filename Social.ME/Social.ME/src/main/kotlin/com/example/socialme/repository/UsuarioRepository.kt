@@ -8,5 +8,5 @@ import java.util.Optional
 @Repository
 interface UsuarioRepository : MongoRepository<Usuario, String> {
 
-    fun findByNick(username: String) : Optional<Usuario>
+    fun findByUsername(username: String) : Optional<Usuario>
 }

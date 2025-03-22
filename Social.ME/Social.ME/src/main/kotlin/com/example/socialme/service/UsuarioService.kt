@@ -13,6 +13,8 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import java.time.Instant
+import java.util.*
 
 @Service
 class UsuarioService:UserDetailsService {
@@ -28,7 +30,7 @@ class UsuarioService:UserDetailsService {
 
         override fun loadUserByUsername(username: String?): UserDetails {
             var usuario: Usuario = usuarioRepository
-                .findByNick(username!!)
+                .findByUsername(username!!)
                 .orElseThrow {
                     NotFoundException("$username no existente")
                 }
@@ -66,7 +68,7 @@ class UsuarioService:UserDetailsService {
 
 
             // Fran ha comprobado que el usuario existe previamente
-            if(usuarioRepository.findByNick(usuarioInsertadoDTO.username).isPresent) {
+            if(usuarioRepository.findByUsername(usuarioInsertadoDTO.username).isPresent) {
                 throw BadRequestException("Usuario ${usuarioInsertadoDTO.username} ya está registrado")
             }
 
@@ -112,13 +114,23 @@ class UsuarioService:UserDetailsService {
 
             // Insertar el user (convierto a Entity)
             val usuario = Usuario(
-                null,
-                usuarioInsertadoDTO.username,
-                passwordEncoder.encode(usuarioInsertadoDTO.password),
-                usuarioInsertadoDTO.email,
-                usuarioInsertadoDTO.rol.toString(),
-                usuarioInsertadoDTO.direccion
-            )
+                _id = null,
+                username = usuarioInsertadoDTO.username,
+                password = passwordEncoder.encode(usuarioInsertadoDTO.password),
+                roles = usuarioInsertadoDTO.rol.toString(),
+                nombre = usuarioInsertadoDTO.nombre,
+                apellidos = usuarioInsertadoDTO.apellidos,
+                descripcion = usuarioInsertadoDTO.descripcion,
+                email = usuarioInsertadoDTO.email,
+                intereses = usuarioInsertadoDTO.intereses,
+                fotoPerfil = usuarioInsertadoDTO.fotoPerfil,
+                comunidades =  null,
+                actividades = null,
+                direccion = usuarioInsertadoDTO.direccion,
+                fechaUnion = Date.from(Instant.now()),
+                )
+
+
 
             // inserto en bd
             usuarioRepository.insert(usuario)
@@ -127,7 +139,6 @@ class UsuarioService:UserDetailsService {
             return UsuarioDTO(
                 usuario.username,
                 usuario.email,
-                usuario.roles
             )
 
         }}

@@ -1,6 +1,6 @@
 package com.example.socialme
 
-import com.example.Social.ME.security.RSAKeysProperties
+import com.example.socialme.security.RSAKeysProperties
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.runApplication

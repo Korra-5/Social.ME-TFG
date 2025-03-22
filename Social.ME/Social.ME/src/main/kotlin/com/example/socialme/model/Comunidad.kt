@@ -1,10 +1,11 @@
 package com.example.socialme.model
 
 import org.bson.codecs.pojo.annotations.BsonId
+import java.util.*
 
 data class Comunidad(
     @BsonId
-    val _id: String,
+    val _id: String?,
     val url: String,
     val nombre: String,
     val descripcion: String,
@@ -13,6 +14,7 @@ data class Comunidad(
     val fotoPerfil: String?,
     val fotoCarrusel:List<String>?,
     val creador: String,
-    val administradores: List<String>?
+    val administradores: List<String>?,
+    val fechaCreacion: Date
 ) {
 }
