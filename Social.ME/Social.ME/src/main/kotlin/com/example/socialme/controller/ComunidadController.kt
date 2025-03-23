@@ -2,6 +2,7 @@ package com.example.socialme.controller
 
 import com.example.socialme.dto.ComunidadCreateDTO
 import com.example.socialme.dto.ComunidadDTO
+import com.example.socialme.dto.ComunidadUpdateDTO
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.service.ComunidadService
@@ -26,7 +27,7 @@ class ComunidadController {
         return ResponseEntity(comunidad, HttpStatus.CREATED)
     }
 
-    @PostMapping("/crearComunidad")
+    @PostMapping("/unirseComunidad")
     fun unirseComunidad(
         httpRequest: HttpServletRequest,
         @RequestBody comunidadCreateDTO: ComunidadCreateDTO
@@ -44,6 +45,15 @@ class ComunidadController {
         return ResponseEntity(comunidad, HttpStatus.OK)
     }
 
+    @DeleteMapping("/salirComunidad/{id}")
+    fun salirComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable id: String
+    ) : ResponseEntity<ParticipantesComunidad> {
+        val union=comunidadService.salirComunidad(id)
+        return ResponseEntity(union, HttpStatus.OK)
+    }
+
     @GetMapping("/verComunidadPorUsuario/{username}")
     fun verComunidad(
         httpRequest: HttpServletRequest,
@@ -53,14 +63,6 @@ class ComunidadController {
         return ResponseEntity(comunidades, HttpStatus.OK)
     }
 
-    @DeleteMapping("/eliminarParticipacionComunidad/{id}")
-    fun eliminarParticipacionComunidad(
-        httpRequest: HttpServletRequest,
-        @PathVariable id: String
-    ) : ResponseEntity<ParticipantesComunidad> {
-        val participantesComunidad=comunidadService.eliminarParticipacionComunidad(id)
-        return ResponseEntity(participantesComunidad, HttpStatus.OK)
-    }
 
     @GetMapping("/verTodasComunidades")
     fun verTodasComunidades(
@@ -72,8 +74,9 @@ class ComunidadController {
     @PutMapping("/modificarComunidad")
     fun modificarComunidad(
         httpRequest: HttpServletRequest,
-    ): ResponseEntity<MutableList<Comunidad>> {
-        return  ResponseEntity(comunidadService.modificarComunidad(),HttpStatus.OK)
+        @RequestBody comunidadUpdateDTO: ComunidadUpdateDTO
+    ): ResponseEntity<Comunidad> {
+        return  ResponseEntity(comunidadService.modificarComunidad(comunidadUpdateDTO),HttpStatus.OK)
     }
 
 }

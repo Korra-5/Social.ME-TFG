@@ -4,6 +4,7 @@ import com.es.aplicacion.error.exception.BadRequestException
 import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.ComunidadCreateDTO
 import com.example.socialme.dto.ComunidadDTO
+import com.example.socialme.dto.ComunidadUpdateDTO
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.repository.ComunidadRepository
@@ -59,14 +60,16 @@ class ComunidadService {
                 fotoCarrusel = null,
                 administradores = null,
                 fechaCreacion = Date.from(Instant.now()),
-                url=comunidadCreateDTO.url
+                url=comunidadCreateDTO.url,
+                comunidadGlobal = comunidadCreateDTO.comunidadGlobal
             )
 
         comunidadRepository.insert(comunidad)
 
         return ComunidadDTO(
-            comunidadCreateDTO.url,
-            comunidadCreateDTO.nombre,
+            url=comunidadCreateDTO.url,
+            nombre=comunidadCreateDTO.nombre,
+            comunidadGlobal=comunidadCreateDTO.comunidadGlobal
         )
     }
 
@@ -75,8 +78,9 @@ class ComunidadService {
         val comunidad=comunidadRepository.findComunidadBy_id(id).orElseThrow{BadRequestException("Esta comunidad no existe")}
 
         val comunidadDto=ComunidadDTO(
-            comunidad.url,
-            comunidad.nombre
+            url=comunidad.url,
+            nombre=comunidad.nombre,
+            comunidadGlobal=comunidad.comunidadGlobal
         )
         comunidadRepository.delete(comunidad)
 
@@ -99,22 +103,49 @@ class ComunidadService {
 
     }
 
-    fun eliminarParticipacionComunidad(id: String): ParticipantesComunidad {
-        val participacion = participantesComunidadRepository.findBy_id(id).orElseThrow {
-            throw BadRequestException("ID no encontrada")
-        }
-        participantesComunidadRepository.delete(participacion)
-
-        return participacion
-    }
-
     fun verTodasComunidades(): MutableList<Comunidad> {
         val comunidades=comunidadRepository.findAll()
         return comunidades
     }
 
-    fun modificarComunidad(id: String): Comunidad {
-        
+    fun modificarComunidad(comunidad: ComunidadUpdateDTO): Comunidad {
+        val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidad.url)
+            .orElseThrow { BadRequestException("Comunidad no existente") }
+
+        val urlAntigua = comunidadExistente.url
+        val urlNueva = comunidad.url
+
+        comunidadExistente.apply {
+            url = comunidad.url
+            nombre = comunidad.nombre
+            descripcion = comunidad.descripcion
+            intereses = comunidad.intereses
+            actividades = comunidad.actividades
+            administradores = comunidad.administradores
+            fotoPerfil = comunidad.fotoPerfil
+            fotoCarrusel = comunidad.fotoCarrusel
+        }
+
+        val comunidadActualizada = comunidadRepository.save(comunidadExistente)
+
+        if (urlAntigua != urlNueva) {
+            val participantes = participantesComunidadRepository.findParticipantesByComunidad(urlAntigua)
+
+            participantes.forEach { participante ->
+                participante.comunidad = urlNueva
+                participantesComunidadRepository.save(participante)
+            }
+        }
+
+        return comunidadActualizada
+    }
+
+    fun salirComunidad(id:String): ParticipantesComunidad {
+        val union=participantesComunidadRepository.findBy_id(id).orElseThrow {
+            throw BadRequestException("No estas en esta comunidad")
+        }
+        participantesComunidadRepository.delete(union)
+        return union
     }
 
     fun validateAndReplaceSpaces(inputList: List<String>): List<String> {

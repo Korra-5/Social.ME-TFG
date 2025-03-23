@@ -1,14 +1,12 @@
 package com.example.socialme.dto
 
-import java.util.Date
-
-data class ComunidadCreateDTO(
+data class ComunidadUpdateDTO (
     val url: String,
     val nombre: String,
     val descripcion: String,
     val intereses:List<String>,
+    val actividades: List<String>?,
     val fotoPerfil: String?,
-    val creador: String,
-    val comunidadGlobal:Boolean
-) {
-}
+    val fotoCarrusel:List<String>?,
+    val administradores: List<String>?
+)

@@ -10,4 +10,5 @@ import java.util.*
 interface ParticipantesComunidadRepository: MongoRepository<ParticipantesComunidad, String> {
     fun findByUsername(username: String): List<ParticipantesComunidad>
     fun findBy_id(_id: String): Optional<ParticipantesComunidad>
+    fun findParticipantesByComunidad(comunidad: String): List<ParticipantesComunidad>
 }

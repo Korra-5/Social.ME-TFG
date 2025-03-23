@@ -1,20 +1,23 @@
 package com.example.socialme.model
 
 import org.bson.codecs.pojo.annotations.BsonId
+import org.springframework.data.mongodb.core.mapping.Document
 import java.util.*
 
+@Document("Comunidades")
 data class Comunidad(
     @BsonId
     val _id: String?,
-    val url: String,
-    val nombre: String,
-    val descripcion: String,
-    val intereses:List<String>,
-    val actividades: List<String>?,
-    val fotoPerfil: String?,
-    val fotoCarrusel:List<String>?,
+    var url: String,
+    var nombre: String,
+    var descripcion: String,
+    var intereses:List<String>,
+    var actividades: List<String>?,
+    var fotoPerfil: String?,
+    var fotoCarrusel:List<String>?,
     val creador: String,
-    val administradores: List<String>?,
-    val fechaCreacion: Date
+    var administradores: List<String>?,
+    val fechaCreacion: Date,
+    val comunidadGlobal: Boolean
 ) {
 }
