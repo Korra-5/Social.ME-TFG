@@ -8,6 +8,8 @@ data class ActividadCreateDTO (
     val comunidad:String,
     val creador:String,
     val fechaInicio: Date,
-    val fechaFinalizacion: Date
+    val fechaFinalizacion: Date,
+    val fotosCarrusel: List<String>,
+    val privada:Boolean
 ){
 }

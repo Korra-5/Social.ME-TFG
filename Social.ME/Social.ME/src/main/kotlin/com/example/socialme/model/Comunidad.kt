@@ -12,7 +12,6 @@ data class Comunidad(
     var nombre: String,
     var descripcion: String,
     var intereses:List<String>,
-    var actividades: List<String>?,
     var fotoPerfil: String?,
     var fotoCarrusel:List<String>?,
     val creador: String,

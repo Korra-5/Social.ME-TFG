@@ -3,6 +3,7 @@ package com.example.socialme.controller
 import com.example.socialme.dto.ComunidadCreateDTO
 import com.example.socialme.dto.ComunidadDTO
 import com.example.socialme.dto.ComunidadUpdateDTO
+import com.example.socialme.dto.ParticipantesComunidadDTO
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.service.ComunidadService
@@ -30,10 +31,10 @@ class ComunidadController {
     @PostMapping("/unirseComunidad")
     fun unirseComunidad(
         httpRequest: HttpServletRequest,
-        @RequestBody comunidadCreateDTO: ComunidadCreateDTO
-    ) : ResponseEntity<ComunidadDTO> {
-        val comunidad=comunidadService.crearComunidad(comunidadCreateDTO)
-        return ResponseEntity(comunidad, HttpStatus.CREATED)
+        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO
+    ) : ResponseEntity<ParticipantesComunidadDTO> {
+        val union=comunidadService.unirseComunidad(participantesComunidadDTO)
+        return ResponseEntity(union, HttpStatus.CREATED)
     }
 
     @DeleteMapping("/eliminarComunidad/{id}")
@@ -49,7 +50,7 @@ class ComunidadController {
     fun salirComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable id: String
-    ) : ResponseEntity<ParticipantesComunidad> {
+    ) : ResponseEntity<ParticipantesComunidadDTO> {
         val union=comunidadService.salirComunidad(id)
         return ResponseEntity(union, HttpStatus.OK)
     }

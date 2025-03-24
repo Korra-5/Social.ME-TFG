@@ -1,11 +1,11 @@
 package com.example.socialme.repository
 
 import com.example.socialme.model.Actividad
+import com.example.socialme.model.ActividadesComunidad
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.stereotype.Repository
-import java.util.*
 
 @Repository
-interface ActividadRepository: MongoRepository<Actividad, String> {
-    fun findActividadBy_id(_id: String): Optional<Actividad>
+interface ActividadesComunidadRepository: MongoRepository<ActividadesComunidad,String> {
+    fun findByComunidad(comunidad:String):List<ActividadesComunidad>
 }

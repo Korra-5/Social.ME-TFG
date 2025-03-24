@@ -5,6 +5,7 @@ import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.ComunidadCreateDTO
 import com.example.socialme.dto.ComunidadDTO
 import com.example.socialme.dto.ComunidadUpdateDTO
+import com.example.socialme.dto.ParticipantesComunidadDTO
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.repository.ComunidadRepository
@@ -55,7 +56,6 @@ class ComunidadService {
                 descripcion = comunidadCreateDTO.descripcion,
                 creador = comunidadCreateDTO.creador,
                 intereses = comunidadCreateDTO.intereses,
-                actividades = null,
                 fotoPerfil = comunidadCreateDTO.fotoPerfil,
                 fotoCarrusel = null,
                 administradores = null,
@@ -72,6 +72,31 @@ class ComunidadService {
             comunidadGlobal=comunidadCreateDTO.comunidadGlobal
         )
     }
+
+    fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO):ParticipantesComunidadDTO{
+        comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+                .orElseThrow { BadRequestException("La comunidad no existe") }
+
+        usuarioRepository.findByUsername(participantesComunidadDTO.username)
+                .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+            if (participantesComunidadRepository.findByUsernameAndComunidad(
+                    participantesComunidadDTO.username,
+                    participantesComunidadDTO.comunidad).isPresent) {
+                throw BadRequestException("El usuario ya está unido a esta comunidad")
+            }
+
+            val union=ParticipantesComunidad(
+                _id=null,
+                comunidad=participantesComunidadDTO.comunidad,
+                username = participantesComunidadDTO.username,
+                fechaUnion = Date.from(Instant.now())
+            )
+
+            participantesComunidadRepository.insert(union)
+
+        return participantesComunidadDTO
+        }
 
     fun eliminarComunidad(id:String):ComunidadDTO{
 
@@ -120,7 +145,6 @@ class ComunidadService {
             nombre = comunidad.nombre
             descripcion = comunidad.descripcion
             intereses = comunidad.intereses
-            actividades = comunidad.actividades
             administradores = comunidad.administradores
             fotoPerfil = comunidad.fotoPerfil
             fotoCarrusel = comunidad.fotoCarrusel
@@ -140,12 +164,18 @@ class ComunidadService {
         return comunidadActualizada
     }
 
-    fun salirComunidad(id:String): ParticipantesComunidad {
+    fun salirComunidad(id:String): ParticipantesComunidadDTO {
         val union=participantesComunidadRepository.findBy_id(id).orElseThrow {
             throw BadRequestException("No estas en esta comunidad")
         }
         participantesComunidadRepository.delete(union)
-        return union
+
+        val participantesComunidadDTO=ParticipantesComunidadDTO(
+            comunidad=union.comunidad,
+            username = union.username
+        )
+
+        return participantesComunidadDTO
     }
 
     fun validateAndReplaceSpaces(inputList: List<String>): List<String> {

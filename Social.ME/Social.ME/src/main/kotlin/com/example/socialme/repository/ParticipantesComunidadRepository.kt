@@ -11,4 +11,8 @@ interface ParticipantesComunidadRepository: MongoRepository<ParticipantesComunid
     fun findByUsername(username: String): List<ParticipantesComunidad>
     fun findBy_id(_id: String): Optional<ParticipantesComunidad>
     fun findParticipantesByComunidad(comunidad: String): List<ParticipantesComunidad>
+    fun findByComunidad(comunidad: String): ParticipantesComunidad
+    fun findByUsernameAndComunidad(username: String, comunidad: String): Optional<ParticipantesComunidad>
+
+
 }

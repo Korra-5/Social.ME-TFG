@@ -1,8 +1,6 @@
 package com.example.socialme.controller
 
-import com.example.socialme.dto.ComunidadCreateDTO
-import com.example.socialme.dto.ComunidadDTO
-import com.example.socialme.dto.ComunidadUpdateDTO
+import com.example.socialme.dto.*
 import com.example.socialme.model.Actividad
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
@@ -23,46 +21,44 @@ class ActividadController {
     @PostMapping("/crearActividad")
     fun crearActividad(
         httpRequest: HttpServletRequest,
-        @RequestBody comunidadCreateDTO: ComunidadCreateDTO
-    ) : ResponseEntity<ComunidadDTO> {
-
-        return ResponseEntity(, HttpStatus.CREATED)
+        @RequestBody actividadCreateDTO: ActividadCreateDTO
+    ) : ResponseEntity<ActividadDTO> {
+        return ResponseEntity(actividadService.crearActividad(actividadCreateDTO), HttpStatus.CREATED)
     }
 
     @PostMapping("/unirseActividad")
     fun unirseActividad(
         httpRequest: HttpServletRequest,
-        @RequestBody comunidadCreateDTO: ComunidadCreateDTO
-    ) : ResponseEntity<ComunidadDTO> {
-
-        return ResponseEntity(, HttpStatus.CREATED)
+        @RequestBody participantesActividadDTO: ParticipantesActividadDTO
+    ) : ResponseEntity<ParticipantesActividadDTO> {
+        return ResponseEntity(actividadService.unirseActividad(participantesActividadDTO), HttpStatus.CREATED)
     }
 
     @DeleteMapping("/eliminarActividad/{id}")
     fun eliminarActividad(
         httpRequest: HttpServletRequest,
         @PathVariable id: String
-    ) : ResponseEntity<ComunidadDTO> {
+    ) : ResponseEntity<ActividadDTO> {
 
-        return ResponseEntity(, HttpStatus.OK)
+        return ResponseEntity(actividadService.eliminarActividad(id), HttpStatus.OK)
     }
 
     @DeleteMapping("/salirActividad/{id}")
     fun salirActividad(
         httpRequest: HttpServletRequest,
         @PathVariable id: String
-    ) : ResponseEntity<ComunidadDTO> {
+    ) : ResponseEntity<ActividadDTO> {
 
-        return ResponseEntity(, HttpStatus.OK)
+        return ResponseEntity(actividadService.salirActividad(id), HttpStatus.OK)
     }
 
     @GetMapping("/verActividadPorComunidad/{comunidad}")
-    fun verComunidad(
+    fun verActividadPorComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable comunidad: String
     ) : ResponseEntity<List<Actividad>> {
 
-        return ResponseEntity(, HttpStatus.OK)
+        return ResponseEntity(actividadService.verActividadPorComunidad(comunidad), HttpStatus.OK)
     }
 
 
@@ -70,7 +66,7 @@ class ActividadController {
     fun verActividadesDisponibles(
         httpRequest: HttpServletRequest,
     ): ResponseEntity<MutableList<Comunidad>> {
-        return  ResponseEntity(, HttpStatus.OK)
+        return  ResponseEntity(actividadService.verActividadesPublicas(), HttpStatus.OK)
     }
 
     @PutMapping("/modificarComunidad")
@@ -78,7 +74,7 @@ class ActividadController {
         httpRequest: HttpServletRequest,
         @RequestBody comunidadUpdateDTO: ComunidadUpdateDTO
     ): ResponseEntity<Comunidad> {
-        return  ResponseEntity(, HttpStatus.OK)
+        return  ResponseEntity(actividadService.modificarActividad(ActividadUpdateDTO), HttpStatus.OK)
     }
 
 }
