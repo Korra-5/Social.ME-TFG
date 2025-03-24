@@ -17,8 +17,6 @@ data class Usuario(
     val email:String,
     val intereses: List<String>,
     val fotoPerfil:String,
-    val comunidades: List <String>?,
-    val actividades: List<String>?,
     val direccion: Direccion?,
     val fechaUnion: Date
 

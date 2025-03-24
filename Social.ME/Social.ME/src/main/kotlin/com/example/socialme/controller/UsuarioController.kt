@@ -4,6 +4,7 @@ import com.es.aplicacion.error.exception.UnauthorizedException
 import com.example.socialme.dto.LoginUsuarioDTO
 import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
+import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -14,10 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/Usuario")
@@ -56,4 +54,19 @@ class UsuarioController {
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
     }
 
+    @DeleteMapping("/eliminarUsuario/{username}")
+    fun eliminarUsuario(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ) : ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(usuarioService.eliminarUsuario(username), HttpStatus.OK)
+    }
+
+    @PutMapping("/modificarUsuario}")
+    fun modificarUsuario(
+        httpRequest: HttpServletRequest,
+        @RequestBody usuarioUpdateDTO: UsuarioUpdateDTO
+    ):ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(usuarioService.modificarUsuario(usuarioUpdateDTO), HttpStatus.OK)
+    }
 }

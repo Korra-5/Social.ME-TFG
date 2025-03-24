@@ -8,14 +8,14 @@ import java.util.*
 data class Actividad (
     @BsonId
     val _id: String?,
-    val nombre: String,
-    val descripcion: String,
-    val fotosCarrusel:List<String>,
+    var nombre: String,
+    var descripcion: String,
+    var fotosCarrusel:List<String>,
     val comunidad:String,
     val creador:String,
     val fechaCreacion: Date,
-    val fechaInicio:Date,
-    val fechaFinalizacion: Date,
+    var fechaInicio:Date,
+    var fechaFinalizacion: Date,
     val privada:Boolean
 )
     {

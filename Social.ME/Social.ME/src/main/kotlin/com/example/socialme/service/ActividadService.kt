@@ -4,8 +4,10 @@ import com.es.aplicacion.error.exception.BadRequestException
 import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.ActividadCreateDTO
 import com.example.socialme.dto.ActividadDTO
+import com.example.socialme.dto.ActividadUpdateDTO
 import com.example.socialme.dto.ParticipantesActividadDTO
 import com.example.socialme.model.Actividad
+import com.example.socialme.model.ActividadesComunidad
 import com.example.socialme.model.ParticipantesActividad
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -65,7 +67,8 @@ class ActividadService {
         val actividadDTO = ActividadDTO(
             nombre=actividadCreateDTO.nombre,
             privada = actividadCreateDTO.privada,
-            creador = actividadCreateDTO.creador
+            creador = actividadCreateDTO.creador,
+            descripcion = actividadCreateDTO.descripcion,
         )
 
         return actividadDTO
@@ -81,7 +84,7 @@ class ActividadService {
             }
 
             // Verificar si el usuario ya está participando en esta actividad
-            if (participantesActividadRepository.findByUsernameAndActividadId(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
+            if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
                 throw BadRequestException("Ya estás participando en esta actividad")
             }
 
@@ -89,7 +92,7 @@ class ActividadService {
             val participante = ParticipantesActividad(
                 _id = null,
                 username = participantesActividadDTO.username,
-                actividad = participantesActividadDTO.actividadId,
+                idActividad = participantesActividadDTO.actividadId,
                 fechaUnion = Date.from(Instant.now()),
                 nombreActividad = participantesActividadDTO.nombreActividad
             )
@@ -107,6 +110,7 @@ class ActividadService {
             nombre = actividad.nombre,
             privada = actividad.privada,
             creador = actividad.creador,
+            descripcion = actividad.descripcion,
         )
         actividadRepository.delete(actividad)
         return actividadDTO
@@ -119,7 +123,7 @@ class ActividadService {
         participantesActividadRepository.delete(union)
 
         val participantesActividadDTO= ParticipantesActividadDTO(
-            actividadId =union.actividad,
+            actividadId =union.idActividad,
             username = union.username,
             nombreActividad = union.nombreActividad,
 
@@ -128,7 +132,85 @@ class ActividadService {
         return participantesActividadDTO
     }
 
-    fun verActividadPorComunidad(comunidad: String){
-        actividadRepository.findActividadByComunidad()
-    }
+    fun verActividadPorComunidad(comunidad: String): List<ActividadDTO> {
+        val actividadesComunidad: List<ActividadesComunidad> = actividadesComunidadRepository.findByComunidad(comunidad)
+            .orElseThrow {
+                throw BadRequestException("No existen actividades para esta comunidad")
+            }
+
+        return actividadesComunidad.mapNotNull { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
+                .orElse(null)
+
+            actividad?.let {
+                ActividadDTO(
+                    nombre = it.nombre,
+                    descripcion = it.descripcion,
+                    privada = it.privada,
+                    creador = it.creador
+                )
+            }
+        }
 }
+    fun verActividadesPublicas():List<ActividadDTO>{
+            val todasLasActividades = actividadRepository.findAll()
+
+            return todasLasActividades
+                .filter { it.privada }
+                .map { actividad ->
+                    ActividadDTO(
+                        nombre = actividad.nombre,
+                        descripcion = actividad.descripcion,
+                        privada = actividad.privada,
+                        creador = actividad.creador
+                    )
+                }
+
+    }
+    fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
+        // Buscar la actividad existente
+        val actividad = actividadRepository.findActividadBy_id(actividadUpdateDTO._id)
+            .orElseThrow { NotFoundException("Esta actividad no existe") }
+
+        // Guardar el nombre antiguo para comparación
+        val nombreAntiguo = actividad.nombre
+        val nombreNuevo = actividadUpdateDTO.nombre
+
+        // Actualizar los datos de la actividad
+        actividad.apply {
+            nombre = nombreNuevo
+            descripcion = actividadUpdateDTO.descripcion
+            fotosCarrusel = actividadUpdateDTO.fotosCarrusel
+            fechaInicio = actividadUpdateDTO.fechaInicio
+            fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
+        }
+
+        // Guardar la actividad actualizada
+        val actividadActualizada = actividadRepository.save(actividad)
+
+        // Si el nombre ha cambiado, actualizar en otras colecciones
+        if (nombreAntiguo != nombreNuevo) {
+            // Actualizar en ParticipantesActividad
+            val participantes:List<ParticipantesActividad> = participantesActividadRepository.findByidActividad(actividadUpdateDTO._id)
+            participantes.forEach { participante ->
+                participante.nombreActividad = nombreNuevo
+                participantesActividadRepository.save(participante)
+            }
+
+            // Actualizar en ActividadesComunidad
+            val actividadesComunidad:List<ActividadesComunidad> = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id)
+            actividadesComunidad.forEach { actividadComunidad ->
+                actividadComunidad.nombreActividad = nombreNuevo
+                actividadesComunidadRepository.save(actividadComunidad)
+            }
+        }
+
+        // Devolver DTO de la actividad actualizada
+        return ActividadDTO(
+            nombre = nombreNuevo,
+            descripcion = actividadUpdateDTO.descripcion,
+            privada = actividad.privada,
+            creador = actividad.creador
+        )
+    }
+    }

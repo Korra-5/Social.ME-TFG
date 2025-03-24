@@ -9,9 +9,9 @@ data class ParticipantesActividad (
     @BsonId
     val _id:String?,
     val username:String,
-    val actividad:String,
+    val idActividad:String,
     var fechaUnion: Date,
-    val nombreActividad:String
+    var nombreActividad:String
 ) {
 
 }

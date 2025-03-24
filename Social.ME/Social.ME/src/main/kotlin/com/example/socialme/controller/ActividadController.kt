@@ -47,7 +47,7 @@ class ActividadController {
     fun salirActividad(
         httpRequest: HttpServletRequest,
         @PathVariable id: String
-    ) : ResponseEntity<ActividadDTO> {
+    ) : ResponseEntity<ParticipantesActividadDTO> {
 
         return ResponseEntity(actividadService.salirActividad(id), HttpStatus.OK)
     }
@@ -56,8 +56,7 @@ class ActividadController {
     fun verActividadPorComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable comunidad: String
-    ) : ResponseEntity<List<Actividad>> {
-
+    ) : ResponseEntity<List<ActividadDTO>> {
         return ResponseEntity(actividadService.verActividadPorComunidad(comunidad), HttpStatus.OK)
     }
 
@@ -65,17 +64,16 @@ class ActividadController {
     @GetMapping("/verActividadesPublicas")
     fun verActividadesDisponibles(
         httpRequest: HttpServletRequest,
-    ): ResponseEntity<MutableList<Comunidad>> {
+    ): ResponseEntity<List<ActividadDTO>>{
         return  ResponseEntity(actividadService.verActividadesPublicas(), HttpStatus.OK)
     }
 
     @PutMapping("/modificarComunidad")
     fun modificarActividad(
         httpRequest: HttpServletRequest,
-        @RequestBody comunidadUpdateDTO: ComunidadUpdateDTO
-    ): ResponseEntity<Comunidad> {
-        return  ResponseEntity(actividadService.modificarActividad(ActividadUpdateDTO), HttpStatus.OK)
+        @RequestBody actividadUpdateDTO: ActividadUpdateDTO
+    ): ResponseEntity<ActividadDTO> {
+        return  ResponseEntity(actividadService.modificarActividad(actividadUpdateDTO), HttpStatus.OK)
     }
 
-}
 }

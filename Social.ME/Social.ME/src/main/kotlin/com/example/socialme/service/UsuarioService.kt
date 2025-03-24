@@ -5,6 +5,7 @@ import com.es.aplicacion.error.exception.BadRequestException
 import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
+import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.model.Usuario
 import com.example.socialme.repository.UsuarioRepository
 import org.springframework.beans.factory.annotation.Autowired
@@ -124,8 +125,6 @@ class UsuarioService:UserDetailsService {
                 email = usuarioInsertadoDTO.email,
                 intereses = usuarioInsertadoDTO.intereses,
                 fotoPerfil = usuarioInsertadoDTO.fotoPerfil,
-                comunidades =  null,
-                actividades = null,
                 direccion = usuarioInsertadoDTO.direccion,
                 fechaUnion = Date.from(Instant.now()),
                 )
@@ -137,8 +136,38 @@ class UsuarioService:UserDetailsService {
 
             // retorno un DTO
             return UsuarioDTO(
-                usuario.username,
-                usuario.email,
+                username = usuario.username,
+                email = usuario.email,
+                intereses = usuario.intereses,
+                descripcion = usuario.descripcion,
+                nombre = usuario.nombre,
+                apellido = usuario.apellidos,
+                direccion = usuario.direccion,
+                fotoPerfil = usuario.fotoPerfil,
             )
 
-        }}
+        }
+
+    fun eliminarUsuario(username: String): UsuarioDTO {
+        val usuario=usuarioRepository.findByUsername(username).orElseThrow{
+            NotFoundException("Usuario $username no encontrado")
+        }
+        val userDTO=UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            descripcion = usuario.descripcion,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            direccion = usuario.direccion,
+            fotoPerfil = usuario.fotoPerfil,
+        )
+        usuarioRepository.delete(usuario)
+        return userDTO
+
+    }
+
+    fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+
+    }
+}

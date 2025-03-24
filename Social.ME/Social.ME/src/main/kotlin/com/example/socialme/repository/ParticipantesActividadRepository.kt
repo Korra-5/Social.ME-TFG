@@ -7,7 +7,8 @@ import java.util.*
 
 @Repository
 interface ParticipantesActividadRepository : MongoRepository<ParticipantesActividad, String> {
+    fun findByidActividad(actividadId: String): List<ParticipantesActividad>
     fun findBy_id(actividadId: String): Optional<ParticipantesActividad>
     fun findByUsername(username: String): List<ParticipantesActividad>
-    fun findByUsernameAndActividadId(username: String, actividadId: String): Optional<ParticipantesActividad>
+    fun findByUsernameAndIdActividad(username: String, actividadId: String): Optional<ParticipantesActividad>
 }
