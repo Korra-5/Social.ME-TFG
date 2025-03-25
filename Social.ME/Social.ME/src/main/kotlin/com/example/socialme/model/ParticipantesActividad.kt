@@ -8,7 +8,7 @@ import java.util.*
 data class ParticipantesActividad (
     @BsonId
     val _id:String?,
-    val username:String,
+    var username:String,
     val idActividad:String,
     var fechaUnion: Date,
     var nombreActividad:String

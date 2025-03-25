@@ -8,7 +8,7 @@ import java.util.Date
 data class ParticipantesComunidad(
     @BsonId
     val _id:String?,
-    val username:String,
+    var username:String,
     var comunidad:String,
     var fechaUnion:Date
 ) {

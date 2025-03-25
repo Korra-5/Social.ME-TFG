@@ -8,16 +8,16 @@ import java.util.*
 data class Usuario(
     @BsonId
     val _id: String?,
-    val username:String,
+    var username:String,
     val password:String,
     val roles:String,
-    val nombre:String,
-    val apellidos:String,
-    val descripcion:String,
-    val email:String,
-    val intereses: List<String>,
-    val fotoPerfil:String,
-    val direccion: Direccion?,
+    var nombre:String,
+    var apellidos:String,
+    var descripcion:String,
+    var email:String,
+    var intereses: List<String>,
+    var fotoPerfil:String,
+    var direccion: Direccion?,
     val fechaUnion: Date
 
 ) {
