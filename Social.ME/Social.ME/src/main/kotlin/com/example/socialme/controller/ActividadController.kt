@@ -68,7 +68,7 @@ class ActividadController {
         return  ResponseEntity(actividadService.verActividadesPublicas(), HttpStatus.OK)
     }
 
-    @PutMapping("/modificarComunidad")
+    @PutMapping("/modificarActividad")
     fun modificarActividad(
         httpRequest: HttpServletRequest,
         @RequestBody actividadUpdateDTO: ActividadUpdateDTO

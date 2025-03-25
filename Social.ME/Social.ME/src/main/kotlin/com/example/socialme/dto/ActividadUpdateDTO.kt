@@ -9,6 +9,8 @@ class ActividadUpdateDTO(
     val fotosCarrusel:List<String>,
     val fechaInicio: Date,
     val fechaFinalizacion: Date,
-) {
+    val lugar:String,
+
+    ) {
 
 }

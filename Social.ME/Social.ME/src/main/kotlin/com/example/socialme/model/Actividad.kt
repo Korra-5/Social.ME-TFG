@@ -16,7 +16,8 @@ data class Actividad (
     val fechaCreacion: Date,
     var fechaInicio:Date,
     var fechaFinalizacion: Date,
-    val privada:Boolean
+    val privada:Boolean,
+    val lugar:String,
 )
     {
 }

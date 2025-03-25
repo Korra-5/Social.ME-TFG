@@ -1,14 +1,15 @@
 package com.example.socialme.service
 
-import com.es.aplicacion.error.exception.BadRequestException
-import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.ActividadCreateDTO
 import com.example.socialme.dto.ActividadDTO
 import com.example.socialme.dto.ActividadUpdateDTO
 import com.example.socialme.dto.ParticipantesActividadDTO
+import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Actividad
 import com.example.socialme.model.ActividadesComunidad
 import com.example.socialme.model.ParticipantesActividad
+import com.example.socialme.model.Usuario
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -52,23 +53,29 @@ class ActividadService {
             fechaCreacion = Date.from(Instant.now()),
             creador = actividadCreateDTO.creador,
             privada = actividadCreateDTO.privada,
-            comunidad=actividadCreateDTO.comunidad
+            comunidad=actividadCreateDTO.comunidad,
+            lugar = actividadCreateDTO.lugar,
         )
-        if (usuarioRepository.findByUsername(actividadCreateDTO.creador).isPresent){
+
+        usuarioRepository.findByUsername(actividadCreateDTO.creador).orElseThrow{
+            throw NotFoundException("Este usuario no existe")
+        }
+
             val comunidad=comunidadRepository.findComunidadByUrl(actividadCreateDTO.comunidad).orElseThrow { NotFoundException("Esta comunidad no existe") }
             if (comunidad.creador==actividadCreateDTO.creador|| comunidad.administradores!!.contains(actividadCreateDTO.creador)){
                 actividadRepository.insert(actividad)
             }else{
                 throw BadRequestException("No tienes permisos para crear esta actividad")
             }
-        }else{
-            throw BadRequestException("Este usuario no existe")
-        }
         val actividadDTO = ActividadDTO(
             nombre=actividadCreateDTO.nombre,
             privada = actividadCreateDTO.privada,
             creador = actividadCreateDTO.creador,
             descripcion = actividadCreateDTO.descripcion,
+            fotosCarrusel = actividadCreateDTO.fotosCarrusel,
+            fechaFinalizacion = actividadCreateDTO.fechaFinalizacion,
+            fechaInicio = actividadCreateDTO.fechaInicio,
+            lugar = actividadCreateDTO.lugar,
         )
 
         return actividadDTO
@@ -111,6 +118,10 @@ class ActividadService {
             privada = actividad.privada,
             creador = actividad.creador,
             descripcion = actividad.descripcion,
+            fotosCarrusel = actividad.fotosCarrusel,
+            fechaFinalizacion = actividad.fechaFinalizacion,
+            fechaInicio = actividad.fechaInicio,
+            lugar = actividad.lugar,
         )
         actividadRepository.delete(actividad)
         return actividadDTO
@@ -147,7 +158,11 @@ class ActividadService {
                     nombre = it.nombre,
                     descripcion = it.descripcion,
                     privada = it.privada,
-                    creador = it.creador
+                    creador = it.creador,
+                    fotosCarrusel = it.fotosCarrusel,
+                    fechaFinalizacion = it.fechaFinalizacion,
+                    fechaInicio = it.fechaInicio,
+                    lugar = it.lugar,
                 )
             }
         }
@@ -162,7 +177,11 @@ class ActividadService {
                         nombre = actividad.nombre,
                         descripcion = actividad.descripcion,
                         privada = actividad.privada,
-                        creador = actividad.creador
+                        creador = actividad.creador,
+                        fotosCarrusel = actividad.fotosCarrusel,
+                        fechaFinalizacion = actividad.fechaFinalizacion,
+                        fechaInicio = actividad.fechaInicio,
+                        lugar = actividad.lugar,
                     )
                 }
 
@@ -210,7 +229,11 @@ class ActividadService {
             nombre = nombreNuevo,
             descripcion = actividadUpdateDTO.descripcion,
             privada = actividad.privada,
-            creador = actividad.creador
+            creador = actividad.creador,
+            fechaFinalizacion = actividad.fechaFinalizacion,
+            fechaInicio = actividad.fechaInicio,
+            lugar = actividad.lugar,
+            fotosCarrusel = actividad.fotosCarrusel,
         )
     }
     }

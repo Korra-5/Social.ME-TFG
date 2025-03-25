@@ -9,6 +9,7 @@ import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.service.ComunidadService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/Comunidad")
 class ComunidadController {
 
+    @Autowired
     private lateinit var comunidadService: ComunidadService
 
     @PostMapping("/crearComunidad")
@@ -76,7 +78,7 @@ class ComunidadController {
     fun modificarComunidad(
         httpRequest: HttpServletRequest,
         @RequestBody comunidadUpdateDTO: ComunidadUpdateDTO
-    ): ResponseEntity<Comunidad> {
+    ): ResponseEntity<ComunidadDTO> {
         return  ResponseEntity(comunidadService.modificarComunidad(comunidadUpdateDTO),HttpStatus.OK)
     }
 

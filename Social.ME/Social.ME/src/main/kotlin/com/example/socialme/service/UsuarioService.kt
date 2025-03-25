@@ -1,11 +1,11 @@
 package com.example.socialme.service
 
 
-import com.es.aplicacion.error.exception.BadRequestException
-import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
+import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Usuario
 import com.example.socialme.repository.ParticipantesActividadRepository
 import com.example.socialme.repository.ParticipantesComunidadRepository

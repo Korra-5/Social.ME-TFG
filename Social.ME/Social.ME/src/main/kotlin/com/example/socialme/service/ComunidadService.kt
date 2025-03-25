@@ -1,11 +1,11 @@
 package com.example.socialme.service
 
-import com.es.aplicacion.error.exception.BadRequestException
-import com.es.aplicacion.error.exception.NotFoundException
 import com.example.socialme.dto.ComunidadCreateDTO
 import com.example.socialme.dto.ComunidadDTO
 import com.example.socialme.dto.ComunidadUpdateDTO
 import com.example.socialme.dto.ParticipantesComunidadDTO
+import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.repository.ComunidadRepository
@@ -45,7 +45,7 @@ class ComunidadService {
         //Verifica que los intereses no tengan espacios ni superen los 25 caracteres
         validateAndReplaceSpaces(listOf(comunidadCreateDTO.url))
 
-        if (usuarioRepository.findByUsername(comunidadCreateDTO.creador).isEmpty) {
+        if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
             throw NotFoundException("Usuario no encontrado")
         }
 
@@ -64,12 +64,27 @@ class ComunidadService {
                 comunidadGlobal = comunidadCreateDTO.comunidadGlobal
             )
 
+        val participantesComunidad=ParticipantesComunidad(
+            comunidad=comunidad.url,
+            username = comunidad.creador,
+            fechaUnion = Date.from(Instant.now()),
+            _id = null
+        )
+
         comunidadRepository.insert(comunidad)
+        participantesComunidadRepository.insert(participantesComunidad)
 
         return ComunidadDTO(
             url=comunidadCreateDTO.url,
             nombre=comunidadCreateDTO.nombre,
-            comunidadGlobal=comunidadCreateDTO.comunidadGlobal
+            comunidadGlobal=comunidadCreateDTO.comunidadGlobal,
+            creador=comunidadCreateDTO.creador,
+            intereses=comunidadCreateDTO.intereses,
+            fotoCarrusel = null,
+            fotoPerfil = comunidadCreateDTO.fotoPerfil,
+            descripcion=comunidadCreateDTO.descripcion,
+            fechaCreacion=Date.from(Instant.now()),
+            administradores=null
         )
     }
 
@@ -105,7 +120,14 @@ class ComunidadService {
         val comunidadDto=ComunidadDTO(
             url=comunidad.url,
             nombre=comunidad.nombre,
-            comunidadGlobal=comunidad.comunidadGlobal
+            comunidadGlobal=comunidad.comunidadGlobal,
+            creador=comunidad.creador,
+            intereses=comunidad.intereses,
+            fotoCarrusel = comunidad.fotoCarrusel,
+            fotoPerfil = comunidad.fotoPerfil,
+            descripcion=comunidad.descripcion,
+            fechaCreacion=Date.from(Instant.now()),
+            administradores=comunidad.administradores,
         )
         comunidadRepository.delete(comunidad)
 
@@ -133,7 +155,7 @@ class ComunidadService {
         return comunidades
     }
 
-    fun modificarComunidad(comunidad: ComunidadUpdateDTO): Comunidad {
+    fun modificarComunidad(comunidad: ComunidadUpdateDTO): ComunidadDTO {
         val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidad.url)
             .orElseThrow { BadRequestException("Comunidad no existente") }
 
@@ -161,7 +183,20 @@ class ComunidadService {
             }
         }
 
-        return comunidadActualizada
+        val comunidadDTO=ComunidadDTO(
+            url=comunidadActualizada.url,
+            nombre=comunidadActualizada.nombre,
+            comunidadGlobal=comunidadActualizada.comunidadGlobal,
+            creador=comunidadActualizada.creador,
+            intereses=comunidadActualizada.intereses,
+            fotoCarrusel = comunidadActualizada.fotoCarrusel,
+            fotoPerfil = comunidadActualizada.fotoPerfil,
+            descripcion=comunidadActualizada.descripcion,
+            fechaCreacion=comunidadActualizada.fechaCreacion,
+            administradores=comunidadActualizada.administradores,
+        )
+
+        return comunidadDTO
     }
 
     fun salirComunidad(id:String): ParticipantesComunidadDTO {

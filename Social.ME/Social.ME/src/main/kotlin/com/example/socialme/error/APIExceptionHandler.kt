@@ -1,9 +1,9 @@
-package com.es.aplicacion.error
+package com.example.socialme.error
 
-import com.es.aplicacion.error.exception.BadRequestException
-import com.es.aplicacion.error.exception.ForbiddenException
-import com.es.aplicacion.error.exception.NotFoundException
-import com.es.aplicacion.error.exception.UnauthorizedException
+import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.ForbiddenException
+import com.example.socialme.error.exception.NotFoundException
+import com.example.socialme.error.exception.UnauthorizedException
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.ControllerAdvice

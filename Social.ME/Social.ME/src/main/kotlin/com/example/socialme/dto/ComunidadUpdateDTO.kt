@@ -5,7 +5,7 @@ data class ComunidadUpdateDTO (
     val nombre: String,
     val descripcion: String,
     val intereses:List<String>,
-    val fotoPerfil: String?,
+    val fotoPerfil: String,
     val fotoCarrusel:List<String>?,
     val administradores: List<String>?
 )

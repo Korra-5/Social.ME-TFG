@@ -37,6 +37,25 @@ class SecurityConfig {
             .csrf { csrf -> csrf.disable() } // Cross-Site Forgery
             .authorizeHttpRequests { auth ->
                 auth.requestMatchers("/Usuario/login").permitAll()
+                auth.requestMatchers("/Usuario/register").permitAll()
+                auth.requestMatchers("/Comunidad/crearComunidad").permitAll()
+                auth.requestMatchers("/Comunidad/salirComunidad/{url}").permitAll()
+                auth.requestMatchers("/Comunidad/unirseComunidad/{url}").permitAll()
+                auth.requestMatchers("/Comunidad/modificarComunidad").permitAll()
+                auth.requestMatchers("/Comunidad/eliminarComunidad/{url}").permitAll()
+                auth.requestMatchers("/Comunidad/verTodasComunidades").permitAll()
+                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}").permitAll()
+                auth.requestMatchers("/Actividad/verActividadesPublicas").permitAll()
+                auth.requestMatchers("/Actividad/verActividadPorComunidad/{url}").permitAll()
+                auth.requestMatchers("/Actividad/modificarActividad").permitAll()
+                auth.requestMatchers("/Actividad/eliminarActividad/{id}").permitAll()
+                auth.requestMatchers("/Actividad/salirActividad/{id}").permitAll()
+                auth.requestMatchers("/Actividad/unirseActividad/{id}").permitAll()
+                auth.requestMatchers("/Actividad/crearActividad").permitAll()
+
+
+
+
 
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }

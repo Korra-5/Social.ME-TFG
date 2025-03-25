@@ -1,10 +1,10 @@
 package com.example.socialme.controller
 
-import com.es.aplicacion.error.exception.UnauthorizedException
 import com.example.socialme.dto.LoginUsuarioDTO
 import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
+import com.example.socialme.error.exception.UnauthorizedException
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -62,7 +62,7 @@ class UsuarioController {
         return ResponseEntity(usuarioService.eliminarUsuario(username), HttpStatus.OK)
     }
 
-    @PutMapping("/modificarUsuario}")
+    @PutMapping("/modificarUsuario")
     fun modificarUsuario(
         httpRequest: HttpServletRequest,
         @RequestBody usuarioUpdateDTO: UsuarioUpdateDTO

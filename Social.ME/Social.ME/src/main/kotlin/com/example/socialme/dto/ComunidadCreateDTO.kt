@@ -7,7 +7,7 @@ data class ComunidadCreateDTO(
     val nombre: String,
     val descripcion: String,
     val intereses:List<String>,
-    val fotoPerfil: String?,
+    val fotoPerfil: String,
     val creador: String,
     val comunidadGlobal:Boolean
 ) {
