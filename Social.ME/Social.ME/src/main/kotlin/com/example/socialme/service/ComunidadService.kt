@@ -8,6 +8,7 @@ import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
+import com.example.socialme.repository.ActividadesComunidadRepository
 import com.example.socialme.repository.ComunidadRepository
 import com.example.socialme.repository.ParticipantesComunidadRepository
 import com.example.socialme.repository.UsuarioRepository
@@ -18,6 +19,9 @@ import java.util.*
 
 @Service
 class ComunidadService {
+    @Autowired
+    private lateinit var actividadesComunidadRepository: ActividadesComunidadRepository
+
     @Autowired
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
 
@@ -92,7 +96,7 @@ class ComunidadService {
         comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
                 .orElseThrow { BadRequestException("La comunidad no existe") }
 
-        usuarioRepository.findByUsername(participantesComunidadDTO.username)
+        usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
                 .orElseThrow { NotFoundException("Usuario no encontrado") }
 
             if (participantesComunidadRepository.findByUsernameAndComunidad(
@@ -130,7 +134,8 @@ class ComunidadService {
             administradores=comunidad.administradores,
         )
         comunidadRepository.delete(comunidad)
-
+        participantesComunidadRepository.deleteByComunidad(comunidad.url)
+        actividadesComunidadRepository.deleteByComunidad(comunidad.url)
 
         return comunidadDto
     }

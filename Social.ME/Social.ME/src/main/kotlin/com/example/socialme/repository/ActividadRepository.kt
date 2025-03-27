@@ -7,5 +7,5 @@ import java.util.*
 
 @Repository
 interface ActividadRepository: MongoRepository<Actividad, String> {
-    fun findActividadBy_id(_id: String): Optional<Actividad>
+    fun findActividadBy_id(_id: String?): Optional<Actividad>
 }

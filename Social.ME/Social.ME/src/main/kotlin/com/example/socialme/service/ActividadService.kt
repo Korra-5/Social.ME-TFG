@@ -9,7 +9,6 @@ import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Actividad
 import com.example.socialme.model.ActividadesComunidad
 import com.example.socialme.model.ParticipantesActividad
-import com.example.socialme.model.Usuario
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -57,16 +56,26 @@ class ActividadService {
             lugar = actividadCreateDTO.lugar,
         )
 
-        usuarioRepository.findByUsername(actividadCreateDTO.creador).orElseThrow{
+        usuarioRepository.findFirstByUsername(actividadCreateDTO.creador).orElseThrow{
             throw NotFoundException("Este usuario no existe")
         }
-
+        val actividadInsertada:Actividad
             val comunidad=comunidadRepository.findComunidadByUrl(actividadCreateDTO.comunidad).orElseThrow { NotFoundException("Esta comunidad no existe") }
             if (comunidad.creador==actividadCreateDTO.creador|| comunidad.administradores!!.contains(actividadCreateDTO.creador)){
-                actividadRepository.insert(actividad)
+                 actividadInsertada=actividadRepository.insert(actividad)
             }else{
                 throw BadRequestException("No tienes permisos para crear esta actividad")
             }
+
+        val actividadComunidad=ActividadesComunidad(
+            _id=null,
+            comunidad = actividadInsertada.comunidad,
+            idActividad = actividadInsertada._id,
+            nombreActividad = actividadInsertada.nombre
+        )
+        actividadesComunidadRepository.insert(actividadComunidad)
+
+
         val actividadDTO = ActividadDTO(
             nombre=actividadCreateDTO.nombre,
             privada = actividadCreateDTO.privada,
@@ -86,7 +95,7 @@ class ActividadService {
                 .orElseThrow { BadRequestException("Esta actividad no existe") }
 
             // Verificar que el usuario existe
-            if (usuarioRepository.findByUsername(participantesActividadDTO.username).isEmpty) {
+            if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
                 throw NotFoundException("Usuario no encontrado")
             }
 
@@ -109,10 +118,11 @@ class ActividadService {
         return participantesActividadDTO
     }
 
-    fun eliminarActividad(id:String):ActividadDTO{
-        val actividad = actividadRepository.findActividadBy_id(id).orElseThrow{
+    fun eliminarActividad(id: String): ActividadDTO {
+        val actividad = actividadRepository.findActividadBy_id(id).orElseThrow {
             throw NotFoundException("Esta actividad no existe")
         }
+
         val actividadDTO = ActividadDTO(
             nombre = actividad.nombre,
             privada = actividad.privada,
@@ -123,7 +133,16 @@ class ActividadService {
             fechaInicio = actividad.fechaInicio,
             lugar = actividad.lugar,
         )
+
+        // Remove related documents from ParticipantesActividad
+        participantesActividadRepository.deleteByIdActividad(id)
+
+        // Remove related documents from ActividadesComunidad
+        actividadesComunidadRepository.deleteByIdActividad(id)
+
+        // Delete the main activity
         actividadRepository.delete(actividad)
+
         return actividadDTO
     }
 

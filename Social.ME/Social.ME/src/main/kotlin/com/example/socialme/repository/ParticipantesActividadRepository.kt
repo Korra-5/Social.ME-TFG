@@ -11,4 +11,6 @@ interface ParticipantesActividadRepository : MongoRepository<ParticipantesActivi
     fun findBy_id(actividadId: String): Optional<ParticipantesActividad>
     fun findByUsername(username: String): List<ParticipantesActividad>
     fun findByUsernameAndIdActividad(username: String, actividadId: String): Optional<ParticipantesActividad>
+    fun deleteByIdActividad(idActividad: String)
+
 }

@@ -6,8 +6,8 @@ import org.springframework.data.mongodb.core.mapping.Document
 @Document("ActividadesComunidad")
 data class ActividadesComunidad(
     @BsonId
-    val _id: String,
+    val _id: String?,
     val comunidad:String,
-    val idActividad:String,
+    val idActividad:String?,
     var nombreActividad: String
 )

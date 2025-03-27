@@ -41,7 +41,7 @@ class UsuarioService:UserDetailsService {
 
     override fun loadUserByUsername(username: String?): UserDetails {
         var usuario: Usuario = usuarioRepository
-            .findByUsername(username!!)
+            .findFirstByUsername(username!!)
             .orElseThrow {
                 NotFoundException("$username no existente")
             }
@@ -80,7 +80,7 @@ class UsuarioService:UserDetailsService {
 
 
         // Fran ha comprobado que el usuario existe previamente
-        if (usuarioRepository.findByUsername(usuarioInsertadoDTO.username).isPresent) {
+        if (usuarioRepository.findFirstByUsername(usuarioInsertadoDTO.username).isPresent) {
             throw BadRequestException("Usuario ${usuarioInsertadoDTO.username} ya está registrado")
         }
 
@@ -159,7 +159,7 @@ class UsuarioService:UserDetailsService {
     }
 
     fun eliminarUsuario(username: String): UsuarioDTO {
-        val usuario = usuarioRepository.findByUsername(username).orElseThrow {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
         }
         val userDTO = UsuarioDTO(
@@ -184,7 +184,7 @@ class UsuarioService:UserDetailsService {
         }
 
         // Find existing user
-        val usuario = usuarioRepository.findByUsername(usuarioUpdateDTO.username).orElseThrow {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.username).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.username} no encontrado")
         }
 
