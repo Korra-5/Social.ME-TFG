@@ -1,18 +1,4 @@
-FROM gradle:8-jdk17 AS build
-WORKDIR /app
-
-# Copy only necessary files for building
-COPY gradlew gradle/ build.gradle.kts settings.gradle.kts ./
-COPY src ./src
-
-# Ensure gradlew has correct permissions
-RUN chmod +x ./gradlew
-
-# Build the application
-RUN ./gradlew bootWar
-
-# Final image
 FROM azul/zulu-openjdk:17-latest
 VOLUME /tmp
-COPY --from=build /app/build/libs/*.war app.war
+COPY build/libs/*.war app.war
 CMD ["java", "-jar", "/app.war"]
