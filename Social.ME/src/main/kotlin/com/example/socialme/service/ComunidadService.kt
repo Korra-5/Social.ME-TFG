@@ -19,6 +19,7 @@ import java.util.*
 
 @Service
 class ComunidadService {
+
     @Autowired
     private lateinit var actividadesComunidadRepository: ActividadesComunidadRepository
 
@@ -36,7 +37,7 @@ class ComunidadService {
             throw BadRequestException("Comunidad existente")
         }
 
-        //Sustituye por guiones los espacios para que las url sean mas accesibles
+        //Sustituye por guiones los espacios para que las url sean más accesibles
         comunidadCreateDTO.url.trim().split(Regex("\\s+")).joinToString("-")
 
         if (comunidadCreateDTO.nombre.length>40){
@@ -65,7 +66,8 @@ class ComunidadService {
                 administradores = null,
                 fechaCreacion = Date.from(Instant.now()),
                 url=comunidadCreateDTO.url,
-                comunidadGlobal = comunidadCreateDTO.comunidadGlobal
+                comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
+                privada = comunidadCreateDTO.privada
             )
 
         val participantesComunidad=ParticipantesComunidad(
@@ -88,7 +90,8 @@ class ComunidadService {
             fotoPerfil = comunidadCreateDTO.fotoPerfil,
             descripcion=comunidadCreateDTO.descripcion,
             fechaCreacion=Date.from(Instant.now()),
-            administradores=null
+            administradores=null,
+            privada=comunidadCreateDTO.privada
         )
     }
 
@@ -132,6 +135,8 @@ class ComunidadService {
             descripcion=comunidad.descripcion,
             fechaCreacion=Date.from(Instant.now()),
             administradores=comunidad.administradores,
+            privada=comunidad.privada
+
         )
         comunidadRepository.delete(comunidad)
         participantesComunidadRepository.deleteByComunidad(comunidad.url)
@@ -199,6 +204,8 @@ class ComunidadService {
             descripcion=comunidadActualizada.descripcion,
             fechaCreacion=comunidadActualizada.fechaCreacion,
             administradores=comunidadActualizada.administradores,
+            privada=comunidadActualizada.privada
+
         )
 
         return comunidadDTO

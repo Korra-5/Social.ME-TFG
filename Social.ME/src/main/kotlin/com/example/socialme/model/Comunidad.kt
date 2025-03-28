@@ -17,6 +17,8 @@ data class Comunidad(
     val creador: String,
     var administradores: List<String>?,
     val fechaCreacion: Date,
-    val comunidadGlobal: Boolean
+    val comunidadGlobal: Boolean,
+    val privada:Boolean
+
 ) {
 }

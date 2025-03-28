@@ -9,6 +9,7 @@ data class ComunidadCreateDTO(
     val intereses:List<String>,
     val fotoPerfil: String,
     val creador: String,
-    val comunidadGlobal:Boolean
+    val comunidadGlobal:Boolean,
+    val privada:Boolean
 ) {
 }
