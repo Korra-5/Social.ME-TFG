@@ -52,6 +52,10 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/salirActividad/{id}").permitAll()
                 auth.requestMatchers("/Actividad/unirseActividad/{id}").permitAll()
                 auth.requestMatchers("/Actividad/crearActividad").permitAll()
+                auth.requestMatchers("/Usuario/modificarUsuario").permitAll()
+                auth.requestMatchers("/Usuario/eliminarUsuario/{username}").permitAll()
+
+
 
 
 

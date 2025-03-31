@@ -142,6 +142,8 @@ class UsuarioService : UserDetailsService {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
+
+
         // Process profile photo if provided in base64 format
         val nuevaFotoPerfilId =
             if (usuarioUpdateDTO.fotoPerfilBase64 != null && usuarioUpdateDTO.fotoPerfilBase64.isNotBlank()) {
