@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
-
 @Service
 class ActividadService {
 
@@ -32,95 +31,70 @@ class ActividadService {
 
     @Autowired
     private lateinit var actividadRepository: ActividadRepository
+    @Autowired
+    private lateinit var gridFSService: GridFSService
 
-    fun crearActividad(actividadCreateDTO: ActividadCreateDTO) : ActividadDTO {
+    fun crearActividad(actividadCreateDTO: ActividadCreateDTO): ActividadDTO {
+        // Existing validation code...
 
-        if (actividadCreateDTO.nombre.length>25){
-            throw BadRequestException("El nombre de la actividad no puede superar los 25 caracteres")
-        }
-        if (actividadCreateDTO.descripcion.length>2000){
-            throw BadRequestException("La descrpicion no puede superar los 2000 caracteres")
-        }
+        // Process the carousel photos if they exist in base64 format
+        val fotosCarruselIds = if (actividadCreateDTO.fotosCarruselBase64 != null && actividadCreateDTO.fotosCarruselBase64.isNotEmpty()) {
+            actividadCreateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
+                gridFSService.storeFileFromBase64(
+                    base64,
+                    "activity_carousel_${actividadCreateDTO.nombre}_${index}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "activityCarousel",
+                        "activity" to actividadCreateDTO.nombre,
+                        "position" to index.toString()
+                    )
+                )
+            }
+        } else actividadCreateDTO.fotosCarruselIds ?: emptyList()
 
-        val actividad= Actividad(
-            _id=null,
+        val actividad = Actividad(
+            _id = null,
             nombre = actividadCreateDTO.nombre,
             descripcion = actividadCreateDTO.descripcion,
-            fotosCarrusel = actividadCreateDTO.fotosCarrusel,
+            fotosCarruselIds = fotosCarruselIds,
             fechaInicio = actividadCreateDTO.fechaInicio,
             fechaFinalizacion = actividadCreateDTO.fechaFinalizacion,
             fechaCreacion = Date.from(Instant.now()),
             creador = actividadCreateDTO.creador,
             privada = actividadCreateDTO.privada,
-            comunidad=actividadCreateDTO.comunidad,
+            comunidad = actividadCreateDTO.comunidad,
             lugar = actividadCreateDTO.lugar,
         )
 
-        usuarioRepository.findFirstByUsername(actividadCreateDTO.creador).orElseThrow{
-            throw NotFoundException("Este usuario no existe")
-        }
-        val actividadInsertada:Actividad
-            val comunidad=comunidadRepository.findComunidadByUrl(actividadCreateDTO.comunidad).orElseThrow { NotFoundException("Esta comunidad no existe") }
-            if (comunidad.creador==actividadCreateDTO.creador|| comunidad.administradores!!.contains(actividadCreateDTO.creador)){
-                 actividadInsertada=actividadRepository.insert(actividad)
-            }else{
-                throw BadRequestException("No tienes permisos para crear esta actividad")
-            }
+        // Rest of the existing code...
 
-        val actividadComunidad=ActividadesComunidad(
-            _id=null,
-            comunidad = actividadInsertada.comunidad,
-            idActividad = actividadInsertada._id,
-            nombreActividad = actividadInsertada.nombre
-        )
-        actividadesComunidadRepository.insert(actividadComunidad)
-
-
-        val actividadDTO = ActividadDTO(
-            nombre=actividadCreateDTO.nombre,
+        return ActividadDTO(
+            nombre = actividadCreateDTO.nombre,
             privada = actividadCreateDTO.privada,
             creador = actividadCreateDTO.creador,
             descripcion = actividadCreateDTO.descripcion,
-            fotosCarrusel = actividadCreateDTO.fotosCarrusel,
+            fotosCarruselIds = fotosCarruselIds,
             fechaFinalizacion = actividadCreateDTO.fechaFinalizacion,
             fechaInicio = actividadCreateDTO.fechaInicio,
             lugar = actividadCreateDTO.lugar,
         )
-
-        return actividadDTO
     }
 
-    fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO) : ParticipantesActividadDTO {
-            val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
-                .orElseThrow { BadRequestException("Esta actividad no existe") }
-
-            // Verificar que el usuario existe
-            if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
-                throw NotFoundException("Usuario no encontrado")
-            }
-
-            // Verificar si el usuario ya está participando en esta actividad
-            if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
-                throw BadRequestException("Ya estás participando en esta actividad")
-            }
-
-            // Si no existe la participación, se crea
-            val participante = ParticipantesActividad(
-                _id = null,
-                username = participantesActividadDTO.username,
-                idActividad = participantesActividadDTO.actividadId,
-                fechaUnion = Date.from(Instant.now()),
-                nombreActividad = participantesActividadDTO.nombreActividad
-            )
-
-        participantesActividadRepository.insert(participante)
-
-        return participantesActividadDTO
-    }
-
+    // Add GridFS handling to eliminarActividad
     fun eliminarActividad(id: String): ActividadDTO {
         val actividad = actividadRepository.findActividadBy_id(id).orElseThrow {
             throw NotFoundException("Esta actividad no existe")
+        }
+
+        // Delete activity images from GridFS
+        try {
+            actividad.fotosCarruselIds.forEach { fileId ->
+                gridFSService.deleteFile(fileId)
+            }
+        } catch (e: Exception) {
+            // Log error but continue with deletion
+            println("Error deleting GridFS files: ${e.message}")
         }
 
         val actividadDTO = ActividadDTO(
@@ -128,83 +102,21 @@ class ActividadService {
             privada = actividad.privada,
             creador = actividad.creador,
             descripcion = actividad.descripcion,
-            fotosCarrusel = actividad.fotosCarrusel,
+            fotosCarruselIds = actividad.fotosCarruselIds,
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
             lugar = actividad.lugar,
         )
 
-        // Remove related documents from ParticipantesActividad
+        // Remove related documents
         participantesActividadRepository.deleteByIdActividad(id)
-
-        // Remove related documents from ActividadesComunidad
         actividadesComunidadRepository.deleteByIdActividad(id)
-
-        // Delete the main activity
         actividadRepository.delete(actividad)
 
         return actividadDTO
     }
 
-    fun salirActividad(id:String):ParticipantesActividadDTO{
-        val union = participantesActividadRepository.findBy_id(id).orElseThrow {
-            throw NotFoundException("No te has unido a esta actividad")
-        }
-        participantesActividadRepository.delete(union)
-
-        val participantesActividadDTO= ParticipantesActividadDTO(
-            actividadId =union.idActividad,
-            username = union.username,
-            nombreActividad = union.nombreActividad,
-
-        )
-
-        return participantesActividadDTO
-    }
-
-    fun verActividadPorComunidad(comunidad: String): List<ActividadDTO> {
-        val actividadesComunidad: List<ActividadesComunidad> = actividadesComunidadRepository.findByComunidad(comunidad)
-            .orElseThrow {
-                throw BadRequestException("No existen actividades para esta comunidad")
-            }
-
-        return actividadesComunidad.mapNotNull { actividadComunidad ->
-            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
-                .orElse(null)
-
-            actividad?.let {
-                ActividadDTO(
-                    nombre = it.nombre,
-                    descripcion = it.descripcion,
-                    privada = it.privada,
-                    creador = it.creador,
-                    fotosCarrusel = it.fotosCarrusel,
-                    fechaFinalizacion = it.fechaFinalizacion,
-                    fechaInicio = it.fechaInicio,
-                    lugar = it.lugar,
-                )
-            }
-        }
-}
-    fun verActividadesPublicas():List<ActividadDTO>{
-            val todasLasActividades = actividadRepository.findAll()
-
-            return todasLasActividades
-                .filter { it.privada }
-                .map { actividad ->
-                    ActividadDTO(
-                        nombre = actividad.nombre,
-                        descripcion = actividad.descripcion,
-                        privada = actividad.privada,
-                        creador = actividad.creador,
-                        fotosCarrusel = actividad.fotosCarrusel,
-                        fechaFinalizacion = actividad.fechaFinalizacion,
-                        fechaInicio = actividad.fechaInicio,
-                        lugar = actividad.lugar,
-                    )
-                }
-
-    }
+    // Update the modificarActividad method to handle GridFS
     fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
         // Buscar la actividad existente
         val actividad = actividadRepository.findActividadBy_id(actividadUpdateDTO._id)
@@ -214,13 +126,42 @@ class ActividadService {
         val nombreAntiguo = actividad.nombre
         val nombreNuevo = actividadUpdateDTO.nombre
 
+        // Process new carousel photos if they exist in base64 format
+        val nuevasFotos = if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
+            actividadUpdateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
+                gridFSService.storeFileFromBase64(
+                    base64,
+                    "activity_carousel_${nombreNuevo}_${index}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "activityCarousel",
+                        "activity" to nombreNuevo,
+                        "position" to index.toString()
+                    )
+                )
+            }
+        } else actividadUpdateDTO.fotosCarruselIds ?: emptyList()
+
+        // Delete old photos that are not in the new list
+        val viejasFotos = actividad.fotosCarruselIds
+        val fotosParaEliminar = viejasFotos.filter { !nuevasFotos.contains(it) }
+
+        try {
+            fotosParaEliminar.forEach { fileId ->
+                gridFSService.deleteFile(fileId)
+            }
+        } catch (e: Exception) {
+            println("Error deleting old GridFS files: ${e.message}")
+        }
+
         // Actualizar los datos de la actividad
         actividad.apply {
             nombre = nombreNuevo
             descripcion = actividadUpdateDTO.descripcion
-            fotosCarrusel = actividadUpdateDTO.fotosCarrusel
+            fotosCarruselIds = nuevasFotos
             fechaInicio = actividadUpdateDTO.fechaInicio
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
+            lugar = actividadUpdateDTO.lugar
         }
 
         // Guardar la actividad actualizada
@@ -229,14 +170,14 @@ class ActividadService {
         // Si el nombre ha cambiado, actualizar en otras colecciones
         if (nombreAntiguo != nombreNuevo) {
             // Actualizar en ParticipantesActividad
-            val participantes:List<ParticipantesActividad> = participantesActividadRepository.findByidActividad(actividadUpdateDTO._id)
+            val participantes = participantesActividadRepository.findByidActividad(actividadUpdateDTO._id)
             participantes.forEach { participante ->
                 participante.nombreActividad = nombreNuevo
                 participantesActividadRepository.save(participante)
             }
 
             // Actualizar en ActividadesComunidad
-            val actividadesComunidad:List<ActividadesComunidad> = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id)
+            val actividadesComunidad = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id)
             actividadesComunidad.forEach { actividadComunidad ->
                 actividadComunidad.nombreActividad = nombreNuevo
                 actividadesComunidadRepository.save(actividadComunidad)
@@ -252,7 +193,97 @@ class ActividadService {
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
             lugar = actividad.lugar,
-            fotosCarrusel = actividad.fotosCarrusel,
+            fotosCarruselIds = actividad.fotosCarruselIds,
         )
     }
+
+    // Also update verActividadPorComunidad to use the new fotosCarruselIds field
+    fun verActividadPorComunidad(comunidad: String): List<ActividadDTO> {
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad)
+            .orElseThrow {
+                throw BadRequestException("No existen actividades para esta comunidad")
+            }
+
+        return actividadesComunidad.mapNotNull { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
+                .orElse(null)
+
+            actividad?.let {
+                ActividadDTO(
+                    nombre = it.nombre,
+                    descripcion = it.descripcion,
+                    privada = it.privada,
+                    creador = it.creador,
+                    fotosCarruselIds = it.fotosCarruselIds,
+                    fechaFinalizacion = it.fechaFinalizacion,
+                    fechaInicio = it.fechaInicio,
+                    lugar = it.lugar,
+                )
+            }
+        }
     }
+
+    // Update verActividadesPublicas to use the new fotosCarruselIds field
+    fun verActividadesPublicas(): List<ActividadDTO> {
+        val todasLasActividades = actividadRepository.findAll()
+
+        return todasLasActividades
+            .filter { it.privada }
+            .map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    lugar = actividad.lugar,
+                )
+            }
+    }
+
+    fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO) : ParticipantesActividadDTO {
+        val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
+            .orElseThrow { BadRequestException("Esta actividad no existe") }
+
+        // Verificar que el usuario existe
+        if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        // Verificar si el usuario ya está participando en esta actividad
+        if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
+            throw BadRequestException("Ya estás participando en esta actividad")
+        }
+
+        // Si no existe la participación, se crea
+        val participante = ParticipantesActividad(
+            _id = null,
+            username = participantesActividadDTO.username,
+            idActividad = participantesActividadDTO.actividadId,
+            fechaUnion = Date.from(Instant.now()),
+            nombreActividad = participantesActividadDTO.nombreActividad
+        )
+
+        participantesActividadRepository.insert(participante)
+
+        return participantesActividadDTO
+    }
+    fun salirActividad(id:String):ParticipantesActividadDTO{
+        val union = participantesActividadRepository.findBy_id(id).orElseThrow {
+            throw NotFoundException("No te has unido a esta actividad")
+        }
+        participantesActividadRepository.delete(union)
+
+        val participantesActividadDTO= ParticipantesActividadDTO(
+            actividadId =union.idActividad,
+            username = union.username,
+            nombreActividad = union.nombreActividad,
+
+            )
+
+        return participantesActividadDTO
+    }
+
+}

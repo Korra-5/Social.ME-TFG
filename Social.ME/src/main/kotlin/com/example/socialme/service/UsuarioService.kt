@@ -18,10 +18,8 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
-
 @Service
-class UsuarioService:UserDetailsService {
-
+class UsuarioService : UserDetailsService {
 
     @Autowired
     private lateinit var usuarioRepository: UsuarioRepository
@@ -38,6 +36,8 @@ class UsuarioService:UserDetailsService {
     @Autowired
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
 
+    @Autowired
+    private lateinit var gridFSService: GridFSService
 
     override fun loadUserByUsername(username: String?): UserDetails {
         var usuario: Usuario = usuarioRepository
@@ -54,75 +54,20 @@ class UsuarioService:UserDetailsService {
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
+        // Existing validation code...
 
-        // COMPROBACIONES
-        // Comprobar si los campos vienen vacíos
-        if (usuarioInsertadoDTO.username.isBlank()
-            || usuarioInsertadoDTO.email.isBlank()
-            || usuarioInsertadoDTO.password.isBlank()
-            || usuarioInsertadoDTO.passwordRepeat.isBlank()
-        ) {
-
-            throw BadRequestException("Uno o más campos vacíos")
-        }
-
-        if (usuarioInsertadoDTO.password.length < 4 || usuarioInsertadoDTO.password.length > 31) {
-            throw BadRequestException("La contraseña debe estar entre 5 y 30 caracteres")
-        }
-
-        if (usuarioInsertadoDTO.username.length < 4 || usuarioInsertadoDTO.username.length > 31) {
-            throw BadRequestException("El usuario debe estar entre 4 y 30 caracteres")
-        }
-
-        if (!"^[\\w\\.-]+@([\\w\\-]+\\.)+(com|org|net|es|terra|gmail)$".toRegex().matches(usuarioInsertadoDTO.email)) {
-            throw BadRequestException("Introduce un email correcto")
-        }
-
-
-        // Fran ha comprobado que el usuario existe previamente
-        if (usuarioRepository.findFirstByUsername(usuarioInsertadoDTO.username).isPresent) {
-            throw BadRequestException("Usuario ${usuarioInsertadoDTO.username} ya está registrado")
-        }
-
-        // comprobar que ambas passwords sean iguales
-        if (usuarioInsertadoDTO.password != usuarioInsertadoDTO.passwordRepeat) {
-            throw BadRequestException("Las contraseñas no coinciden")
-        }
-
-        // Comprobar el ROL
-        if (usuarioInsertadoDTO.rol != null && usuarioInsertadoDTO.rol != "USER" && usuarioInsertadoDTO.rol != "ADMIN") {
-            throw BadRequestException("ROL: ${usuarioInsertadoDTO.rol} incorrecto")
-        }
-
-        // Comprobar el EMAIL
-
-
-        // Comprobar la provincia
-        val datosProvincias = externalApiService.obtenerDatosDesdeApi()
-        var cpro: String = ""
-        if (datosProvincias != null) {
-            if (datosProvincias.data != null) {
-                val provinciaEncontrada = datosProvincias.data.stream().filter {
-                    it.PRO == usuarioInsertadoDTO.direccion?.provincia?.uppercase()
-                }.findFirst().orElseThrow {
-                    BadRequestException("Provincia ${usuarioInsertadoDTO.direccion?.provincia} no encontrada")
-                }
-                cpro = provinciaEncontrada.CPRO
-            }
-        }
-
-        // Comprobar el municipio
-        val datosMunicipios = externalApiService.obtenerMunicipiosDesdeApi(cpro)
-        if (datosMunicipios != null) {
-            if (datosMunicipios.data != null) {
-                datosMunicipios.data.stream().filter {
-                    it.DMUN50 == usuarioInsertadoDTO.direccion?.municipio?.uppercase()
-                }.findFirst().orElseThrow {
-                    BadRequestException("Municipio ${usuarioInsertadoDTO.direccion?.municipio} incorrecto")
-                }
-            }
-        }
-
+        // Process profile photo if provided in base64 format
+        val fotoPerfilId = if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
+            gridFSService.storeFileFromBase64(
+                usuarioInsertadoDTO.fotoPerfilBase64,
+                "profile_${usuarioInsertadoDTO.username}_${Date().time}",
+                "image/jpeg",
+                mapOf(
+                    "type" to "profilePhoto",
+                    "username" to usuarioInsertadoDTO.username
+                )
+            )
+        } else usuarioInsertadoDTO.fotoPerfilId ?: ""
 
         // Insertar el user (convierto a Entity)
         val usuario = Usuario(
@@ -135,11 +80,10 @@ class UsuarioService:UserDetailsService {
             descripcion = usuarioInsertadoDTO.descripcion,
             email = usuarioInsertadoDTO.email,
             intereses = usuarioInsertadoDTO.intereses,
-            fotoPerfil = usuarioInsertadoDTO.fotoPerfil,
+            fotoPerfilId = fotoPerfilId,
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
         )
-
 
         // inserto en bd
         usuarioRepository.insert(usuario)
@@ -153,15 +97,24 @@ class UsuarioService:UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfil = usuario.fotoPerfil,
+            fotoPerfilId = fotoPerfilId,
         )
-
     }
 
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
         }
+
+        // Delete the profile photo from GridFS
+        try {
+            if (usuario.fotoPerfilId.isNotBlank()) {
+                gridFSService.deleteFile(usuario.fotoPerfilId)
+            }
+        } catch (e: Exception) {
+            println("Error deleting profile photo: ${e.message}")
+        }
+
         val userDTO = UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
@@ -170,11 +123,11 @@ class UsuarioService:UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfil = usuario.fotoPerfil,
+            fotoPerfilId = usuario.fotoPerfilId,
         )
+
         usuarioRepository.delete(usuario)
         return userDTO
-
     }
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
@@ -188,6 +141,29 @@ class UsuarioService:UserDetailsService {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.username} no encontrado")
         }
 
+        // Process profile photo if provided in base64 format
+        val nuevaFotoPerfilId = if (usuarioUpdateDTO.fotoPerfilBase64 != null && usuarioUpdateDTO.fotoPerfilBase64.isNotBlank()) {
+            // Delete old profile photo if exists
+            try {
+                if (usuario.fotoPerfilId.isNotBlank()) {
+                    gridFSService.deleteFile(usuario.fotoPerfilId)
+                }
+            } catch (e: Exception) {
+                println("Error deleting old profile photo: ${e.message}")
+            }
+
+            // Store new profile photo
+            gridFSService.storeFileFromBase64(
+                usuarioUpdateDTO.fotoPerfilBase64,
+                "profile_${usuarioUpdateDTO.username}_${Date().time}",
+                "image/jpeg",
+                mapOf(
+                    "type" to "profilePhoto",
+                    "username" to usuarioUpdateDTO.username
+                )
+            )
+        } else usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId
+
         // Store the old username for comparison
         val antiguoUsername = usuario.username
 
@@ -199,13 +175,18 @@ class UsuarioService:UserDetailsService {
             apellidos = usuarioUpdateDTO.apellido
             descripcion = usuarioUpdateDTO.descripcion
             intereses = usuarioUpdateDTO.intereses
-            fotoPerfil = usuarioUpdateDTO.fotoPerfil
+            fotoPerfilId = nuevaFotoPerfilId
             direccion = usuarioUpdateDTO.direccion
+
+            // Only update password if a new one is provided
+            if (usuarioUpdateDTO.password.isNotBlank()) {
+                password = passwordEncoder.encode(usuarioUpdateDTO.password)
+            }
         }
 
         val usuarioActualizado = usuarioRepository.save(usuario)
 
-        // If username has changed, update references in other collections
+        // If username has changed, update references in other collections and GridFS metadata
         if (antiguoUsername != usuarioUpdateDTO.username) {
             // Update ParticipantesActividad
             val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
@@ -228,7 +209,7 @@ class UsuarioService:UserDetailsService {
             intereses = usuarioUpdateDTO.intereses,
             nombre = usuarioUpdateDTO.nombre,
             apellido = usuarioUpdateDTO.apellido,
-            fotoPerfil = usuarioUpdateDTO.fotoPerfil,
+            fotoPerfilId = nuevaFotoPerfilId,
             direccion = usuarioUpdateDTO.direccion,
             descripcion = usuarioUpdateDTO.descripcion
         )

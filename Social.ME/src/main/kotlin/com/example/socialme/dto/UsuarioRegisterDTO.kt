@@ -10,10 +10,10 @@ data class UsuarioRegisterDTO(
     val passwordRepeat: String,
     val rol: String?,
     val direccion: Direccion?,
-    val nombre:String,
-    val apellidos:String,
-    val descripcion:String,
+    val nombre: String,
+    val apellidos: String,
+    val descripcion: String,
     val intereses: List<String>,
-    val fotoPerfil:String,
+    val fotoPerfilBase64: String? = null,  // Used for receiving base64 image
+    val fotoPerfilId: String? = null,      // Used if file already uploaded
 )
-

@@ -8,17 +8,15 @@ import java.util.*
 data class Usuario(
     @BsonId
     val _id: String?,
-    var username:String,
-    val password:String,
-    val roles:String,
-    var nombre:String,
-    var apellidos:String,
-    var descripcion:String,
-    var email:String,
+    var username: String,
+    var password: String,
+    val roles: String,
+    var nombre: String,
+    var apellidos: String,
+    var descripcion: String,
+    var email: String,
     var intereses: List<String>,
-    var fotoPerfil:String,
+    var fotoPerfilId: String,  // Changed from base64 to ID
     var direccion: Direccion?,
     val fechaUnion: Date
-
-) {
-}
+)
