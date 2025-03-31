@@ -1,6 +1,5 @@
 package com.example.socialme.service
 
-
 import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
@@ -18,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
+
 @Service
 class UsuarioService : UserDetailsService {
 
@@ -40,11 +40,8 @@ class UsuarioService : UserDetailsService {
     private lateinit var gridFSService: GridFSService
 
     override fun loadUserByUsername(username: String?): UserDetails {
-        var usuario: Usuario = usuarioRepository
-            .findFirstByUsername(username!!)
-            .orElseThrow {
-                NotFoundException("$username no existente")
-            }
+        val usuario: Usuario = usuarioRepository.findFirstByUsername(username!!)
+            .orElseThrow { NotFoundException("$username no existente") }
 
         return User.builder()
             .username(usuario.username)
@@ -54,10 +51,9 @@ class UsuarioService : UserDetailsService {
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
-        // Existing validation code...
-
-        // Process profile photo if provided in base64 format
-        val fotoPerfilId =
+        // Procesar la foto de perfil si se proporciona en Base64;
+        // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
+        val fotoPerfilId: String =
             if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
                 gridFSService.storeFileFromBase64(
                     usuarioInsertadoDTO.fotoPerfilBase64,
@@ -67,10 +63,12 @@ class UsuarioService : UserDetailsService {
                         "type" to "profilePhoto",
                         "username" to usuarioInsertadoDTO.username
                     )
-                )
-            } else usuarioInsertadoDTO.fotoPerfilId ?: ""
+                ) ?: ""
+            } else {
+                usuarioInsertadoDTO.fotoPerfilId ?: ""
+            }
 
-        // Insertar el user (convierto a Entity)
+        // Crear la entidad Usuario con todos los campos no nulos
         val usuario = Usuario(
             _id = null,
             username = usuarioInsertadoDTO.username,
@@ -81,15 +79,15 @@ class UsuarioService : UserDetailsService {
             descripcion = usuarioInsertadoDTO.descripcion,
             email = usuarioInsertadoDTO.email,
             intereses = usuarioInsertadoDTO.intereses,
-            fotoPerfilId = fotoPerfilId,
+            fotoPerfilId = fotoPerfilId, // Aquí se garantiza que no es null
             direccion = usuarioInsertadoDTO.direccion,
-            fechaUnion = Date.from(Instant.now()),
+            fechaUnion = Date.from(Instant.now())
         )
 
-        // inserto en bd
+        // Insertar el usuario en la base de datos
         usuarioRepository.insert(usuario)
 
-        // retorno un DTO
+        // Retornar un DTO de usuario
         return UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
@@ -98,7 +96,7 @@ class UsuarioService : UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfilId = fotoPerfilId,
+            fotoPerfilId = fotoPerfilId
         )
     }
 
@@ -107,15 +105,17 @@ class UsuarioService : UserDetailsService {
             NotFoundException("Usuario $username no encontrado")
         }
 
-        // Delete the profile photo from GridFS
+        // Before the deletion attempt, store the ID in a local variable
+        val fotoId = usuario.fotoPerfilId
         try {
-            if (usuario.fotoPerfilId.isNotBlank()) {
-                gridFSService.deleteFile(usuario.fotoPerfilId)
+            if (!fotoId.isNullOrBlank()) {
+                gridFSService.deleteFile(fotoId)
             }
         } catch (e: Exception) {
             println("Error deleting profile photo: ${e.message}")
         }
 
+        // En el DTO se garantiza que fotoPerfilId no es null usando el operador Elvis
         val userDTO = UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
@@ -124,7 +124,7 @@ class UsuarioService : UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfilId = usuario.fotoPerfilId,
+            fotoPerfilId = usuario.fotoPerfilId ?: ""
         )
 
         usuarioRepository.delete(usuario)
@@ -132,30 +132,29 @@ class UsuarioService : UserDetailsService {
     }
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
-        // Validate input
+        // Validar que las contraseñas coincidan
         if (usuarioUpdateDTO.password != usuarioUpdateDTO.passwordRepeat) {
             throw BadRequestException("Las contraseñas no coinciden")
         }
 
-        // Find existing user using currentUsername
+        // Buscar el usuario existente usando currentUsername
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
-
-// Process profile photo if provided in base64 format
-        val nuevaFotoPerfilId =
+        // Procesar la foto de perfil si se proporciona en Base64
+        val nuevaFotoPerfilId: String =
             if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
-                // Delete old profile photo if exists
+                // Intentar eliminar la foto de perfil antigua, si existe
+                val fotoId = usuario.fotoPerfilId
                 try {
-                    if (!usuario.fotoPerfilId.isNullOrBlank()) {
-                        gridFSService.deleteFile(usuario.fotoPerfilId)
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
                     }
                 } catch (e: Exception) {
-                    println("Error deleting old profile photo: ${e.message}")
+                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
                 }
 
-                // Store new profile photo with potential new username
                 val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
                 gridFSService.storeFileFromBase64(
                     usuarioUpdateDTO.fotoPerfilBase64,
@@ -165,16 +164,20 @@ class UsuarioService : UserDetailsService {
                         "type" to "profilePhoto",
                         "username" to usernameForPhoto
                     )
-                )
+                ) ?: ""
+            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
+                // Si se proporciona explícitamente un ID de foto
+                usuarioUpdateDTO.fotoPerfilId
             } else {
-                usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId ?: ""  // Provide empty string as fallback
+                // Mantener la foto de perfil existente
+                usuario.fotoPerfilId ?: ""
             }
-        // Store the old username for comparison
+
+        // Guardar el antiguo username para actualizar referencias si se cambia
         val antiguoUsername = usuario.username
 
-        // Update user information
+        // Actualizar la información del usuario
         usuario.apply {
-            // Only update username if a new one is provided
             username = usuarioUpdateDTO.newUsername ?: antiguoUsername
             email = usuarioUpdateDTO.email
             nombre = usuarioUpdateDTO.nombre
@@ -184,7 +187,6 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = nuevaFotoPerfilId
             direccion = usuarioUpdateDTO.direccion
 
-            // Only update password if a new one is provided
             if (usuarioUpdateDTO.password.isNotBlank()) {
                 password = passwordEncoder.encode(usuarioUpdateDTO.password)
             }
@@ -192,9 +194,8 @@ class UsuarioService : UserDetailsService {
 
         val usuarioActualizado = usuarioRepository.save(usuario)
 
-        // If username has changed, update references in other collections and GridFS metadata
+        // Si se ha cambiado el username, actualizar referencias en otras colecciones
         if (antiguoUsername != usuario.username) {
-            // Update ParticipantesActividad
             val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
             participantesActividad.forEach { participante ->
                 participante.username = usuario.username
@@ -208,7 +209,7 @@ class UsuarioService : UserDetailsService {
             }
         }
 
-        // Return updated user DTO
+        // Retornar el DTO actualizado
         return UsuarioDTO(
             username = usuario.username,
             email = usuarioUpdateDTO.email,
