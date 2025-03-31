@@ -57,17 +57,18 @@ class UsuarioService : UserDetailsService {
         // Existing validation code...
 
         // Process profile photo if provided in base64 format
-        val fotoPerfilId = if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
-            gridFSService.storeFileFromBase64(
-                usuarioInsertadoDTO.fotoPerfilBase64,
-                "profile_${usuarioInsertadoDTO.username}_${Date().time}",
-                "image/jpeg",
-                mapOf(
-                    "type" to "profilePhoto",
-                    "username" to usuarioInsertadoDTO.username
+        val fotoPerfilId =
+            if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
+                gridFSService.storeFileFromBase64(
+                    usuarioInsertadoDTO.fotoPerfilBase64,
+                    "profile_${usuarioInsertadoDTO.username}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usuarioInsertadoDTO.username
+                    )
                 )
-            )
-        } else usuarioInsertadoDTO.fotoPerfilId ?: ""
+            } else usuarioInsertadoDTO.fotoPerfilId ?: ""
 
         // Insertar el user (convierto a Entity)
         val usuario = Usuario(
@@ -136,40 +137,43 @@ class UsuarioService : UserDetailsService {
             throw BadRequestException("Las contraseñas no coinciden")
         }
 
-        // Find existing user
-        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.username).orElseThrow {
-            throw NotFoundException("Usuario ${usuarioUpdateDTO.username} no encontrado")
+        // Find existing user using currentUsername
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
         // Process profile photo if provided in base64 format
-        val nuevaFotoPerfilId = if (usuarioUpdateDTO.fotoPerfilBase64 != null && usuarioUpdateDTO.fotoPerfilBase64.isNotBlank()) {
-            // Delete old profile photo if exists
-            try {
-                if (usuario.fotoPerfilId.isNotBlank()) {
-                    gridFSService.deleteFile(usuario.fotoPerfilId)
+        val nuevaFotoPerfilId =
+            if (usuarioUpdateDTO.fotoPerfilBase64 != null && usuarioUpdateDTO.fotoPerfilBase64.isNotBlank()) {
+                // Delete old profile photo if exists
+                try {
+                    if (usuario.fotoPerfilId.isNotBlank()) {
+                        gridFSService.deleteFile(usuario.fotoPerfilId)
+                    }
+                } catch (e: Exception) {
+                    println("Error deleting old profile photo: ${e.message}")
                 }
-            } catch (e: Exception) {
-                println("Error deleting old profile photo: ${e.message}")
-            }
 
-            // Store new profile photo
-            gridFSService.storeFileFromBase64(
-                usuarioUpdateDTO.fotoPerfilBase64,
-                "profile_${usuarioUpdateDTO.username}_${Date().time}",
-                "image/jpeg",
-                mapOf(
-                    "type" to "profilePhoto",
-                    "username" to usuarioUpdateDTO.username
+                // Store new profile photo with potential new username
+                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
+                gridFSService.storeFileFromBase64(
+                    usuarioUpdateDTO.fotoPerfilBase64,
+                    "profile_${usernameForPhoto}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usernameForPhoto
+                    )
                 )
-            )
-        } else usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId
+            } else usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId
 
         // Store the old username for comparison
         val antiguoUsername = usuario.username
 
         // Update user information
         usuario.apply {
-            username = usuarioUpdateDTO.username
+            // Only update username if a new one is provided
+            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
             email = usuarioUpdateDTO.email
             nombre = usuarioUpdateDTO.nombre
             apellidos = usuarioUpdateDTO.apellido
@@ -187,24 +191,24 @@ class UsuarioService : UserDetailsService {
         val usuarioActualizado = usuarioRepository.save(usuario)
 
         // If username has changed, update references in other collections and GridFS metadata
-        if (antiguoUsername != usuarioUpdateDTO.username) {
+        if (antiguoUsername != usuario.username) {
             // Update ParticipantesActividad
             val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
             participantesActividad.forEach { participante ->
-                participante.username = usuarioUpdateDTO.username
+                participante.username = usuario.username
                 participantesActividadRepository.save(participante)
             }
 
             val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
             participantesComunidad.forEach { participante ->
-                participante.username = usuarioUpdateDTO.username
+                participante.username = usuario.username
                 participantesComunidadRepository.save(participante)
             }
         }
 
         // Return updated user DTO
         return UsuarioDTO(
-            username = usuarioUpdateDTO.username,
+            username = usuario.username,
             email = usuarioUpdateDTO.email,
             intereses = usuarioUpdateDTO.intereses,
             nombre = usuarioUpdateDTO.nombre,
