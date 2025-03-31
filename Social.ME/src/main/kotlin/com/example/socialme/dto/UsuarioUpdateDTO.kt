@@ -12,7 +12,7 @@ data class UsuarioUpdateDTO(
     val intereses: List<String>,
     val password: String,
     val passwordRepeat: String,
-    val fotoPerfilBase64: String?,
+    val fotoPerfilBase64: String,
     val fotoPerfilId: String?,
     val direccion: Direccion
 )
