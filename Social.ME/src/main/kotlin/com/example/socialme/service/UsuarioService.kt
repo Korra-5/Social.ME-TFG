@@ -143,13 +143,12 @@ class UsuarioService : UserDetailsService {
         }
 
 
-
-        // Process profile photo if provided in base64 format
+// Process profile photo if provided in base64 format
         val nuevaFotoPerfilId =
-            if (usuarioUpdateDTO.fotoPerfilBase64 != null && usuarioUpdateDTO.fotoPerfilBase64.isNotBlank()) {
+            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
                 // Delete old profile photo if exists
                 try {
-                    if (usuario.fotoPerfilId.isNotBlank()) {
+                    if (!usuario.fotoPerfilId.isNullOrBlank()) {
                         gridFSService.deleteFile(usuario.fotoPerfilId)
                     }
                 } catch (e: Exception) {
@@ -167,8 +166,9 @@ class UsuarioService : UserDetailsService {
                         "username" to usernameForPhoto
                     )
                 )
-            } else usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId
-
+            } else {
+                usuarioUpdateDTO.fotoPerfilId ?: usuario.fotoPerfilId ?: ""  // Provide empty string as fallback
+            }
         // Store the old username for comparison
         val antiguoUsername = usuario.username
 
