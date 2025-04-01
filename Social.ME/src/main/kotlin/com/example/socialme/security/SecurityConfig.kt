@@ -54,6 +54,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
                 auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
+                auth.requestMatchers("/files/download/{id}").authenticated()
+
 
 
 
