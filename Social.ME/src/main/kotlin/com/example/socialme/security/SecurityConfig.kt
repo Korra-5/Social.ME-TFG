@@ -55,7 +55,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
                 auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
                 auth.requestMatchers("/files/download/{id}").authenticated()
-
+                auth.requestMatchers("/Actividad/verActividadPorUsername/{username}").authenticated()
 
 
 
