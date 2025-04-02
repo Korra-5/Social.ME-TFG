@@ -243,6 +243,32 @@ class ActividadService {
             }
     }
 
+    fun verActividadesPorUsername(username: String): List<ActividadDTO> {
+        val participantes = participantesActividadRepository.findByUsername(username)
+
+        val actividadesIds = participantes.map { it.idActividad }
+
+        val actividadesEncontradas = mutableListOf<Actividad>()
+
+        actividadesIds.forEach { idActividad ->
+            val actividad = actividadRepository.findActividadBy_id(idActividad)
+            actividad.ifPresent { actividadesEncontradas.add(it) }
+        }
+
+        return actividadesEncontradas.map { actividad ->
+            ActividadDTO(
+                nombre = actividad.nombre,
+                descripcion = actividad.descripcion,
+                privada = actividad.privada,
+                creador = actividad.creador,
+                fotosCarruselIds = actividad.fotosCarruselIds,
+                fechaFinalizacion = actividad.fechaFinalizacion,
+                fechaInicio = actividad.fechaInicio,
+                lugar = actividad.lugar
+            )
+        }
+    }
+
     fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO) : ParticipantesActividadDTO {
         val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
             .orElseThrow { BadRequestException("Esta actividad no existe") }

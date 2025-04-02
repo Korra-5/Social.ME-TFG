@@ -60,6 +60,14 @@ class ActividadController {
         return ResponseEntity(actividadService.verActividadPorComunidad(comunidad), HttpStatus.OK)
     }
 
+    @GetMapping("/verActividadPorComunidad/{username}")
+    fun verActividadPorUsername(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ) : ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(actividadService.verActividadesPorUsername(username), HttpStatus.OK)
+    }
+
 
     @GetMapping("/verActividadesPublicas")
     fun verActividadesDisponibles(
