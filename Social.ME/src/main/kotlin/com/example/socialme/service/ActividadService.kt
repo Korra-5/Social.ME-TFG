@@ -35,9 +35,26 @@ class ActividadService {
     private lateinit var gridFSService: GridFSService
 
     fun crearActividad(actividadCreateDTO: ActividadCreateDTO): ActividadDTO {
-        // Existing validation code...
 
-        // Process the carousel photos if they exist in base64 format
+        if (actividadCreateDTO.nombre.length > 25) {
+            throw BadRequestException("El nombre de la actividad no puede superar los 25 caracteres")
+        }
+        if (actividadCreateDTO.descripcion.length > 2000) {
+            throw BadRequestException("La descrpicion no puede superar los 2000 caracteres")
+        }
+
+        usuarioRepository.findFirstByUsername(actividadCreateDTO.creador).orElseThrow {
+            throw NotFoundException("Este usuario no existe")
+        }
+
+        val comunidad = comunidadRepository.findComunidadByUrl(actividadCreateDTO.comunidad).orElseThrow {
+            NotFoundException("Esta comunidad no existe")
+        }
+
+        if (comunidad.creador != actividadCreateDTO.creador && !comunidad.administradores!!.contains(actividadCreateDTO.creador)) {
+            throw BadRequestException("No tienes permisos para crear esta actividad")
+        }
+
         val fotosCarruselIds = if (actividadCreateDTO.fotosCarruselBase64 != null && actividadCreateDTO.fotosCarruselBase64.isNotEmpty()) {
             actividadCreateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
                 gridFSService.storeFileFromBase64(
@@ -67,17 +84,26 @@ class ActividadService {
             lugar = actividadCreateDTO.lugar,
         )
 
-        // Rest of the existing code...
+        val actividadInsertada = actividadRepository.insert(actividad)
+
+        val actividadComunidad = ActividadesComunidad(
+            _id = null,
+            comunidad = actividadInsertada.comunidad,
+            idActividad = actividadInsertada._id,
+            nombreActividad = actividadInsertada.nombre
+        )
+
+        actividadesComunidadRepository.insert(actividadComunidad)
 
         return ActividadDTO(
-            nombre = actividadCreateDTO.nombre,
-            privada = actividadCreateDTO.privada,
-            creador = actividadCreateDTO.creador,
-            descripcion = actividadCreateDTO.descripcion,
-            fotosCarruselIds = fotosCarruselIds,
-            fechaFinalizacion = actividadCreateDTO.fechaFinalizacion,
-            fechaInicio = actividadCreateDTO.fechaInicio,
-            lugar = actividadCreateDTO.lugar,
+            nombre = actividadInsertada.nombre,
+            privada = actividadInsertada.privada,
+            creador = actividadInsertada.creador,
+            descripcion = actividadInsertada.descripcion,
+            fotosCarruselIds = actividadInsertada.fotosCarruselIds,
+            fechaFinalizacion = actividadInsertada.fechaFinalizacion,
+            fechaInicio = actividadInsertada.fechaInicio,
+            lugar = actividadInsertada.lugar,
         )
     }
 
