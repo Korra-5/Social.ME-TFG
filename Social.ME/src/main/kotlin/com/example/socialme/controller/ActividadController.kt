@@ -60,7 +60,7 @@ class ActividadController {
         return ResponseEntity(actividadService.verActividadPorComunidad(comunidad), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadPorComunidad/{username}")
+    @GetMapping("/verActividadPorUsername/{username}")
     fun verActividadPorUsername(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
