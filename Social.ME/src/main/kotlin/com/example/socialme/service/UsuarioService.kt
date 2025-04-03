@@ -142,6 +142,12 @@ class UsuarioService : UserDetailsService {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
+        if (usuarioUpdateDTO.newUsername!=null) {
+            usuarioRepository.findFirstByUsername(usuarioUpdateDTO.newUsername).orElseThrow {
+                throw NotFoundException("Usuario ${usuarioUpdateDTO.newUsername} ya existe, prueba con otro nombre")
+            }
+        }
+
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId: String =
             if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {

@@ -18,6 +18,9 @@ import java.util.*
 class ActividadService {
 
     @Autowired
+    private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
+
+    @Autowired
     private lateinit var comunidadRepository: ComunidadRepository
 
     @Autowired
@@ -224,32 +227,47 @@ class ActividadService {
     }
 
     // Also update verActividadPorComunidad to use the new fotosCarruselIds field
-    fun verActividadPorComunidad(comunidad: String): List<ActividadDTO> {
-        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad)
-            .orElseThrow {
-                throw BadRequestException("No existen actividades para esta comunidad")
-            }
+    fun verActividadPorComunidad(username: String): List<ActividadDTO> {
+        val participaciones = participantesComunidadRepository.findComunidadByUsername(username).orElseThrow {
+            throw BadRequestException("Usuario no existe")
+        }
 
-        return actividadesComunidad.mapNotNull { actividadComunidad ->
-            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
+        val actividadesNoInscritas = mutableListOf<ActividadDTO>()
+
+        participaciones.forEach { comunidad ->
+            val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad.comunidad)
                 .orElse(null)
 
-            actividad?.let {
-                ActividadDTO(
-                    nombre = it.nombre,
-                    descripcion = it.descripcion,
-                    privada = it.privada,
-                    creador = it.creador,
-                    fotosCarruselIds = it.fotosCarruselIds,
-                    fechaFinalizacion = it.fechaFinalizacion,
-                    fechaInicio = it.fechaInicio,
-                    lugar = it.lugar,
-                )
+            actividadesComunidad.forEach { actividadComunidad ->
+                val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
+                    .orElse(null)
+
+                // Verificar si el usuario NO está inscrito en esta actividad
+                val estaInscrito = participantesActividadRepository
+                    .findByUsernameAndIdActividad(username, actividadComunidad.idActividad ?:"")
+                    .isPresent
+
+                // Solo añadir la actividad si el usuario NO está inscrito
+                if (!estaInscrito && actividad != null) {
+                    actividadesNoInscritas.add(
+                        ActividadDTO(
+                            nombre = actividad.nombre,
+                            descripcion = actividad.descripcion,
+                            privada = actividad.privada,
+                            creador = actividad.creador,
+                            fotosCarruselIds = actividad.fotosCarruselIds,
+                            fechaFinalizacion = actividad.fechaFinalizacion,
+                            fechaInicio = actividad.fechaInicio,
+                            lugar = actividad.lugar,
+                        )
+                    )
+                }
             }
         }
+
+        return actividadesNoInscritas
     }
 
-    // Update verActividadesPublicas to use the new fotosCarruselIds field
     fun verActividadesPublicas(): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
 
