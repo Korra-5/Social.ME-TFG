@@ -254,7 +254,7 @@ class ActividadService {
         val todasLasActividades = actividadRepository.findAll()
 
         return todasLasActividades
-            .filter { it.privada }
+            .filter { !it.privada }
             .map { actividad ->
                 ActividadDTO(
                     nombre = actividad.nombre,
