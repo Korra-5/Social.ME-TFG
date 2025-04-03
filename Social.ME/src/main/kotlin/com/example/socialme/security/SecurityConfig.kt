@@ -45,7 +45,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/eliminarComunidad/{url}").authenticated()
                 auth.requestMatchers("/Comunidad/verTodasComunidades").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadesPublicas").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPublicasEnZona").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorComunidad/{url}").authenticated()
                 auth.requestMatchers("/Actividad/modificarActividad").authenticated()
                 auth.requestMatchers("/Actividad/eliminarActividad/{id}").authenticated()

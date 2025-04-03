@@ -69,8 +69,8 @@ class ActividadController {
     }
 
 
-    @GetMapping("/verActividadesPublicas")
-    fun verActividadesDisponibles(
+    @GetMapping("/verActividadesPublicasEnZona")
+    fun verActividadesPublicasEnZona(
         httpRequest: HttpServletRequest,
     ): ResponseEntity<List<ActividadDTO>>{
         return  ResponseEntity(actividadService.verActividadesPublicas(), HttpStatus.OK)
