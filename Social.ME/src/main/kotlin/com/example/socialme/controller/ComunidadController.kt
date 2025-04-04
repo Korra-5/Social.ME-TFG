@@ -82,4 +82,12 @@ class ComunidadController {
         return  ResponseEntity(comunidadService.modificarComunidad(comunidadUpdateDTO),HttpStatus.OK)
     }
 
+    @GetMapping("/verComunidadPorUrl/{url}")
+    fun verComunidadPorUrl(
+        httpRequest: HttpServletRequest,
+        @PathVariable url: String
+    ):ResponseEntity<ComunidadDTO> {
+        return ResponseEntity(comunidadService.verComunidadPorUrl(url),HttpStatus.OK)
+    }
+
 }

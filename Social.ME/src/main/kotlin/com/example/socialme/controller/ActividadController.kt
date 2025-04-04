@@ -52,12 +52,20 @@ class ActividadController {
         return ResponseEntity(actividadService.salirActividad(id), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadPorComunidad/{username}")
+    @GetMapping("/verActividadNoParticipaUsuario/{username}")
     fun verActividadPorComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
     ) : ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(actividadService.verActividadPorComunidad(username), HttpStatus.OK)
+        return ResponseEntity(actividadService.verActividadNoParticipaUsuario(username), HttpStatus.OK)
+    }
+
+    @GetMapping("/verActividadPorId/{id}")
+    fun verActividadPorId(
+        httpRequest: HttpServletRequest,
+        @PathVariable id: String
+    ) : ResponseEntity<ActividadDTO> {
+        return ResponseEntity(actividadService.verActividadPorId(id), HttpStatus.OK)
     }
 
     @GetMapping("/verActividadPorUsername/{username}")

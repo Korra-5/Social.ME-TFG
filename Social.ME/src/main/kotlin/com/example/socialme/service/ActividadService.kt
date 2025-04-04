@@ -107,6 +107,7 @@ class ActividadService {
             fechaFinalizacion = actividadInsertada.fechaFinalizacion,
             fechaInicio = actividadInsertada.fechaInicio,
             lugar = actividadInsertada.lugar,
+            _id = actividadInsertada._id
         )
     }
 
@@ -135,6 +136,7 @@ class ActividadService {
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
             lugar = actividad.lugar,
+            _id = actividad._id
         )
 
         // Remove related documents
@@ -223,11 +225,12 @@ class ActividadService {
             fechaInicio = actividad.fechaInicio,
             lugar = actividad.lugar,
             fotosCarruselIds = actividad.fotosCarruselIds,
+            _id = actividad._id
         )
     }
 
     // Also update verActividadPorComunidad to use the new fotosCarruselIds field
-    fun verActividadPorComunidad(username: String): List<ActividadDTO> {
+    fun verActividadNoParticipaUsuario(username: String): List<ActividadDTO> {
         val participaciones = participantesComunidadRepository.findComunidadByUsername(username).orElseThrow {
             throw BadRequestException("Usuario no existe")
         }
@@ -259,6 +262,7 @@ class ActividadService {
                             fechaFinalizacion = actividad.fechaFinalizacion,
                             fechaInicio = actividad.fechaInicio,
                             lugar = actividad.lugar,
+                            _id = actividad._id
                         )
                     )
                 }
@@ -266,6 +270,24 @@ class ActividadService {
         }
 
         return actividadesNoInscritas
+    }
+
+    fun verActividadPorId(id:String): ActividadDTO {
+        val actividad=actividadRepository.findActividadBy_id(id).orElseThrow{
+            throw NotFoundException("Esta actividad no existe")
+        }
+        val actividadDTO=ActividadDTO(
+            nombre = actividad.nombre,
+            descripcion = actividad.descripcion,
+            privada = actividad.privada,
+            creador = actividad.creador,
+            fechaFinalizacion = actividad.fechaFinalizacion,
+            fechaInicio = actividad.fechaInicio,
+            lugar = actividad.lugar,
+            fotosCarruselIds = actividad.fotosCarruselIds,
+            _id = actividad._id
+        )
+        return actividadDTO
     }
 
     fun verActividadesPublicas(): List<ActividadDTO> {
@@ -283,6 +305,7 @@ class ActividadService {
                     fechaFinalizacion = actividad.fechaFinalizacion,
                     fechaInicio = actividad.fechaInicio,
                     lugar = actividad.lugar,
+                    _id = actividad._id
                 )
             }
     }
@@ -308,7 +331,8 @@ class ActividadService {
                 fotosCarruselIds = actividad.fotosCarruselIds,
                 fechaFinalizacion = actividad.fechaFinalizacion,
                 fechaInicio = actividad.fechaInicio,
-                lugar = actividad.lugar
+                lugar = actividad.lugar,
+                _id = actividad._id
             )
         }
     }

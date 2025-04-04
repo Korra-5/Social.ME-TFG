@@ -1,9 +1,6 @@
 package com.example.socialme.service
 
-import com.example.socialme.dto.ComunidadCreateDTO
-import com.example.socialme.dto.ComunidadDTO
-import com.example.socialme.dto.ComunidadUpdateDTO
-import com.example.socialme.dto.ParticipantesComunidadDTO
+import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Comunidad
@@ -13,6 +10,7 @@ import com.example.socialme.repository.ComunidadRepository
 import com.example.socialme.repository.ParticipantesComunidadRepository
 import com.example.socialme.repository.UsuarioRepository
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
@@ -105,6 +103,25 @@ class ComunidadService {
             fechaCreacion = Date.from(Instant.now()),
             administradores = null,
             privada = comunidadCreateDTO.privada
+        )
+    }
+
+    fun verComunidadPorUrl(url: String) : ComunidadDTO {
+        val comunidad=comunidadRepository.findComunidadByUrl(url).orElseThrow {
+            throw NotFoundException("Comunidad not found: $url")
+        }
+        return  ComunidadDTO(
+            nombre = comunidad.nombre,
+            descripcion = comunidad.descripcion,
+            creador = comunidad.creador,
+            intereses = comunidad.intereses,
+            fotoPerfilId = comunidad.fotoPerfilId,
+            fotoCarruselIds = comunidad.fotoCarruselIds,
+            administradores = comunidad.administradores,
+            fechaCreacion = comunidad.fechaCreacion,
+            comunidadGlobal = comunidad.comunidadGlobal,
+            privada = comunidad.privada,
+            url=comunidad.url
         )
     }
 
