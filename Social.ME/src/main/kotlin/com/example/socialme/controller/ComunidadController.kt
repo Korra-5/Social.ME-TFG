@@ -90,4 +90,13 @@ class ComunidadController {
         return ResponseEntity(comunidadService.verComunidadPorUrl(url),HttpStatus.OK)
     }
 
+    @GetMapping("/booleanUsuarioApuntadoComunidad")
+    fun booleanUsuarioApuntadoComunidad(
+        httpRequest: HttpServletRequest,
+        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO
+    ):ResponseEntity<Boolean> {
+        return ResponseEntity(comunidadService.booleanUsuarioApuntadoComunidad(participantesComunidadDTO),HttpStatus.OK)
+    }
+
 }
+

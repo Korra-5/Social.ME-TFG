@@ -314,4 +314,17 @@ class ComunidadService {
             trimmed
         }
     }
+
+    fun booleanUsuarioApuntadoComunidad(participantesComunidadDTO: ParticipantesComunidadDTO):Boolean{
+        comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+            .orElseThrow { BadRequestException("Esta comunidad no existe") }
+
+        // Verificar que el usuario existe
+        if (usuarioRepository.findFirstByUsername(participantesComunidadDTO.username).isEmpty) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        return participantesComunidadRepository.findByUsernameAndComunidad(participantesComunidadDTO.username,participantesComunidadDTO.comunidad).isPresent
+
+    }
 }

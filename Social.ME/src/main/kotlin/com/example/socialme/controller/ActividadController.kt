@@ -1,9 +1,6 @@
 package com.example.socialme.controller
 
 import com.example.socialme.dto.*
-import com.example.socialme.model.Actividad
-import com.example.socialme.model.Comunidad
-import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.service.ActividadService
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Autowired
@@ -53,7 +50,7 @@ class ActividadController {
     }
 
     @GetMapping("/verActividadNoParticipaUsuario/{username}")
-    fun verActividadPorComunidad(
+    fun verActividadNoParticipaUsuario(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
     ) : ResponseEntity<List<ActividadDTO>> {
@@ -90,6 +87,14 @@ class ActividadController {
         @RequestBody actividadUpdateDTO: ActividadUpdateDTO
     ): ResponseEntity<ActividadDTO> {
         return  ResponseEntity(actividadService.modificarActividad(actividadUpdateDTO), HttpStatus.OK)
+    }
+
+    @GetMapping("/boooleanUsuarioApuntadoActividad")
+    fun boooleanUsuarioApuntadoActividad(
+        httpRequest: HttpServletRequest,
+        @RequestBody participantesActividadDTO: ParticipantesActividadDTO
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(actividadService.booleanUsuarioApuntadoActividad(participantesActividadDTO), HttpStatus.OK)
     }
 
 }

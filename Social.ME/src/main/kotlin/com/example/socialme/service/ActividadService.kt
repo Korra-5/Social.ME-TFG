@@ -1,9 +1,6 @@
 package com.example.socialme.service
 
-import com.example.socialme.dto.ActividadCreateDTO
-import com.example.socialme.dto.ActividadDTO
-import com.example.socialme.dto.ActividadUpdateDTO
-import com.example.socialme.dto.ParticipantesActividadDTO
+import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Actividad
@@ -379,5 +376,19 @@ class ActividadService {
 
         return participantesActividadDTO
     }
+
+    fun booleanUsuarioApuntadoActividad(participantesActividadDTO: ParticipantesActividadDTO):Boolean{
+        actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
+            .orElseThrow { BadRequestException("Esta actividad no existe") }
+
+        // Verificar que el usuario existe
+        if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        return participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent
+    }
+
+
 
 }
