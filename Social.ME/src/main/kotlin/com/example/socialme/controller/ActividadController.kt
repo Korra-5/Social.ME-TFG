@@ -90,7 +90,7 @@ class ActividadController {
     }
 
     @GetMapping("/boooleanUsuarioApuntadoActividad")
-    fun boooleanUsuarioApuntadoActividad(
+    fun booleanUsuarioApuntadoActividad(
         httpRequest: HttpServletRequest,
         @RequestBody participantesActividadDTO: ParticipantesActividadDTO
     ): ResponseEntity<Boolean> {

@@ -58,7 +58,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
                 auth.requestMatchers("/files/download/{id}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorUsername/{username}").authenticated()
-                auth.requestMatchers("/Actividad/boooleanUsuarioApuntadoActividad").authenticated()
+                auth.requestMatchers("/Actividad/booleanUsuarioApuntadoActividad").authenticated()
                 auth.requestMatchers("/Comunidad/booleanUsuarioApuntadoComunidad").authenticated()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
