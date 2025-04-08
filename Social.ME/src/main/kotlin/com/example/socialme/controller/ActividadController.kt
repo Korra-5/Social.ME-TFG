@@ -89,7 +89,7 @@ class ActividadController {
         return  ResponseEntity(actividadService.modificarActividad(actividadUpdateDTO), HttpStatus.OK)
     }
 
-    @GetMapping("/boooleanUsuarioApuntadoActividad")
+    @GetMapping("/booleanUsuarioApuntadoActividad")
     fun booleanUsuarioApuntadoActividad(
         httpRequest: HttpServletRequest,
         @RequestBody participantesActividadDTO: ParticipantesActividadDTO
