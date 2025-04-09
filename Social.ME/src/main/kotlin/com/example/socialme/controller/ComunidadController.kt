@@ -48,13 +48,12 @@ class ComunidadController {
         return ResponseEntity(comunidad, HttpStatus.OK)
     }
 
-    @DeleteMapping("/salirComunidad/{id}")
+    @DeleteMapping("/salirComunidad")
     fun salirComunidad(
         httpRequest: HttpServletRequest,
-        @PathVariable id: String
-    ) : ResponseEntity<ParticipantesComunidadDTO> {
-        val union=comunidadService.salirComunidad(id)
-        return ResponseEntity(union, HttpStatus.OK)
+        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO
+        ) : ResponseEntity<ParticipantesComunidadDTO> {
+        return ResponseEntity(comunidadService.salirComunidad(participantesComunidadDTO), HttpStatus.OK)
     }
 
     @GetMapping("/verComunidadPorUsuario/{username}")

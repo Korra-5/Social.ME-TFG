@@ -294,8 +294,8 @@ class ComunidadService {
         )
     }
 
-    fun salirComunidad(id: String): ParticipantesComunidadDTO {
-        val union = participantesComunidadRepository.findBy_id(id).orElseThrow {
+    fun salirComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
+        val union = participantesComunidadRepository.findByUsernameAndComunidad(username = participantesComunidadDTO.username, comunidad = participantesComunidadDTO.comunidad).orElseThrow {
             throw BadRequestException("No estás en esta comunidad")
         }
         participantesComunidadRepository.delete(union)
