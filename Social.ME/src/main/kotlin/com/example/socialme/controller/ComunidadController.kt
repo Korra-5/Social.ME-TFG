@@ -90,7 +90,7 @@ class ComunidadController {
         return ResponseEntity(comunidadService.verComunidadPorUrl(url),HttpStatus.OK)
     }
 
-    @GetMapping("/booleanUsuarioApuntadoComunidad")
+    @PostMapping("/booleanUsuarioApuntadoComunidad")
     fun booleanUsuarioApuntadoComunidad(
         httpRequest: HttpServletRequest,
         @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO

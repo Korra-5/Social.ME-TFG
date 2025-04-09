@@ -40,13 +40,13 @@ class ActividadController {
         return ResponseEntity(actividadService.eliminarActividad(id), HttpStatus.OK)
     }
 
-    @DeleteMapping("/salirActividad/{id}")
+    @DeleteMapping("/salirActividad")
     fun salirActividad(
         httpRequest: HttpServletRequest,
-        @PathVariable id: String
+        @RequestBody participantesActividadDTO: ParticipantesActividadDTO
     ) : ResponseEntity<ParticipantesActividadDTO> {
 
-        return ResponseEntity(actividadService.salirActividad(id), HttpStatus.OK)
+        return ResponseEntity(actividadService.salirActividad(participantesActividadDTO), HttpStatus.OK)
     }
 
     @GetMapping("/verActividadNoParticipaUsuario/{username}")

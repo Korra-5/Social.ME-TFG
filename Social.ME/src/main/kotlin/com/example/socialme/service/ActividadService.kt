@@ -361,18 +361,12 @@ class ActividadService {
 
         return participantesActividadDTO
     }
-    fun salirActividad(id:String):ParticipantesActividadDTO{
-        val union = participantesActividadRepository.findBy_id(id).orElseThrow {
+    fun salirActividad(participantesActividadDTO: ParticipantesActividadDTO):ParticipantesActividadDTO{
+        val union = participantesActividadRepository.findByUsernameAndIdActividad(username = participantesActividadDTO.username, actividadId = participantesActividadDTO.actividadId).orElseThrow {
             throw NotFoundException("No te has unido a esta actividad")
         }
         participantesActividadRepository.delete(union)
 
-        val participantesActividadDTO= ParticipantesActividadDTO(
-            actividadId =union.idActividad,
-            username = union.username,
-            nombreActividad = union.nombreActividad,
-
-            )
 
         return participantesActividadDTO
     }
