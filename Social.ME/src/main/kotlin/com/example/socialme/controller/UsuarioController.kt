@@ -69,4 +69,12 @@ class UsuarioController {
     ):ResponseEntity<UsuarioDTO> {
         return ResponseEntity(usuarioService.modificarUsuario(usuarioUpdateDTO), HttpStatus.OK)
     }
+
+    @GetMapping("/verUsuarioPorUsername/{username}")
+    fun verUsuarioPorUsername(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ) : ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(usuarioService.verUsuarioPorUsername(username), HttpStatus.OK)
+    }
 }

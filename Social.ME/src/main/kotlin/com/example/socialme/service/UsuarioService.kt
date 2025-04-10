@@ -227,4 +227,20 @@ class UsuarioService : UserDetailsService {
             descripcion = usuarioUpdateDTO.descripcion
         )
     }
+
+    fun verUsuarioPorUsername(username: String):UsuarioDTO{
+        val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username not found")
+        }
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            intereses = usuario.intereses,
+            fotoPerfilId = usuario.fotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+        )
+    }
 }
