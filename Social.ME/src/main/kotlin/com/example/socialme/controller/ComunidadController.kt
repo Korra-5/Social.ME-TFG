@@ -57,7 +57,7 @@ class ComunidadController {
     }
 
     @GetMapping("/verComunidadPorUsuario/{username}")
-    fun verComunidad(
+    fun verComunidadPorUsuario(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
     ) : ResponseEntity<List<Comunidad>> {

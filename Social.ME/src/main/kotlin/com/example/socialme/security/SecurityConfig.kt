@@ -61,6 +61,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/booleanUsuarioApuntadoActividad").authenticated()
                 auth.requestMatchers("/Comunidad/booleanUsuarioApuntadoComunidad").authenticated()
                 auth.requestMatchers("/Usuario/verUsuarioPorUsername/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPorComunidad/{comunidad}").authenticated()
 
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }

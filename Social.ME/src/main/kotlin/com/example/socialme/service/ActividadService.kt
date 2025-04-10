@@ -383,6 +383,40 @@ class ActividadService {
         return participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent
     }
 
+    fun verActividadesPorComunidad(comunidad: String): List<ActividadDTO> {
+        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
+            throw NotFoundException("Esta comunidad no existe")
+        }
+
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad)
+            .orElse(emptyList())
+
+        val actividadesDTO = mutableListOf<ActividadDTO>()
+
+        actividadesComunidad.forEach { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad)
+                .orElse(null)
+
+            if (actividad != null) {
+                actividadesDTO.add(
+                    ActividadDTO(
+                        nombre = actividad.nombre,
+                        descripcion = actividad.descripcion,
+                        privada = actividad.privada,
+                        creador = actividad.creador,
+                        fotosCarruselIds = actividad.fotosCarruselIds,
+                        fechaFinalizacion = actividad.fechaFinalizacion,
+                        fechaInicio = actividad.fechaInicio,
+                        lugar = actividad.lugar,
+                        _id = actividad._id
+                    )
+                )
+            }
+        }
+
+        return actividadesDTO
+    }
+
 
 
 }

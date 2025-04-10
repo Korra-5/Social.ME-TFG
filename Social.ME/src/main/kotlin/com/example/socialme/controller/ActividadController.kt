@@ -96,4 +96,12 @@ class ActividadController {
     ): ResponseEntity<Boolean> {
         return ResponseEntity(actividadService.booleanUsuarioApuntadoActividad(participantesActividadDTO), HttpStatus.OK)
     }
+
+    @GetMapping("/verActividadesPorComunidad/{comunidad}")
+    fun verActividadesPorComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable comunidad: String
+    ):ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(actividadService.verActividadesPorComunidad(comunidad), HttpStatus.OK)
+    }
 }
