@@ -64,6 +64,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/verActividadesPorComunidad/{comunidad}").authenticated()
                 auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Comunidad/contarUsuariosEnUnaComunidad/{comunidad}").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosPorComunidad/{comunidad}").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosPorActividad/{actividadId}").authenticated()
 
 
             } // Los recursos protegidos y publicos

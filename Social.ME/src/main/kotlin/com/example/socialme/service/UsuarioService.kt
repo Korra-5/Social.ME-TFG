@@ -6,6 +6,7 @@ import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Usuario
+import com.example.socialme.repository.ComunidadRepository
 import com.example.socialme.repository.ParticipantesActividadRepository
 import com.example.socialme.repository.ParticipantesComunidadRepository
 import com.example.socialme.repository.UsuarioRepository
@@ -20,6 +21,9 @@ import java.util.*
 
 @Service
 class UsuarioService : UserDetailsService {
+
+    @Autowired
+    private lateinit var comunidadRepository: ComunidadRepository
 
     @Autowired
     private lateinit var usuarioRepository: UsuarioRepository
@@ -244,5 +248,77 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    fun verUsuariosPorComunidad(comunidad: String): List<UsuarioDTO> {
+        // Verificar que la comunidad existe
+        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
+            throw NotFoundException("Comunidad $comunidad no encontrada")
+        }
 
+        // Obtener la lista de participantes de la comunidad
+        val participantes = participantesComunidadRepository.findParticipantesByComunidad(comunidad)
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaUsuarios = mutableListOf<UsuarioDTO>()
+
+        // Para cada participante, buscar su información completa y crear un DTO
+        participantes.forEach { participante ->
+            val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
+                throw NotFoundException("Usuario ${participante.username} no encontrado")
+            }
+
+            // Crear y añadir el DTO a la lista
+            listaUsuarios.add(
+                UsuarioDTO(
+                    username = usuario.username,
+                    email = usuario.email,
+                    intereses = usuario.intereses,
+                    nombre = usuario.nombre,
+                    apellido = usuario.apellidos,
+                    fotoPerfilId = usuario.fotoPerfilId,
+                    direccion = usuario.direccion,
+                    descripcion = usuario.descripcion
+                )
+            )
+        }
+
+        // Devolver la lista de DTOs
+        return listaUsuarios
+    }
+
+
+    fun verUsuariosPorActividad(actividadId: String): List<UsuarioDTO> {
+        // Obtener la lista de participantes de la actividad
+        val participantes = participantesActividadRepository.findByidActividad(actividadId)
+
+        if (participantes.isEmpty()) {
+            throw NotFoundException("No se encontraron participantes para la actividad con id $actividadId")
+        }
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaUsuarios = mutableListOf<UsuarioDTO>()
+
+        // Para cada participante, buscar su información completa y crear un DTO
+        participantes.forEach { participante ->
+            val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
+                throw NotFoundException("Usuario ${participante.username} no encontrado")
+            }
+
+            // Crear y añadir el DTO a la lista
+            listaUsuarios.add(
+                UsuarioDTO(
+                    username = usuario.username,
+                    email = usuario.email,
+                    intereses = usuario.intereses,
+                    nombre = usuario.nombre,
+                    apellido = usuario.apellidos,
+                    fotoPerfilId = usuario.fotoPerfilId,
+                    direccion = usuario.direccion,
+                    descripcion = usuario.descripcion
+                )
+            )
+        }
+
+        // Devolver la lista de DTOs
+        return listaUsuarios
+    }
 }

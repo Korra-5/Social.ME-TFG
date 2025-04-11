@@ -77,4 +77,21 @@ class UsuarioController {
     ) : ResponseEntity<UsuarioDTO> {
         return ResponseEntity(usuarioService.verUsuarioPorUsername(username), HttpStatus.OK)
     }
+
+    @GetMapping("/verUsuariosPorComunidad/{comunidad}")
+    fun verUsuariosPorComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable comunidad: String
+    ) : ResponseEntity<List<UsuarioDTO>> {
+        return ResponseEntity(usuarioService.verUsuariosPorComunidad(comunidad), HttpStatus.OK)
+    }
+
+    @GetMapping("/verUsuariosPorActividad/{actividadId}")
+    fun verUsuariosPorActividad(
+        httpRequest: HttpServletRequest,
+        @PathVariable actividadId: String
+    ) : ResponseEntity<List<UsuarioDTO>>  {
+        return ResponseEntity(usuarioService.verUsuariosPorActividad(actividadId), HttpStatus.OK)
+    }
+
 }
