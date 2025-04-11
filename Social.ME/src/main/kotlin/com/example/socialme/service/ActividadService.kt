@@ -419,7 +419,7 @@ class ActividadService {
 
     fun contarUsuariosEnUnaActividad(actividadId:String):Int{
         if (actividadRepository.findActividadBy_id(actividadId).isEmpty) {
-            throw BadRequestException("Comunidad no existe")
+            throw BadRequestException("Actividad no existe")
         }
         val participaciones=participantesActividadRepository.findByidActividad(actividadId)
         var usuarios:Int=0
