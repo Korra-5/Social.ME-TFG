@@ -417,6 +417,16 @@ class ActividadService {
         return actividadesDTO
     }
 
-
+    fun contarUsuariosEnUnaActividad(actividadId:String):Int{
+        if (actividadRepository.findActividadBy_id(actividadId).isEmpty) {
+            throw BadRequestException("Comunidad no existe")
+        }
+        val participaciones=participantesActividadRepository.findByidActividad(actividadId)
+        var usuarios:Int=0
+        participaciones.forEach {
+            usuarios++
+        }
+        return usuarios
+    }
 
 }

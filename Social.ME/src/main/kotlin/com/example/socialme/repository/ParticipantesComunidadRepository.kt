@@ -9,9 +9,8 @@ import java.util.*
 @Repository
 interface ParticipantesComunidadRepository: MongoRepository<ParticipantesComunidad, String> {
     fun findByUsername(username: String): List<ParticipantesComunidad>
-    fun findBy_id(_id: String): Optional<ParticipantesComunidad>
     fun findParticipantesByComunidad(comunidad: String): List<ParticipantesComunidad>
-    fun findByComunidad(comunidad: String): ParticipantesComunidad
+    fun findByComunidad(comunidad: String): List<ParticipantesComunidad>
     fun findByUsernameAndComunidad(username: String, comunidad: String): Optional<ParticipantesComunidad>
     fun findComunidadByUsername(username: String): Optional<List <ParticipantesComunidad>>
     fun deleteByComunidad(comunidad: String)

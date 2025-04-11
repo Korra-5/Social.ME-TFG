@@ -104,4 +104,12 @@ class ActividadController {
     ):ResponseEntity<List<ActividadDTO>> {
         return ResponseEntity(actividadService.verActividadesPorComunidad(comunidad), HttpStatus.OK)
     }
+
+    @GetMapping("/contarUsuariosEnUnaActividad/{actividadId}")
+    fun contarUsuariosEnUnaActividad(
+        httpRequest: HttpServletRequest,
+        @PathVariable actividadId: String
+    ):ResponseEntity<Int> {
+        return ResponseEntity(actividadService.contarUsuariosEnUnaActividad(actividadId), HttpStatus.OK)
+    }
 }

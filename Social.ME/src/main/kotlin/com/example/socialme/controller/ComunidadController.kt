@@ -97,5 +97,12 @@ class ComunidadController {
         return ResponseEntity(comunidadService.booleanUsuarioApuntadoComunidad(participantesComunidadDTO),HttpStatus.OK)
     }
 
+    @GetMapping("/contarUsuariosEnUnaComunidad/{comunidad}")
+    fun contarUsuariosEnUnaComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable comunidad: String
+    ):ResponseEntity<Int> {
+        return ResponseEntity(comunidadService.contarUsuariosEnUnaComunidad(comunidad), HttpStatus.OK)
+    }
 }
 

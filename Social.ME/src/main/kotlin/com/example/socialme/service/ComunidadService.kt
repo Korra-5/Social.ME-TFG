@@ -327,4 +327,16 @@ class ComunidadService {
         return participantesComunidadRepository.findByUsernameAndComunidad(participantesComunidadDTO.username,participantesComunidadDTO.comunidad).isPresent
 
     }
+
+    fun contarUsuariosEnUnaComunidad(comunidad:String):Int{
+        if (comunidadRepository.findComunidadByUrl(comunidad).isEmpty) {
+            throw BadRequestException("Comunidad no existe")
+        }
+        val participaciones=participantesComunidadRepository.findByComunidad(comunidad)
+        var usuarios:Int=0
+        participaciones.forEach {
+            usuarios++
+        }
+        return usuarios
+    }
 }

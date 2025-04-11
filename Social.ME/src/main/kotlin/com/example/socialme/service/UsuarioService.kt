@@ -243,4 +243,6 @@ class UsuarioService : UserDetailsService {
             descripcion = usuario.descripcion,
         )
     }
+
+
 }
