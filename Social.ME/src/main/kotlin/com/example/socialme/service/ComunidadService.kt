@@ -339,4 +339,15 @@ class ComunidadService {
         }
         return usuarios
     }
+
+    fun verificarCreadorAdministradorComunidad(comunidadDTO: ComunidadDTO, username: String):Boolean{
+        comunidadRepository.findComunidadByUrl(comunidadDTO.url).orElseThrow {
+            NotFoundException("Comunidad no existe")
+        }
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario no encontrado")
+        }
+
+        return comunidadDTO.creador == username || comunidadDTO.administradores!!.contains(username)
+    }
 }
