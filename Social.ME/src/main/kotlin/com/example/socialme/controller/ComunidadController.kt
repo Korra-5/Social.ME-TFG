@@ -105,7 +105,7 @@ class ComunidadController {
         return ResponseEntity(comunidadService.contarUsuariosEnUnaComunidad(comunidad), HttpStatus.OK)
     }
 
-    @GetMapping("Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}")
+    @GetMapping("/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}")
     fun verificarCreadorAdministradorComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable username: String,
