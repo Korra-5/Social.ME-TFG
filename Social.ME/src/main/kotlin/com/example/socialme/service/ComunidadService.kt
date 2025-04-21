@@ -298,6 +298,15 @@ class ComunidadService {
         val union = participantesComunidadRepository.findByUsernameAndComunidad(username = participantesComunidadDTO.username, comunidad = participantesComunidadDTO.comunidad).orElseThrow {
             throw BadRequestException("No estás en esta comunidad")
         }
+
+        val comunidad=comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad).orElseThrow {
+            throw NotFoundException("No existe esta comunidad")
+        }
+
+        if (comunidad.creador==participantesComunidadDTO.username) {
+            throw BadRequestException("El creador no puede abandonar la comunidad")
+        }
+
         participantesComunidadRepository.delete(union)
 
         return ParticipantesComunidadDTO(
@@ -340,14 +349,14 @@ class ComunidadService {
         return usuarios
     }
 
-    fun verificarCreadorAdministradorComunidad(comunidadDTO: ComunidadDTO, username: String):Boolean{
-        comunidadRepository.findComunidadByUrl(comunidadDTO.url).orElseThrow {
+    fun verificarCreadorAdministradorComunidad(comunidadUrl: String, username: String):Boolean{
+        val comunidad=comunidadRepository.findComunidadByUrl(comunidadUrl).orElseThrow {
             NotFoundException("Comunidad no existe")
         }
         usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario no encontrado")
         }
 
-        return comunidadDTO.creador == username || comunidadDTO.administradores!!.contains(username)
+        return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
 }
