@@ -96,7 +96,7 @@ class GridFSService {
     /**
      * Deletes a file by its ID
      */
-    fun deleteFile(id: String) {
+    fun deleteFile(id: String?) {
         gridFsTemplate.delete(Query(Criteria.where("_id").`is`(ObjectId(id))))
     }
 }
