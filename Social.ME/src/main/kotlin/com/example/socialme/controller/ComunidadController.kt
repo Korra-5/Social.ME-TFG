@@ -75,10 +75,9 @@ class ComunidadController {
 
     @PutMapping("/modificarComunidad")
     fun modificarComunidad(
-        httpRequest: HttpServletRequest,
-        @RequestBody comunidadUpdateDTO: ComunidadUpdateDTO
-    ): ResponseEntity<ComunidadDTO> {
-        return  ResponseEntity(comunidadService.modificarComunidad(comunidadUpdateDTO),HttpStatus.OK)
+        httpRequest: HttpServletRequest
+    ): ResponseEntity<String> {
+        return  ResponseEntity(comunidadService.modificarComunidad(),HttpStatus.OK)
     }
 
     @GetMapping("/verComunidadPorUrl/{url}")
