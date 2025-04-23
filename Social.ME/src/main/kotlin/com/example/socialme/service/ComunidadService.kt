@@ -204,9 +204,130 @@ class ComunidadService {
         return comunidadRepository.findAll()
     }
 
-    fun modificarComunidad():String {
-        print("El endpoint funciona")
-        return "a"
+    fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
+        // Buscar la comunidad existente usando currentURL
+        val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {
+            throw NotFoundException("Comunidad con URL ${comunidadUpdateDTO.currentURL} no encontrada")
+        }
+
+        // Si se está cambiando la URL, validar que la nueva no exista ya
+        if (comunidadUpdateDTO.newUrl != comunidadUpdateDTO.currentURL) {
+            comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.newUrl).ifPresent {
+                throw BadRequestException("Ya existe una comunidad con la URL ${comunidadUpdateDTO.newUrl}, prueba con otra URL")
+            }
+        }
+
+        // Guardar la antigua URL para actualizar referencias
+        val urlAntigua = comunidadExistente.url
+
+        // Procesar la foto de perfil si se proporciona en Base64
+        val nuevaFotoPerfilId = if (!comunidadUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+            // Intentar eliminar la foto de perfil antigua, si existe
+            try {
+                if (!comunidadExistente.fotoPerfilId.isNullOrBlank()) {
+                    gridFSService.deleteFile(comunidadExistente.fotoPerfilId)
+                }
+            } catch (e: Exception) {
+                println("Error al eliminar la foto de perfil antigua: ${e.message}")
+            }
+
+            // Guardar la nueva foto de perfil
+            val urlParaFoto = comunidadUpdateDTO.newUrl
+            gridFSService.storeFileFromBase64(
+                comunidadUpdateDTO.fotoPerfilBase64,
+                "community_profile_${urlParaFoto}_${Date().time}",
+                "image/jpeg",
+                mapOf(
+                    "type" to "profilePhoto",
+                    "community" to urlParaFoto
+                )
+            ) ?: ""
+        } else if (comunidadUpdateDTO.fotoPerfilId != null) {
+            // Si se proporciona explícitamente un ID de foto
+            comunidadUpdateDTO.fotoPerfilId
+        } else {
+            // Mantener la foto de perfil existente
+            comunidadExistente.fotoPerfilId
+        }
+
+        // Procesar las fotos del carrusel si se proporcionan en Base64
+        val nuevasFotosCarruselIds = if (comunidadUpdateDTO.fotoCarruselBase64 != null && comunidadUpdateDTO.fotoCarruselBase64.isNotEmpty()) {
+            // Intentar eliminar las fotos de carrusel antiguas, si existen
+            try {
+                comunidadExistente.fotoCarruselIds?.forEach { fotoId ->
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error al eliminar fotos de carrusel antiguas: ${e.message}")
+            }
+
+            // Guardar las nuevas fotos de carrusel
+            val urlParaFotos = comunidadUpdateDTO.newUrl
+            comunidadUpdateDTO.fotoCarruselBase64.mapIndexed { index, base64 ->
+                gridFSService.storeFileFromBase64(
+                    base64,
+                    "community_carousel_${urlParaFotos}_${index}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "carouselPhoto",
+                        "community" to urlParaFotos,
+                        "position" to index.toString()
+                    )
+                ) ?: ""
+            }
+        } else {
+            // Mantener las fotos de carrusel existentes
+            comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds
+        }
+
+        // Actualizar la información de la comunidad
+        comunidadExistente.apply {
+            url = comunidadUpdateDTO.newUrl
+            nombre = comunidadUpdateDTO.nombre
+            descripcion = comunidadUpdateDTO.descripcion
+            intereses = comunidadUpdateDTO.intereses
+            administradores = comunidadUpdateDTO.administradores
+            fotoPerfilId = nuevaFotoPerfilId
+            fotoCarruselIds = nuevasFotosCarruselIds
+        }
+
+        val comunidadActualizada = comunidadRepository.save(comunidadExistente)
+
+        // Si se ha cambiado la URL, actualizar referencias en otras colecciones
+        if (urlAntigua != comunidadActualizada.url) {
+            // Actualizar referencias en ActividadesComunidad
+            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElseThrow {
+                NotFoundException("Actividades no encontradas")
+            }
+            actividades.forEach { actividad ->
+                actividad.comunidad = comunidadActualizada.url
+                actividadesComunidadRepository.save(actividad)
+            }
+
+            // Actualizar referencias en ParticipantesComunidad
+            val participantes = participantesComunidadRepository.findByComunidad(urlAntigua)
+            participantes.forEach { participante ->
+                participante.comunidad = comunidadActualizada.url
+                participantesComunidadRepository.save(participante)
+            }
+        }
+
+        // Retornar el DTO actualizado
+        return ComunidadDTO(
+            url = comunidadActualizada.url,
+            nombre = comunidadActualizada.nombre,
+            comunidadGlobal = comunidadActualizada.comunidadGlobal,
+            creador = comunidadActualizada.creador,
+            intereses = comunidadActualizada.intereses,
+            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
+            fotoPerfilId = comunidadActualizada.fotoPerfilId,
+            descripcion = comunidadActualizada.descripcion,
+            fechaCreacion = comunidadActualizada.fechaCreacion,
+            administradores = comunidadActualizada.administradores,
+            privada = comunidadActualizada.privada
+        )
     }
 
     fun salirComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
