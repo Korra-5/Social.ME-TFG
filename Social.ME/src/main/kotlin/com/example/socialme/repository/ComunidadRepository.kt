@@ -8,7 +8,6 @@ import java.util.*
 
 @Repository
 interface ComunidadRepository: MongoRepository<Comunidad, String> {
-    fun findComunidadBy_id(url:String): Optional<Comunidad>
     fun findComunidadByUrl(url:String): Optional<Comunidad>
 
 }

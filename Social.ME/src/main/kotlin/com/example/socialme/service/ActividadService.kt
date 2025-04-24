@@ -31,6 +31,7 @@ class ActividadService {
 
     @Autowired
     private lateinit var actividadRepository: ActividadRepository
+
     @Autowired
     private lateinit var gridFSService: GridFSService
 
@@ -55,20 +56,21 @@ class ActividadService {
             throw BadRequestException("No tienes permisos para crear esta actividad")
         }
 
-        val fotosCarruselIds = if (actividadCreateDTO.fotosCarruselBase64 != null && actividadCreateDTO.fotosCarruselBase64.isNotEmpty()) {
-            actividadCreateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
-                gridFSService.storeFileFromBase64(
-                    base64,
-                    "activity_carousel_${actividadCreateDTO.nombre}_${index}_${Date().time}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "activityCarousel",
-                        "activity" to actividadCreateDTO.nombre,
-                        "position" to index.toString()
+        val fotosCarruselIds =
+            if (actividadCreateDTO.fotosCarruselBase64 != null && actividadCreateDTO.fotosCarruselBase64.isNotEmpty()) {
+                actividadCreateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
+                    gridFSService.storeFileFromBase64(
+                        base64,
+                        "activity_carousel_${actividadCreateDTO.nombre}_${index}_${Date().time}",
+                        "image/jpeg",
+                        mapOf(
+                            "type" to "activityCarousel",
+                            "activity" to actividadCreateDTO.nombre,
+                            "position" to index.toString()
+                        )
                     )
-                )
-            }
-        } else actividadCreateDTO.fotosCarruselIds ?: emptyList()
+                }
+            } else actividadCreateDTO.fotosCarruselIds ?: emptyList()
 
         val actividad = Actividad(
             _id = null,
@@ -155,20 +157,21 @@ class ActividadService {
         val nombreNuevo = actividadUpdateDTO.nombre
 
         // Process new carousel photos if they exist in base64 format
-        val nuevasFotos = if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
-            actividadUpdateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
-                gridFSService.storeFileFromBase64(
-                    base64,
-                    "activity_carousel_${nombreNuevo}_${index}_${Date().time}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "activityCarousel",
-                        "activity" to nombreNuevo,
-                        "position" to index.toString()
+        val nuevasFotos =
+            if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
+                actividadUpdateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
+                    gridFSService.storeFileFromBase64(
+                        base64,
+                        "activity_carousel_${nombreNuevo}_${index}_${Date().time}",
+                        "image/jpeg",
+                        mapOf(
+                            "type" to "activityCarousel",
+                            "activity" to nombreNuevo,
+                            "position" to index.toString()
+                        )
                     )
-                )
-            }
-        } else actividadUpdateDTO.fotosCarruselIds ?: emptyList()
+                }
+            } else actividadUpdateDTO.fotosCarruselIds ?: emptyList()
 
         // Delete old photos that are not in the new list
         val viejasFotos = actividad.fotosCarruselIds
@@ -205,12 +208,15 @@ class ActividadService {
             }
 
             // Actualizar en ActividadesComunidad
-            val actividadesComunidad = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id)
-            actividadesComunidad.forEach { actividadComunidad ->
-                actividadComunidad.nombreActividad = nombreNuevo
-                actividadesComunidadRepository.save(actividadComunidad)
+            val actividadComunidad = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id).orElseThrow{
+                throw NotFoundException("La actividad no existe")
             }
+
+            actividadComunidad.nombreActividad = nombreNuevo
+            actividadesComunidadRepository.save(actividadComunidad)
         }
+
+
 
         // Devolver DTO de la actividad actualizada
         return ActividadDTO(
@@ -428,5 +434,18 @@ class ActividadService {
         }
         return usuarios
     }
+    fun verificarCreadorAdministradorActividad(id:String, username: String):Boolean{
+        val actividadComunidad=actividadesComunidadRepository.findByIdActividad(id).orElseThrow {
+            NotFoundException("Actividad no existe")
+        }
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario no encontrado")
+        }
+        val comunidad=comunidadRepository.findComunidadByUrl(actividadComunidad.comunidad).orElseThrow {
+            throw NotFoundException("Comunidad no encontrado")
+        }
 
+
+        return comunidad.creador == username || comunidad.administradores!!.contains(username)
+    }
 }
