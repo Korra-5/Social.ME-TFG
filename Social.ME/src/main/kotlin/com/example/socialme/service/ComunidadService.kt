@@ -151,8 +151,8 @@ class ComunidadService {
         return participantesComunidadDTO
     }
 
-    fun eliminarComunidad(id: String): ComunidadDTO {
-        val comunidad = comunidadRepository.findComunidadBy_id(id).orElseThrow { BadRequestException("Esta comunidad no existe") }
+    fun eliminarComunidad(url: String): ComunidadDTO {
+        val comunidad = comunidadRepository.findComunidadByUrl(url).orElseThrow { BadRequestException("Esta comunidad no existe") }
 
         val comunidadDto = ComunidadDTO(
             url = comunidad.url,

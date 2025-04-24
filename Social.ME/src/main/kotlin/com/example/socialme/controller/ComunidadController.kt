@@ -39,12 +39,12 @@ class ComunidadController {
         return ResponseEntity(union, HttpStatus.CREATED)
     }
 
-    @DeleteMapping("/eliminarComunidad/{id}")
+    @DeleteMapping("/eliminarComunidad/{url}")
     fun eliminarComunidad(
         httpRequest: HttpServletRequest,
-        @PathVariable id: String
+        @PathVariable url: String
     ) : ResponseEntity<ComunidadDTO> {
-        val comunidad=comunidadService.eliminarComunidad(id)
+        val comunidad=comunidadService.eliminarComunidad(url)
         return ResponseEntity(comunidad, HttpStatus.OK)
     }
 
