@@ -9,7 +9,7 @@ import java.util.*
 @Repository
 interface ActividadesComunidadRepository: MongoRepository<ActividadesComunidad,String> {
     fun findByComunidad(comunidad:String): Optional<List<ActividadesComunidad>>
-    fun findByIdActividad(actividadId: String): Optional <ActividadesComunidad>
+    fun findActividadesComunidadByIdActividad(actividadId: String): Optional <ActividadesComunidad>
     fun deleteByIdActividad(idActividad: String)
     fun deleteByComunidad(comunidad:String)
 }

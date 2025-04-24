@@ -208,7 +208,7 @@ class ActividadService {
             }
 
             // Actualizar en ActividadesComunidad
-            val actividadComunidad = actividadesComunidadRepository.findByIdActividad(actividadUpdateDTO._id).orElseThrow{
+            val actividadComunidad = actividadesComunidadRepository.findActividadesComunidadByIdActividad(actividadUpdateDTO._id).orElseThrow{
                 throw NotFoundException("La actividad no existe")
             }
 
@@ -434,8 +434,8 @@ class ActividadService {
         }
         return usuarios
     }
-    fun verificarCreadorAdministradorActividad(id:String, username: String):Boolean{
-        val actividadComunidad=actividadesComunidadRepository.findByIdActividad(id).orElseThrow {
+    fun verificarCreadorAdministradorActividad(username: String, id:String):Boolean{
+        val actividadComunidad=actividadesComunidadRepository.findActividadesComunidadByIdActividad(id).orElseThrow {
             NotFoundException("Actividad no existe")
         }
         usuarioRepository.findFirstByUsername(username).orElseThrow {
