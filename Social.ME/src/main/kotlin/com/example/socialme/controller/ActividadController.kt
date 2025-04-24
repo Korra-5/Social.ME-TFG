@@ -113,10 +113,10 @@ class ActividadController {
         return ResponseEntity(actividadService.contarUsuariosEnUnaActividad(actividadId), HttpStatus.OK)
     }
 
-    @GetMapping("Actividad/verificarCreadorAdministradorActividad/{username}/{idActvidad}")
+    @GetMapping("Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}")
     fun verificarCreadorAdministradorActividad(
         @PathVariable("username") username: String,
-        @PathVariable("idActvidad") idActvidad: String
+        @PathVariable("idActividad") idActvidad: String
     ): ResponseEntity<Boolean>{
         return ResponseEntity(actividadService.verificarCreadorAdministradorActividad(username, idActvidad), HttpStatus.OK)
     }
