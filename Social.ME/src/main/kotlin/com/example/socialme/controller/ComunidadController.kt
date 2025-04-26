@@ -66,8 +66,8 @@ class ComunidadController {
     }
 
 
-    @GetMapping("/verTodasComunidades")
-    fun verTodasComunidades(
+    @GetMapping("/verTodasComunidadesPublicas")
+    fun verTodasComunidadesPublicas(
         httpRequest: HttpServletRequest,
         ): ResponseEntity<List<ComunidadDTO>> {
         return  ResponseEntity(comunidadService.verTodasComunidades(),HttpStatus.OK)
