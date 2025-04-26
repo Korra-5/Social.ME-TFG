@@ -321,4 +321,19 @@ class UsuarioService : UserDetailsService {
         // Devolver la lista de DTOs
         return listaUsuarios
     }
+
+    fun verTodosLosUsuarios(): List<UsuarioDTO> {
+        return usuarioRepository.findAll().map { usuario ->
+            UsuarioDTO(
+                username = usuario.username,
+                email = usuario.email,
+                intereses = usuario.intereses,
+                nombre = usuario.nombre,
+                apellido = usuario.apellidos,
+                fotoPerfilId = usuario.fotoPerfilId,
+                direccion = usuario.direccion,
+                descripcion = usuario.descripcion
+            )
+        }
+    }
 }

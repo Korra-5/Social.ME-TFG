@@ -69,7 +69,7 @@ class ComunidadController {
     @GetMapping("/verTodasComunidades")
     fun verTodasComunidades(
         httpRequest: HttpServletRequest,
-        ): ResponseEntity<MutableList<Comunidad>> {
+        ): ResponseEntity<List<ComunidadDTO>> {
         return  ResponseEntity(comunidadService.verTodasComunidades(),HttpStatus.OK)
     }
 
