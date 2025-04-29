@@ -51,7 +51,7 @@ class UsuarioController {
         // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
         // PASAMOS A GENERAR EL TOKEN
         val token = tokenService.generarToken(authentication)
-
+        usuarioService.modificarCoordenadasUsuario(usuario.username, usuario.username)
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
     }
 

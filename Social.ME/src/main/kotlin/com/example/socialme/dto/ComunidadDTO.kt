@@ -1,5 +1,6 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
 import java.util.Date
 
 data class ComunidadDTO(
@@ -13,5 +14,7 @@ data class ComunidadDTO(
     val administradores: List<String>?,
     val fechaCreacion: Date,
     val comunidadGlobal: Boolean,
-    val privada: Boolean
+    val privada: Boolean,
+    val coordenadas: Coordenadas?,  // Coordenadas geográficas
+
 )

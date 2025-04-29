@@ -83,7 +83,8 @@ class ActividadService {
             creador = actividadCreateDTO.creador,
             privada = actividadCreateDTO.privada,
             comunidad = actividadCreateDTO.comunidad,
-            lugar = actividadCreateDTO.lugar,
+            coordenadas = actividadCreateDTO.coordenadas,
+            direccion = actividadCreateDTO.direccion,
         )
 
         val actividadInsertada = actividadRepository.insert(actividad)
@@ -105,8 +106,9 @@ class ActividadService {
             fotosCarruselIds = actividadInsertada.fotosCarruselIds,
             fechaFinalizacion = actividadInsertada.fechaFinalizacion,
             fechaInicio = actividadInsertada.fechaInicio,
-            lugar = actividadInsertada.lugar,
-            _id = actividadInsertada._id
+            coordenadas = actividadInsertada.coordenadas,
+            _id = actividadInsertada._id,
+            direccion = actividadInsertada.direccion,
         )
     }
 
@@ -134,8 +136,9 @@ class ActividadService {
             fotosCarruselIds = actividad.fotosCarruselIds,
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
-            lugar = actividad.lugar,
-            _id = actividad._id
+            coordenadas = actividad.coordenadas,
+            _id = actividad._id,
+            direccion = actividad.direccion,
         )
 
         // Remove related documents
@@ -192,8 +195,9 @@ class ActividadService {
             fotosCarruselIds = nuevasFotos
             fechaInicio = actividadUpdateDTO.fechaInicio
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
-            lugar = actividadUpdateDTO.lugar
-        }
+            coordenadas= actividad.coordenadas
+            direccion=actividad.direccion
+                    }
 
         // Guardar la actividad actualizada
         val actividadActualizada = actividadRepository.save(actividad)
@@ -226,9 +230,10 @@ class ActividadService {
             creador = actividad.creador,
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
-            lugar = actividad.lugar,
             fotosCarruselIds = actividad.fotosCarruselIds,
-            _id = actividad._id
+            _id = actividad._id,
+            coordenadas= actividad.coordenadas,
+            direccion=actividad.direccion
         )
     }
 
@@ -264,7 +269,8 @@ class ActividadService {
                             fotosCarruselIds = actividad.fotosCarruselIds,
                             fechaFinalizacion = actividad.fechaFinalizacion,
                             fechaInicio = actividad.fechaInicio,
-                            lugar = actividad.lugar,
+                            coordenadas= actividad.coordenadas,
+                            direccion=actividad.direccion,
                             _id = actividad._id
                         )
                     )
@@ -286,7 +292,8 @@ class ActividadService {
             creador = actividad.creador,
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
-            lugar = actividad.lugar,
+            coordenadas= actividad.coordenadas,
+            direccion=actividad.direccion,
             fotosCarruselIds = actividad.fotosCarruselIds,
             _id = actividad._id
         )
@@ -307,8 +314,9 @@ class ActividadService {
                     fotosCarruselIds = actividad.fotosCarruselIds,
                     fechaFinalizacion = actividad.fechaFinalizacion,
                     fechaInicio = actividad.fechaInicio,
-                    lugar = actividad.lugar,
-                    _id = actividad._id
+                    _id = actividad._id,
+                    coordenadas= actividad.coordenadas,
+                    direccion=actividad.direccion
                 )
             }
     }
@@ -334,8 +342,9 @@ class ActividadService {
                 fotosCarruselIds = actividad.fotosCarruselIds,
                 fechaFinalizacion = actividad.fechaFinalizacion,
                 fechaInicio = actividad.fechaInicio,
-                lugar = actividad.lugar,
-                _id = actividad._id
+                _id = actividad._id,
+                coordenadas= actividad.coordenadas,
+                direccion=actividad.direccion
             )
         }
     }
@@ -413,8 +422,9 @@ class ActividadService {
                         fotosCarruselIds = actividad.fotosCarruselIds,
                         fechaFinalizacion = actividad.fechaFinalizacion,
                         fechaInicio = actividad.fechaInicio,
-                        lugar = actividad.lugar,
-                        _id = actividad._id
+                        _id = actividad._id,
+                        coordenadas= actividad.coordenadas,
+                        direccion=actividad.direccion
                     )
                 )
             }

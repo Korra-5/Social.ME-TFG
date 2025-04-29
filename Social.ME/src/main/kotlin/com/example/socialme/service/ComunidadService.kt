@@ -77,7 +77,8 @@ class ComunidadService {
                 fechaCreacion = Date.from(Instant.now()),
                 url = formattedUrl,
                 comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
-                privada = comunidadCreateDTO.privada
+                privada = comunidadCreateDTO.privada,
+                coordenadas = comunidadCreateDTO.coordenadas
             )
 
         val participantesComunidad = ParticipantesComunidad(
@@ -101,7 +102,8 @@ class ComunidadService {
             descripcion = comunidadCreateDTO.descripcion,
             fechaCreacion = Date.from(Instant.now()),
             administradores = null,
-            privada = comunidadCreateDTO.privada
+            privada = comunidadCreateDTO.privada,
+            coordenadas = comunidadCreateDTO.coordenadas
         )
     }
 
@@ -120,7 +122,8 @@ class ComunidadService {
             fechaCreacion = comunidad.fechaCreacion,
             comunidadGlobal = comunidad.comunidadGlobal,
             privada = comunidad.privada,
-            url=comunidad.url
+            url =comunidad.url,
+            coordenadas = comunidad.coordenadas
         )
     }
 
@@ -165,7 +168,8 @@ class ComunidadService {
             descripcion = comunidad.descripcion,
             fechaCreacion = comunidad.fechaCreacion,
             administradores = comunidad.administradores,
-            privada = comunidad.privada
+            privada = comunidad.privada,
+            coordenadas = comunidad.coordenadas
         )
 
         // Delete images from GridFS
@@ -217,7 +221,8 @@ class ComunidadService {
                 administradores = comunidad.administradores,
                 fechaCreacion = comunidad.fechaCreacion,
                 comunidadGlobal = comunidad.comunidadGlobal,
-                privada = comunidad.privada
+                privada = comunidad.privada,
+                coordenadas = comunidad.coordenadas
             )
         }
     }
@@ -344,7 +349,8 @@ class ComunidadService {
             descripcion = comunidadActualizada.descripcion,
             fechaCreacion = comunidadActualizada.fechaCreacion,
             administradores = comunidadActualizada.administradores,
-            privada = comunidadActualizada.privada
+            privada = comunidadActualizada.privada,
+            coordenadas = comunidadActualizada.coordenadas,
         )
     }
 

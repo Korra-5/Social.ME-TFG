@@ -1,5 +1,6 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
 import java.util.*
 
 data class ActividadDTO(
@@ -11,5 +12,6 @@ data class ActividadDTO(
     val fechaInicio: Date,
     val fechaFinalizacion: Date,
     val fotosCarruselIds: List<String>,
-    val lugar: String,
+    val coordenadas: Coordenadas,  // Coordenadas geográficas
+    var direccion: String
 )

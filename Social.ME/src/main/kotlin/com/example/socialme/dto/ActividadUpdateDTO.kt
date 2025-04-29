@@ -1,5 +1,6 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
 import java.util.*
 
 data class ActividadUpdateDTO(
@@ -10,5 +11,6 @@ data class ActividadUpdateDTO(
     val fotosCarruselIds: List<String>? = null,     // Used if files already uploaded
     val fechaInicio: Date,
     val fechaFinalizacion: Date,
-    val lugar: String,
+    val coordenadas: Coordenadas,  // Coordenadas geográficas
+    var direccion: String
 )

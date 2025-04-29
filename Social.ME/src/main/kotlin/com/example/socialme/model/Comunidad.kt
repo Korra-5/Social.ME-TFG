@@ -13,11 +13,12 @@ data class Comunidad(
     var nombre: String,
     var descripcion: String,
     var intereses: List<String>,
-    var fotoPerfilId: String,  // Changed from base64 to ID
-    var fotoCarruselIds: List<String>?,  // Changed from base64 to ID list
+    var fotoPerfilId: String,
+    var fotoCarruselIds: List<String>?,
     val creador: String,
     var administradores: List<String>?,
     val fechaCreacion: Date,
     val comunidadGlobal: Boolean,
-    val privada: Boolean
+    val privada: Boolean,
+    var coordenadas: Coordenadas?  // Añadimos coordenadas opcionales
 )

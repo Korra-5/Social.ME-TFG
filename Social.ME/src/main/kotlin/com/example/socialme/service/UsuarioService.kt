@@ -5,6 +5,7 @@ import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
+import com.example.socialme.model.Coordenadas
 import com.example.socialme.model.Usuario
 import com.example.socialme.repository.ComunidadRepository
 import com.example.socialme.repository.ParticipantesActividadRepository
@@ -85,7 +86,8 @@ class UsuarioService : UserDetailsService {
             intereses = usuarioInsertadoDTO.intereses,
             fotoPerfilId = fotoPerfilId, // Aquí se garantiza que no es null
             direccion = usuarioInsertadoDTO.direccion,
-            fechaUnion = Date.from(Instant.now())
+            fechaUnion = Date.from(Instant.now()),
+            coordenadas = null
         )
 
         // Insertar el usuario en la base de datos
@@ -100,9 +102,24 @@ class UsuarioService : UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfilId = fotoPerfilId
+            fotoPerfilId = fotoPerfilId,
         )
     }
+
+    fun modificarCoordenadasUsuario(coordenadas: String, username: String) {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow { NotFoundException("Usuario $username no existe") }
+                try {
+                    // Actualizamos las coordenadas del usuario
+                    usuario.coordenadas = Coordenadas(usuario.coordenadas!!.latitud, usuario.coordenadas!!.longitud
+                    )
+
+                    // Guardamos el usuario actualizado
+                    usuarioRepository.save(usuario)
+                } catch (e: NumberFormatException) {
+                    throw IllegalArgumentException("Formato de coordenadas inválido: $coordenadas")
+                }
+    }
+
 
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {

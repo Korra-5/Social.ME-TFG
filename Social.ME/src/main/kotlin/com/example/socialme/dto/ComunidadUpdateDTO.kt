@@ -1,5 +1,7 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
+
 
 data class ComunidadUpdateDTO(
     val currentURL: String,
@@ -12,5 +14,7 @@ data class ComunidadUpdateDTO(
     val fotoCarruselBase64: List<String>? = null,
     val fotoCarruselIds: List<String>? = null,
     val administradores: List<String>?,
-    val privada: Boolean
+    val privada: Boolean,
+    val coordenadas: Coordenadas,  // Coordenadas geográficas
+
 )

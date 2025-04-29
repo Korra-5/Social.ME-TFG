@@ -1,5 +1,6 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
 import java.util.Date
 data class ComunidadCreateDTO(
     val url: String,
@@ -10,5 +11,7 @@ data class ComunidadCreateDTO(
     val fotoPerfilId: String? = null,      // Used if file already uploaded
     val creador: String,
     val comunidadGlobal: Boolean,
-    val privada: Boolean
+    val privada: Boolean,
+    val coordenadas: Coordenadas,  // Coordenadas geográficas
+
 )

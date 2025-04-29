@@ -16,7 +16,8 @@ data class Usuario(
     var descripcion: String,
     var email: String,
     var intereses: List<String>,
-    var fotoPerfilId: String?,  // Changed from base64 to ID
+    var fotoPerfilId: String?,
     var direccion: Direccion?,
-    val fechaUnion: Date
+    val fechaUnion: Date,
+    var coordenadas: Coordenadas?  // Añadimos coordenadas opcionales
 )

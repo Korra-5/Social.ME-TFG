@@ -1,5 +1,6 @@
 package com.example.socialme.dto
 
+import com.example.socialme.model.Coordenadas
 import com.example.socialme.model.Direccion
 import java.util.*
 

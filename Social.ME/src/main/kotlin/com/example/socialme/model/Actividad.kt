@@ -17,5 +17,6 @@ data class Actividad(
     var fechaInicio: Date,
     var fechaFinalizacion: Date,
     val privada: Boolean,
-    var lugar: String,
+    var coordenadas: Coordenadas,  // Reemplazando el campo "lugar" por coordenadas
+    var direccion: String  // Mantenemos la dirección textual para referencia
 )
