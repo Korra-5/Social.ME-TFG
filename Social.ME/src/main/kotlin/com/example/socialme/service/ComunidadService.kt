@@ -4,6 +4,7 @@ import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Comunidad
+import com.example.socialme.model.Coordenadas
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.repository.ActividadesComunidadRepository
 import com.example.socialme.repository.ComunidadRepository
@@ -127,6 +128,59 @@ class ComunidadService {
         )
     }
 
+    /**
+     * Devuelve todas las comunidades que no son privadas y que están dentro del radio de distancia especificado
+     * Si no se especifica distancia o coordenadas del usuario, devuelve todas las comunidades no privadas
+     */
+    fun verTodasComunidades(distancia: Int? = null, username: String) : List<ComunidadDTO> {
+        val todasLasComunidades = comunidadRepository.findAll()
+        val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario no existe")
+        }.coordenadas
+
+        return todasLasComunidades
+            .filter { !it.privada }
+            .filter { comunidad ->
+                // Si no hay distancia o coordenadas especificadas, o la comunidad no tiene coordenadas,
+                // incluimos la comunidad en los resultados
+                verificarDistancia(comunidad.coordenadas, coordenadasUser, distancia)
+            }
+            .map { comunidad ->
+                ComunidadDTO(
+                    url = comunidad.url,
+                    nombre = comunidad.nombre,
+                    descripcion = comunidad.descripcion,
+                    intereses = comunidad.intereses,
+                    fotoPerfilId = comunidad.fotoPerfilId,
+                    fotoCarruselIds = comunidad.fotoCarruselIds,
+                    creador = comunidad.creador,
+                    administradores = comunidad.administradores,
+                    fechaCreacion = comunidad.fechaCreacion,
+                    comunidadGlobal = comunidad.comunidadGlobal,
+                    privada = comunidad.privada,
+                    coordenadas = comunidad.coordenadas
+                )
+            }
+    }
+
+    /**
+     * Verifica si una comunidad está dentro del radio de distancia especificado
+     * @return true si está dentro de la distancia o si algún parámetro es nulo, false en caso contrario
+     */
+    private fun verificarDistancia(coordenadasComunidad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Int?): Boolean {
+        // Si falta algún parámetro necesario para el cálculo de distancia, devolvemos true para incluir la comunidad
+        if (coordenadasComunidad == null || coordenadasUser == null || distanciaKm == null) {
+            return true
+        }
+
+        // Calculamos la distancia entre las coordenadas del usuario y las de la comunidad
+        val distanciaCalculada = GeoUtils.calcularDistancia(coordenadasUser, coordenadasComunidad)
+
+        // Verificamos si la distancia calculada es menor o igual que la distancia especificada
+        return distanciaCalculada <= distanciaKm
+    }
+
+
     fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
         comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
             .orElseThrow { BadRequestException("La comunidad no existe") }
@@ -204,28 +258,6 @@ class ComunidadService {
         }
     }
 
-    fun verTodasComunidades(): List<ComunidadDTO> {
-        val todasLasComunidades = comunidadRepository.findAll()
-
-        return todasLasComunidades
-            .filter { !it.privada }
-            .map {  comunidad ->
-            ComunidadDTO(
-                url = comunidad.url,
-                nombre = comunidad.nombre,
-                descripcion = comunidad.descripcion,
-                intereses = comunidad.intereses,
-                fotoPerfilId = comunidad.fotoPerfilId,
-                fotoCarruselIds = comunidad.fotoCarruselIds,
-                creador = comunidad.creador,
-                administradores = comunidad.administradores,
-                fechaCreacion = comunidad.fechaCreacion,
-                comunidadGlobal = comunidad.comunidadGlobal,
-                privada = comunidad.privada,
-                coordenadas = comunidad.coordenadas
-            )
-        }
-    }
 
     fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
         // Buscar la comunidad existente usando currentURL

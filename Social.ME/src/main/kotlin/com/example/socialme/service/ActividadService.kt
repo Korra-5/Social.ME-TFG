@@ -5,6 +5,7 @@ import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Actividad
 import com.example.socialme.model.ActividadesComunidad
+import com.example.socialme.model.Coordenadas
 import com.example.socialme.model.ParticipantesActividad
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
@@ -299,12 +300,23 @@ class ActividadService {
         )
         return actividadDTO
     }
-
-    fun verActividadesPublicas(): List<ActividadDTO> {
+    /**
+     * Devuelve todas las actividades públicas que están dentro del radio de distancia especificado
+     * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
+     */
+    fun verActividadesPublicas(distancia: Int? = null, username:String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
+        val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario no existe")
+        }.coordenadas
 
         return todasLasActividades
             .filter { !it.privada }
+            .filter { actividad ->
+                // Si no hay distancia o coordenadas especificadas, o la actividad no tiene coordenadas,
+                // incluimos la actividad en los resultados
+                verificarDistancia(actividad.coordenadas, coordenadasUser, distancia)
+            }
             .map { actividad ->
                 ActividadDTO(
                     nombre = actividad.nombre,
@@ -315,11 +327,25 @@ class ActividadService {
                     fechaFinalizacion = actividad.fechaFinalizacion,
                     fechaInicio = actividad.fechaInicio,
                     _id = actividad._id,
-                    coordenadas= actividad.coordenadas,
-                    direccion=actividad.direccion
+                    coordenadas = actividad.coordenadas,
+                    direccion = actividad.direccion
                 )
             }
     }
+
+    private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Int?): Boolean {
+        // Si falta algún parámetro necesario para el cálculo de distancia, devolvemos true para incluir la actividad
+        if (coordenadasActividad == null || coordenadasUser == null || distanciaKm == null) {
+            return true
+        }
+
+        // Calculamos la distancia entre las coordenadas del usuario y las de la actividad
+        val distanciaCalculada = GeoUtils.calcularDistancia(coordenadasUser, coordenadasActividad)
+
+        // Verificamos si la distancia calculada es menor o igual que la distancia especificada
+        return distanciaCalculada <= distanciaKm
+    }
+
 
     fun verActividadesPorUsername(username: String): List<ActividadDTO> {
         val participantes = participantesActividadRepository.findByUsername(username)
