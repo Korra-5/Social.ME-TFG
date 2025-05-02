@@ -484,4 +484,24 @@ class ActividadService {
 
         return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
-}
+
+    fun verTodasActividadesPublicas():List<ActividadDTO>{
+        val todasLasActividades = actividadRepository.findAll()
+        return todasLasActividades
+            .filter { !it.privada }
+            .map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    _id = actividad._id,
+                    coordenadas = actividad.coordenadas,
+                    lugar = actividad.lugar
+                )
+            }
+        }
+    }

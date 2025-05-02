@@ -451,4 +451,27 @@ class ComunidadService {
 
         return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
+
+    fun verTodasComunidadesPublicas():List<ComunidadDTO>{
+        val todasLasComunidades = comunidadRepository.findAll()
+
+        return todasLasComunidades
+            .filter { !it.privada }
+            .map { comunidad ->
+                ComunidadDTO(
+                    url = comunidad.url,
+                    nombre = comunidad.nombre,
+                    descripcion = comunidad.descripcion,
+                    intereses = comunidad.intereses,
+                    fotoPerfilId = comunidad.fotoPerfilId,
+                    fotoCarruselIds = comunidad.fotoCarruselIds,
+                    creador = comunidad.creador,
+                    administradores = comunidad.administradores,
+                    fechaCreacion = comunidad.fechaCreacion,
+                    comunidadGlobal = comunidad.comunidadGlobal,
+                    privada = comunidad.privada,
+                    coordenadas = comunidad.coordenadas
+                )
+            }
+    }
 }

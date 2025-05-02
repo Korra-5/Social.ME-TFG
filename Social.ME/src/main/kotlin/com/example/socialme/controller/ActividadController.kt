@@ -83,6 +83,13 @@ class ActividadController {
         return  ResponseEntity(actividadService.verActividadesPublicas(distanciaKm, username), HttpStatus.OK)
     }
 
+    @GetMapping("/verTodasActividadesPublicas")
+    fun verTodasActividadesPublicas(
+        httpRequest: HttpServletRequest,
+    ): ResponseEntity<List<ActividadDTO>>{
+        return  ResponseEntity(actividadService.verTodasActividadesPublicas(), HttpStatus.OK)
+    }
+
     @PutMapping("/modificarActividad")
     fun modificarActividad(
         httpRequest: HttpServletRequest,
