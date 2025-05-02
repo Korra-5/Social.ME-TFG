@@ -85,7 +85,7 @@ class ActividadService {
             privada = actividadCreateDTO.privada,
             comunidad = actividadCreateDTO.comunidad,
             coordenadas = actividadCreateDTO.coordenadas,
-            direccion = actividadCreateDTO.direccion,
+            lugar = actividadCreateDTO.lugar,
         )
 
         val actividadInsertada = actividadRepository.insert(actividad)
@@ -109,7 +109,7 @@ class ActividadService {
             fechaInicio = actividadInsertada.fechaInicio,
             coordenadas = actividadInsertada.coordenadas,
             _id = actividadInsertada._id,
-            direccion = actividadInsertada.direccion,
+            lugar = actividadInsertada.lugar,
         )
     }
 
@@ -139,7 +139,7 @@ class ActividadService {
             fechaInicio = actividad.fechaInicio,
             coordenadas = actividad.coordenadas,
             _id = actividad._id,
-            direccion = actividad.direccion,
+            lugar = actividad.lugar,
         )
 
         // Remove related documents
@@ -197,7 +197,7 @@ class ActividadService {
             fechaInicio = actividadUpdateDTO.fechaInicio
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
             coordenadas= actividad.coordenadas
-            direccion=actividad.direccion
+            lugar=actividad.lugar
                     }
 
         // Guardar la actividad actualizada
@@ -234,7 +234,7 @@ class ActividadService {
             fotosCarruselIds = actividad.fotosCarruselIds,
             _id = actividad._id,
             coordenadas= actividad.coordenadas,
-            direccion=actividad.direccion
+            lugar=actividad.lugar
         )
     }
 
@@ -271,7 +271,7 @@ class ActividadService {
                             fechaFinalizacion = actividad.fechaFinalizacion,
                             fechaInicio = actividad.fechaInicio,
                             coordenadas= actividad.coordenadas,
-                            direccion=actividad.direccion,
+                            lugar=actividad.lugar,
                             _id = actividad._id
                         )
                     )
@@ -294,7 +294,7 @@ class ActividadService {
             fechaFinalizacion = actividad.fechaFinalizacion,
             fechaInicio = actividad.fechaInicio,
             coordenadas= actividad.coordenadas,
-            direccion=actividad.direccion,
+            lugar=actividad.lugar,
             fotosCarruselIds = actividad.fotosCarruselIds,
             _id = actividad._id
         )
@@ -304,7 +304,7 @@ class ActividadService {
      * Devuelve todas las actividades públicas que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
      */
-    fun verActividadesPublicas(distancia: Int? = null, username:String): List<ActividadDTO> {
+    fun verActividadesPublicas(distancia: Float? = null, username:String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
         val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")
@@ -328,12 +328,12 @@ class ActividadService {
                     fechaInicio = actividad.fechaInicio,
                     _id = actividad._id,
                     coordenadas = actividad.coordenadas,
-                    direccion = actividad.direccion
+                    lugar = actividad.lugar
                 )
             }
     }
 
-    private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Int?): Boolean {
+    private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
         // Si falta algún parámetro necesario para el cálculo de distancia, devolvemos true para incluir la actividad
         if (coordenadasActividad == null || coordenadasUser == null || distanciaKm == null) {
             return true
@@ -370,7 +370,7 @@ class ActividadService {
                 fechaInicio = actividad.fechaInicio,
                 _id = actividad._id,
                 coordenadas= actividad.coordenadas,
-                direccion=actividad.direccion
+                lugar=actividad.lugar
             )
         }
     }
@@ -450,7 +450,7 @@ class ActividadService {
                         fechaInicio = actividad.fechaInicio,
                         _id = actividad._id,
                         coordenadas= actividad.coordenadas,
-                        direccion=actividad.direccion
+                        lugar=actividad.lugar
                     )
                 )
             }

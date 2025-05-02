@@ -1,9 +1,7 @@
 package com.example.socialme.dto
 
 import com.example.socialme.model.Coordenadas
-import java.util.*
 
-import com.fasterxml.jackson.annotation.JsonFormat
 import java.util.Date
 
 // Activity DTOs
@@ -18,6 +16,6 @@ data class ActividadCreateDTO(
     val fotosCarruselIds: List<String>? = null,     // Used if files already uploaded
     val privada: Boolean,
     val coordenadas: Coordenadas,  // Coordenadas geográficas
-    var direccion: String
+    var lugar: String
 
 )

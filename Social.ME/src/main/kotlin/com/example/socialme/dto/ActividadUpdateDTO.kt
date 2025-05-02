@@ -12,5 +12,5 @@ data class ActividadUpdateDTO(
     val fechaInicio: Date,
     val fechaFinalizacion: Date,
     val coordenadas: Coordenadas,  // Coordenadas geográficas
-    var direccion: String
+    var lugar: String
 )

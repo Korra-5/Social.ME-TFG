@@ -132,7 +132,7 @@ class ComunidadService {
      * Devuelve todas las comunidades que no son privadas y que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las comunidades no privadas
      */
-    fun verTodasComunidades(distancia: Int? = null, username: String) : List<ComunidadDTO> {
+    fun verTodasComunidades(distancia: Float? = null, username: String) : List<ComunidadDTO> {
         val todasLasComunidades = comunidadRepository.findAll()
         val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")
@@ -167,7 +167,7 @@ class ComunidadService {
      * Verifica si una comunidad está dentro del radio de distancia especificado
      * @return true si está dentro de la distancia o si algún parámetro es nulo, false en caso contrario
      */
-    private fun verificarDistancia(coordenadasComunidad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Int?): Boolean {
+    private fun verificarDistancia(coordenadasComunidad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
         // Si falta algún parámetro necesario para el cálculo de distancia, devolvemos true para incluir la comunidad
         if (coordenadasComunidad == null || coordenadasUser == null || distanciaKm == null) {
             return true

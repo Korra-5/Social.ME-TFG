@@ -13,5 +13,5 @@ data class ActividadDTO(
     val fechaFinalizacion: Date,
     val fotosCarruselIds: List<String>,
     val coordenadas: Coordenadas,  // Coordenadas geográficas
-    var direccion: String
+    var lugar: String
 )
