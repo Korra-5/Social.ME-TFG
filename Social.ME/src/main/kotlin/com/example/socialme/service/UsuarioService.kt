@@ -106,11 +106,12 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    fun modificarCoordenadasUsuario(coordenadas: String, username: String) {
+    fun modificarCoordenadasUsuario(coordenadas: Coordenadas?, username: String) {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow { NotFoundException("Usuario $username no existe") }
                 try {
                     // Actualizamos las coordenadas del usuario
-                    usuario.coordenadas = Coordenadas(usuario.coordenadas!!.latitud, usuario.coordenadas!!.longitud
+                    usuario.coordenadas = Coordenadas(
+                        coordenadas!!.latitud,coordenadas.longitud
                     )
 
                     // Guardamos el usuario actualizado

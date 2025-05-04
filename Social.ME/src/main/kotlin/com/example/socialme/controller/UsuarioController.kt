@@ -5,7 +5,6 @@ import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.error.exception.UnauthorizedException
-import com.example.socialme.model.Usuario
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -51,7 +50,7 @@ class UsuarioController {
         // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
         // PASAMOS A GENERAR EL TOKEN
         val token = tokenService.generarToken(authentication)
-        usuarioService.modificarCoordenadasUsuario(usuario.username, usuario.username)
+        usuarioService.modificarCoordenadasUsuario(usuario.coordenadas,usuario.username)
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
     }
 
