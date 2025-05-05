@@ -79,7 +79,13 @@ class ComunidadService {
                 url = formattedUrl,
                 comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
                 privada = comunidadCreateDTO.privada,
-                coordenadas = comunidadCreateDTO.coordenadas
+                coordenadas = comunidadCreateDTO.coordenadas,
+                codigoUnion = if (comunidadCreateDTO.privada) {
+                    generarCodigoUnico()
+                }else{
+                    null
+                }
+
             )
 
         val participantesComunidad = ParticipantesComunidad(
@@ -104,7 +110,8 @@ class ComunidadService {
             fechaCreacion = Date.from(Instant.now()),
             administradores = null,
             privada = comunidadCreateDTO.privada,
-            coordenadas = comunidadCreateDTO.coordenadas
+            coordenadas = comunidadCreateDTO.coordenadas,
+            codigoUnion = comunidadCreateDTO.codigoUnion
         )
     }
 
@@ -124,7 +131,8 @@ class ComunidadService {
             comunidadGlobal = comunidad.comunidadGlobal,
             privada = comunidad.privada,
             url =comunidad.url,
-            coordenadas = comunidad.coordenadas
+            coordenadas = comunidad.coordenadas,
+            codigoUnion = comunidad.codigoUnion
         )
     }
 
@@ -158,7 +166,8 @@ class ComunidadService {
                     fechaCreacion = comunidad.fechaCreacion,
                     comunidadGlobal = comunidad.comunidadGlobal,
                     privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas
+                    coordenadas = comunidad.coordenadas,
+                    codigoUnion = comunidad.codigoUnion
                 )
             }
     }
@@ -223,7 +232,8 @@ class ComunidadService {
             fechaCreacion = comunidad.fechaCreacion,
             administradores = comunidad.administradores,
             privada = comunidad.privada,
-            coordenadas = comunidad.coordenadas
+            coordenadas = comunidad.coordenadas,
+            codigoUnion = comunidad.codigoUnion
         )
 
         // Delete images from GridFS
@@ -383,6 +393,15 @@ class ComunidadService {
             administradores = comunidadActualizada.administradores,
             privada = comunidadActualizada.privada,
             coordenadas = comunidadActualizada.coordenadas,
+            codigoUnion = if (comunidadExistente.privada) {
+                comunidadExistente.codigoUnion
+            }else{
+                if(comunidadActualizada.privada){
+                    generarCodigoUnico()
+                }else{
+                    null
+                }
+            }
         )
     }
 
@@ -470,8 +489,62 @@ class ComunidadService {
                     fechaCreacion = comunidad.fechaCreacion,
                     comunidadGlobal = comunidad.comunidadGlobal,
                     privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas
+                    coordenadas = comunidad.coordenadas,
+                    codigoUnion = comunidad.codigoUnion
                 )
             }
+    }
+
+    fun unirseComunidadPorCodigo(participantesComunidadDTO: ParticipantesComunidadDTO,codigo:String):ParticipantesComunidadDTO{
+        val comunidad=comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+            .orElseThrow { BadRequestException("La comunidad no existe") }
+
+        usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        if (participantesComunidadRepository.findByUsernameAndComunidad(
+                participantesComunidadDTO.username,
+                participantesComunidadDTO.comunidad
+            ).isPresent
+        ) {
+            throw BadRequestException("El usuario ya está unido a esta comunidad")
+        }
+
+        if (codigo == comunidad.codigoUnion) {
+            val union = ParticipantesComunidad(
+                _id = null,
+                comunidad = participantesComunidadDTO.comunidad,
+                username = participantesComunidadDTO.username,
+                fechaUnion = Date.from(Instant.now())
+            )
+
+            participantesComunidadRepository.insert(union)
+
+            return participantesComunidadDTO
+        }else{
+            throw BadRequestException("El codigo de union no es correcto")
+        }
+    }
+
+    private fun generarCodigoUnico(): String {
+        val caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+        val longitud = 10
+        val random = Random()
+
+        var codigoGenerado: String
+        var codigoExistente: Boolean
+
+        do {
+            // Generar un nuevo código
+            codigoGenerado = (1..longitud)
+                .map { caracteres[random.nextInt(caracteres.length)] }
+                .joinToString("")
+
+            // Verificar si el código ya existe en alguna comunidad
+            codigoExistente = comunidadRepository.findComunidadByCodigoUnion(codigoGenerado).isPresent
+
+        } while (codigoExistente) // Repetir si el código ya existe
+
+        return codigoGenerado
     }
 }

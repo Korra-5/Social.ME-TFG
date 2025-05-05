@@ -20,5 +20,6 @@ data class Comunidad(
     val fechaCreacion: Date,
     val comunidadGlobal: Boolean,
     val privada: Boolean,
-    var coordenadas: Coordenadas?  // Añadimos coordenadas opcionales
+    var coordenadas: Coordenadas?,  // Añadimos coordenadas opcionales
+    val codigoUnion: String?
 )

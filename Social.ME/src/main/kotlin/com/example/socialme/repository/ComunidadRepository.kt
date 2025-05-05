@@ -9,5 +9,5 @@ import java.util.*
 @Repository
 interface ComunidadRepository: MongoRepository<Comunidad, String> {
     fun findComunidadByUrl(url:String): Optional<Comunidad>
-
+    fun findComunidadByCodigoUnion(codigo:String): Optional<Comunidad>
 }

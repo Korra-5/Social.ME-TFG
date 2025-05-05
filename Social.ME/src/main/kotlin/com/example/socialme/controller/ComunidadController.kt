@@ -39,6 +39,17 @@ class ComunidadController {
         return ResponseEntity(union, HttpStatus.CREATED)
     }
 
+    @PostMapping("/unirseComunidad/{codigo}")
+    fun unirseComunidadPorCodigo(
+        httpRequest: HttpServletRequest,
+        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO,
+        @PathVariable("codigo") codigo: String
+    ) : ResponseEntity<ParticipantesComunidadDTO> {
+        val union=comunidadService.unirseComunidadPorCodigo(participantesComunidadDTO, codigo)
+        return ResponseEntity(union, HttpStatus.CREATED)
+    }
+
+
     @DeleteMapping("/eliminarComunidad/{url}")
     fun eliminarComunidad(
         httpRequest: HttpServletRequest,
