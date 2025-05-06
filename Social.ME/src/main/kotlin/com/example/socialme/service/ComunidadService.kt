@@ -499,6 +499,10 @@ class ComunidadService {
         val comunidad=comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
             .orElseThrow { BadRequestException("La comunidad no existe") }
 
+        if (comunidad.codigoUnion==null){
+            throw BadRequestException("La comunidad ${comunidad.url} es publica")
+        }
+
         usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
 
