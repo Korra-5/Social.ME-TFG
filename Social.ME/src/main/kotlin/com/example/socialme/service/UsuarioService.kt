@@ -154,10 +154,6 @@ class UsuarioService : UserDetailsService {
     }
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
-        // Validar que las contraseñas coincidan
-        if (usuarioUpdateDTO.password != usuarioUpdateDTO.passwordRepeat) {
-            throw BadRequestException("Las contraseñas no coinciden")
-        }
 
         // Buscar el usuario existente usando currentUsername
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
@@ -215,9 +211,6 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = nuevaFotoPerfilId
             direccion = usuarioUpdateDTO.direccion
 
-            if (usuarioUpdateDTO.password.isNotBlank()) {
-                password = passwordEncoder.encode(usuarioUpdateDTO.password)
-            }
         }
 
         val usuarioActualizado = usuarioRepository.save(usuario)
