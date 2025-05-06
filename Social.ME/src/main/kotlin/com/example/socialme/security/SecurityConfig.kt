@@ -69,7 +69,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
                 auth.requestMatchers("/Usuario/verTodosLosUsuarios").authenticated()
-                auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}")
+                auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}").authenticated()
 
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
