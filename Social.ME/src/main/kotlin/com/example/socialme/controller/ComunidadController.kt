@@ -39,7 +39,7 @@ class ComunidadController {
         return ResponseEntity(union, HttpStatus.CREATED)
     }
 
-    @PostMapping("/unirseComunidad/{codigo}")
+    @PostMapping("/unirseComunidadPorCodigo/{codigo}")
     fun unirseComunidadPorCodigo(
         httpRequest: HttpServletRequest,
         @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO,
