@@ -445,7 +445,6 @@ class UsuarioService : UserDetailsService {
     // Método para verificar un código ingresado por el usuario
     fun verificarCodigo(email: String, codigo: String): Boolean {
         val codigoAlmacenado = verificacionCodigos[email]
-        print(codigo)
         return codigoAlmacenado == codigo
     }
 
