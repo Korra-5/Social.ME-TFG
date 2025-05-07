@@ -373,8 +373,8 @@ class UsuarioService : UserDetailsService {
         props.put("mail.smtp.port", "587")
 
         // Credenciales de tu cuenta de correo (desde donde enviarás la verificación)
-        val username = "tu_correo@gmail.com" // Reemplaza con tu correo
-        val password = "tu_contraseña_o_token" // Reemplaza con tu contraseña o token de aplicación
+        val username = System.getenv("EMAIL_USERNAME") ?: ""
+        val password = System.getenv("EMAIL_PASSWORD") ?: ""
 
         try {
             // Crear sesión con autenticación
