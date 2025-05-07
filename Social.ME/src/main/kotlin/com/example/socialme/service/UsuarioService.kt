@@ -61,10 +61,14 @@ class UsuarioService : UserDetailsService {
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
+
+
         // Primero, verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
         }
+
+
 
         // Procesar la foto de perfil si se proporciona en Base64;
         // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
@@ -182,6 +186,8 @@ class UsuarioService : UserDetailsService {
                 throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
             }
         }
+
+
 
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId: String =
@@ -364,6 +370,7 @@ class UsuarioService : UserDetailsService {
         }
     }
 
+
     fun verificarGmail(gmail: String): Boolean {
         // Configuración para el servidor de correo (usando Gmail como ejemplo)
         val props = Properties()
@@ -438,6 +445,9 @@ class UsuarioService : UserDetailsService {
     // Método para verificar un código ingresado por el usuario
     fun verificarCodigo(email: String, codigo: String): Boolean {
         val codigoAlmacenado = verificacionCodigos[email]
+        print(codigo)
         return codigoAlmacenado == codigo
     }
+
+
 }
