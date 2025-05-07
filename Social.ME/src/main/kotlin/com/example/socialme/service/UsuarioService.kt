@@ -19,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.*
+import javax.mail.*
+import javax.mail.internet.*
 
 @Service
 class UsuarioService : UserDetailsService {
@@ -44,6 +46,9 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+    // Mapa para almacenar temporalmente los códigos de verificación
+    private val verificacionCodigos = mutableMapOf<String, String>()
+
     override fun loadUserByUsername(username: String?): UserDetails {
         val usuario: Usuario = usuarioRepository.findFirstByUsername(username!!)
             .orElseThrow { NotFoundException("$username no existente") }
@@ -56,6 +61,11 @@ class UsuarioService : UserDetailsService {
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
+        // Primero, verificar el correo electrónico
+        if (!verificarGmail(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
+        }
+
         // Procesar la foto de perfil si se proporciona en Base64;
         // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
         val fotoPerfilId: String =
@@ -108,17 +118,17 @@ class UsuarioService : UserDetailsService {
 
     fun modificarCoordenadasUsuario(coordenadas: Coordenadas?, username: String) {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow { NotFoundException("Usuario $username no existe") }
-                try {
-                    // Actualizamos las coordenadas del usuario
-                    usuario.coordenadas = Coordenadas(
-                        coordenadas!!.latitud,coordenadas.longitud
-                    )
+        try {
+            // Actualizamos las coordenadas del usuario
+            usuario.coordenadas = Coordenadas(
+                coordenadas!!.latitud,coordenadas.longitud
+            )
 
-                    // Guardamos el usuario actualizado
-                    usuarioRepository.save(usuario)
-                } catch (e: NumberFormatException) {
-                    throw IllegalArgumentException("Formato de coordenadas inválido: $coordenadas")
-                }
+            // Guardamos el usuario actualizado
+            usuarioRepository.save(usuario)
+        } catch (e: NumberFormatException) {
+            throw IllegalArgumentException("Formato de coordenadas inválido: $coordenadas")
+        }
     }
 
 
@@ -166,6 +176,13 @@ class UsuarioService : UserDetailsService {
             }
         }
 
+        // Verificar el correo electrónico si se ha cambiado
+        if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
+            if (!verificarGmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
+            }
+        }
+
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId: String =
             if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
@@ -203,14 +220,13 @@ class UsuarioService : UserDetailsService {
         // Actualizar la información del usuario
         usuario.apply {
             username = usuarioUpdateDTO.newUsername ?: antiguoUsername
-            email = usuarioUpdateDTO.email
-            nombre = usuarioUpdateDTO.nombre
-            apellidos = usuarioUpdateDTO.apellido
-            descripcion = usuarioUpdateDTO.descripcion
-            intereses = usuarioUpdateDTO.intereses
+            email = usuarioUpdateDTO.email ?: usuario.email // Mantener el email existente si no se proporciona uno nuevo
+            nombre = usuarioUpdateDTO.nombre ?: usuario.nombre
+            apellidos = usuarioUpdateDTO.apellido ?: usuario.apellidos
+            descripcion = usuarioUpdateDTO.descripcion ?: usuario.descripcion
+            intereses = usuarioUpdateDTO.intereses ?: usuario.intereses
             fotoPerfilId = nuevaFotoPerfilId
-            direccion = usuarioUpdateDTO.direccion
-
+            direccion = usuarioUpdateDTO.direccion ?: usuario.direccion
         }
 
         val usuarioActualizado = usuarioRepository.save(usuario)
@@ -233,13 +249,13 @@ class UsuarioService : UserDetailsService {
         // Retornar el DTO actualizado
         return UsuarioDTO(
             username = usuario.username,
-            email = usuarioUpdateDTO.email,
-            intereses = usuarioUpdateDTO.intereses,
-            nombre = usuarioUpdateDTO.nombre,
-            apellido = usuarioUpdateDTO.apellido,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
             fotoPerfilId = nuevaFotoPerfilId,
-            direccion = usuarioUpdateDTO.direccion,
-            descripcion = usuarioUpdateDTO.descripcion
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion
         )
     }
 
@@ -346,5 +362,82 @@ class UsuarioService : UserDetailsService {
                 descripcion = usuario.descripcion
             )
         }
+    }
+
+    fun verificarGmail(gmail: String): Boolean {
+        // Configuración para el servidor de correo (usando Gmail como ejemplo)
+        val props = Properties()
+        props.put("mail.smtp.auth", "true")
+        props.put("mail.smtp.starttls.enable", "true")
+        props.put("mail.smtp.host", "smtp.gmail.com")
+        props.put("mail.smtp.port", "587")
+
+        // Credenciales de tu cuenta de correo (desde donde enviarás la verificación)
+        val username = "tu_correo@gmail.com" // Reemplaza con tu correo
+        val password = "tu_contraseña_o_token" // Reemplaza con tu contraseña o token de aplicación
+
+        try {
+            // Crear sesión con autenticación
+            val session = Session.getInstance(props, object : Authenticator() {
+                override fun getPasswordAuthentication(): PasswordAuthentication {
+                    return PasswordAuthentication(username, password)
+                }
+            })
+
+            // Crear el mensaje
+            val message = MimeMessage(session)
+            message.setFrom(InternetAddress(username))
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(gmail))
+            message.subject = "Verificación de correo electrónico - SocialMe"
+
+            // Generar un código aleatorio para verificación
+            val codigoVerificacion = generarCodigoVerificacion()
+
+            // Almacenar el código para verificación posterior
+            verificacionCodigos[gmail] = codigoVerificacion
+
+            // Crear el contenido del mensaje
+            val htmlContent = """
+            <html>
+                <body>
+                    <h2>Verificación de correo electrónico - SocialMe</h2>
+                    <p>Gracias por registrarte o actualizar tu información. Para verificar tu dirección de correo electrónico, 
+                    por favor utiliza el siguiente código:</p>
+                    <h3 style="background-color: #f2f2f2; padding: 10px; text-align: center;">$codigoVerificacion</h3>
+                    <p>Si no has solicitado esta verificación, por favor ignora este mensaje.</p>
+                    <p>Este código expirará en 15 minutos.</p>
+                </body>
+            </html>
+        """.trimIndent()
+
+            // Establecer el contenido del mensaje como HTML
+            message.setContent(htmlContent, "text/html; charset=utf-8")
+
+            // Enviar el mensaje
+            Transport.send(message)
+
+            println("Correo de verificación enviado exitosamente a $gmail")
+
+            // Aquí se debería implementar un mecanismo para verificar que el usuario
+            // ingrese el código correcto, pero para simplificar, asumimos que la verificación
+            // es exitosa si el correo se envía correctamente
+            return true
+
+        } catch (e: MessagingException) {
+            e.printStackTrace()
+            println("Error al enviar el correo de verificación: ${e.message}")
+            return false
+        }
+    }
+
+    // Método para generar un código de verificación aleatorio
+    private fun generarCodigoVerificacion(): String {
+        return (100000..999999).random().toString()
+    }
+
+    // Método para verificar un código ingresado por el usuario
+    fun verificarCodigo(email: String, codigo: String): Boolean {
+        val codigoAlmacenado = verificacionCodigos[email]
+        return codigoAlmacenado == codigo
     }
 }

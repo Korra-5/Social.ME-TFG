@@ -70,7 +70,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
                 auth.requestMatchers("/Usuario/verTodosLosUsuarios").authenticated()
                 auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}").authenticated()
-
+                auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
+                auth.requestMatchers("/Usuarios/verificarCodigo").permitAll()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }

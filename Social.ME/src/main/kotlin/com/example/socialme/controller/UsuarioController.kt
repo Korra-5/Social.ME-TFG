@@ -5,6 +5,7 @@ import com.example.socialme.dto.UsuarioDTO
 import com.example.socialme.dto.UsuarioRegisterDTO
 import com.example.socialme.dto.UsuarioUpdateDTO
 import com.example.socialme.error.exception.UnauthorizedException
+import com.example.socialme.model.VerificacionDTO
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -100,6 +101,19 @@ class UsuarioController {
     ): ResponseEntity<List<UsuarioDTO>> {
         return ResponseEntity(usuarioService.verTodosLosUsuarios(),HttpStatus.OK)
 
+    }
+
+    // Añadir a tu UsuarioController.kt en el backend
+    @PostMapping("/verificarCodigo")
+    fun verificarCodigo(@RequestBody verificacionDTO: VerificacionDTO): ResponseEntity<Boolean> {
+        val resultado = usuarioService.verificarCodigo(verificacionDTO.email, verificacionDTO.codigo)
+        return ResponseEntity.ok(resultado)
+    }
+
+    @GetMapping("/reenviarCodigo/{email}")
+    fun reenviarCodigo(@PathVariable email: String): ResponseEntity<Boolean> {
+        val resultado = usuarioService.verificarGmail(email)
+        return ResponseEntity.ok(resultado)
     }
 
 }
