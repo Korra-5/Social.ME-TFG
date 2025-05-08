@@ -80,7 +80,7 @@ class ActividadController {
         @PathVariable distanciaKm: Float,
         @PathVariable username: String
     ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verActividadesPublicas(distanciaKm, username), HttpStatus.OK)
+        return  ResponseEntity(actividadService.verActividadesPublicasEnZona(distanciaKm, username), HttpStatus.OK)
     }
 
     @GetMapping("/verTodasActividadesPublicas")

@@ -140,7 +140,7 @@ class ComunidadService {
      * Devuelve todas las comunidades que no son privadas y que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las comunidades no privadas
      */
-    fun verTodasComunidades(distancia: Float? = null, username: String) : List<ComunidadDTO> {
+    fun verComunidadesPublicasEnZona(distancia: Float? = null, username: String) : List<ComunidadDTO> {
         val todasLasComunidades = comunidadRepository.findAll()
         val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")

@@ -304,7 +304,7 @@ class ActividadService {
      * Devuelve todas las actividades públicas que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
      */
-    fun verActividadesPublicas(distancia: Float? = null, username:String): List<ActividadDTO> {
+    fun verActividadesPublicasEnZona(distancia: Float? = null, username:String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
         val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")

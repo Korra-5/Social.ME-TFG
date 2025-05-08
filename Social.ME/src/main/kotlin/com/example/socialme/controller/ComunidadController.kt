@@ -84,13 +84,13 @@ class ComunidadController {
         return  ResponseEntity(comunidadService.verTodasComunidadesPublicas(),HttpStatus.OK)
     }
 
-    @GetMapping("/verComunidadesPublicas/{distanciaKm}/{username}")
-    fun verComunidadesPublicas(
+    @GetMapping("/verComunidadesPublicasEnZona/{distanciaKm}/{username}")
+    fun verComunidadesPublicasEnZona(
         httpRequest: HttpServletRequest,
         @PathVariable distanciaKm: Float,
         @PathVariable username: String
     ): ResponseEntity<List<ComunidadDTO>> {
-        return  ResponseEntity(comunidadService.verTodasComunidades(distanciaKm, username),HttpStatus.OK)
+        return  ResponseEntity(comunidadService.verComunidadesPublicasEnZona(distanciaKm, username),HttpStatus.OK)
     }
 
     @PutMapping("/modificarComunidad")
