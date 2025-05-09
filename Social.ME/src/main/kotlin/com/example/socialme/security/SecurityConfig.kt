@@ -74,6 +74,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}").authenticated()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
+                auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
+                auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
