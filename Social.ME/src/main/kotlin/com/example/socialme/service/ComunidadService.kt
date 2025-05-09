@@ -55,6 +55,7 @@ class ComunidadService {
             throw NotFoundException("Usuario no encontrado")
         }
 
+
         // Handle profile photo upload to GridFS
         val fotoPerfilId = if (comunidadCreateDTO.fotoPerfilBase64 != null) {
             gridFSService.storeFileFromBase64(
@@ -139,18 +140,27 @@ class ComunidadService {
     /**
      * Devuelve todas las comunidades que no son privadas y que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las comunidades no privadas
+     * Filtra las comunidades a las que el usuario ya está unido
      */
     fun verComunidadesPublicasEnZona(distancia: Float? = null, username: String) : List<ComunidadDTO> {
         val todasLasComunidades = comunidadRepository.findAll()
-        val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
+        val coordenadasUser = usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")
         }.coordenadas
 
+        // Obtener las comunidades a las que el usuario ya está unido
+        val comunidadesDelUsuario = participantesComunidadRepository.findByUsername(username)
+            .map { it.comunidad }
+            .toSet()
+
         return todasLasComunidades
-            .filter { !it.privada }
+            .filter { !it.privada } // Solo comunidades públicas
             .filter { comunidad ->
-                // Si no hay distancia o coordenadas especificadas, o la comunidad no tiene coordenadas,
-                // incluimos la comunidad en los resultados
+                // Filtrar aquellas a las que el usuario no esté unido ya
+                !comunidadesDelUsuario.contains(comunidad.url)
+            }
+            .filter { comunidad ->
+                // Verificar la distancia
                 verificarDistancia(comunidad.coordenadas, coordenadasUser, distancia)
             }
             .map { comunidad ->
@@ -247,9 +257,14 @@ class ComunidadService {
             println("Error deleting GridFS files: ${e.message}")
         }
 
-        comunidadRepository.delete(comunidad)
+        // Eliminar primero todos los participantes de la comunidad
         participantesComunidadRepository.deleteByComunidad(comunidad.url)
+
+        // Luego eliminar las actividades asociadas a la comunidad
         actividadesComunidadRepository.deleteByComunidad(comunidad.url)
+
+        // Finalmente eliminar la comunidad
+        comunidadRepository.delete(comunidad)
 
         return comunidadDto
     }
@@ -279,6 +294,13 @@ class ComunidadService {
         if (comunidadUpdateDTO.newUrl != comunidadUpdateDTO.currentURL) {
             comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.newUrl).ifPresent {
                 throw BadRequestException("Ya existe una comunidad con la URL ${comunidadUpdateDTO.newUrl}, prueba con otra URL")
+            }
+        }
+
+        // Verificar que los administradores existan
+        comunidadUpdateDTO.administradores?.forEach { admin ->
+            if (!usuarioRepository.existsByUsername(admin)) {
+                throw NotFoundException("Administrador con username '$admin' no encontrado")
             }
         }
 

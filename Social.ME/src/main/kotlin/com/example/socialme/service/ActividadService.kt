@@ -45,6 +45,11 @@ class ActividadService {
             throw BadRequestException("La descrpicion no puede superar los 2000 caracteres")
         }
 
+        // Verificar que la fecha de inicio sea anterior a la fecha de finalización
+        if (actividadCreateDTO.fechaInicio.after(actividadCreateDTO.fechaFinalizacion)) {
+            throw BadRequestException("La fecha de inicio debe ser anterior a la fecha de finalización")
+        }
+
         usuarioRepository.findFirstByUsername(actividadCreateDTO.creador).orElseThrow {
             throw NotFoundException("Este usuario no existe")
         }
@@ -142,9 +147,13 @@ class ActividadService {
             lugar = actividad.lugar,
         )
 
-        // Remove related documents
+        // Eliminar primero a todos los participantes de la actividad
         participantesActividadRepository.deleteByIdActividad(id)
+
+        // Después eliminar la referencia en la comunidad
         actividadesComunidadRepository.deleteByIdActividad(id)
+
+        // Finalmente eliminar la actividad
         actividadRepository.delete(actividad)
 
         return actividadDTO
@@ -155,6 +164,11 @@ class ActividadService {
         // Buscar la actividad existente
         val actividad = actividadRepository.findActividadBy_id(actividadUpdateDTO._id)
             .orElseThrow { NotFoundException("Esta actividad no existe") }
+
+        // Verificar que la fecha de inicio sea anterior a la fecha de finalización
+        if (actividadUpdateDTO.fechaInicio.after(actividadUpdateDTO.fechaFinalizacion)) {
+            throw BadRequestException("La fecha de inicio debe ser anterior a la fecha de finalización")
+        }
 
         // Guardar el nombre antiguo para comparación
         val nombreAntiguo = actividad.nombre
@@ -198,7 +212,7 @@ class ActividadService {
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
             coordenadas= actividad.coordenadas
             lugar=actividad.lugar
-                    }
+        }
 
         // Guardar la actividad actualizada
         val actividadActualizada = actividadRepository.save(actividad)
@@ -238,7 +252,7 @@ class ActividadService {
         )
     }
 
-    // Also update verActividadPorComunidad to use the new fotosCarruselIds field
+    // Also update verActividadNoParticipaUsuario to use the new fotosCarruselIds field
     fun verActividadNoParticipaUsuario(username: String): List<ActividadDTO> {
         val participaciones = participantesComunidadRepository.findComunidadByUsername(username).orElseThrow {
             throw BadRequestException("Usuario no existe")
@@ -303,18 +317,27 @@ class ActividadService {
     /**
      * Devuelve todas las actividades públicas que están dentro del radio de distancia especificado
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
+     * Filtra las actividades en las que el usuario ya está inscrito
      */
     fun verActividadesPublicasEnZona(distancia: Float? = null, username:String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
-        val coordenadasUser=usuarioRepository.findFirstByUsername(username).orElseThrow {
+        val coordenadasUser = usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario no existe")
         }.coordenadas
 
+        // Obtener las actividades a las que el usuario ya está inscrito
+        val actividadesDelUsuario = participantesActividadRepository.findByUsername(username)
+            .map { it.idActividad }
+            .toSet()
+
         return todasLasActividades
-            .filter { !it.privada }
+            .filter { !it.privada } // Solo actividades públicas
             .filter { actividad ->
-                // Si no hay distancia o coordenadas especificadas, o la actividad no tiene coordenadas,
-                // incluimos la actividad en los resultados
+                // Filtrar aquellas a las que el usuario no esté unido ya
+                !actividadesDelUsuario.contains(actividad._id)
+            }
+            .filter { actividad ->
+                // Verificar la distancia
                 verificarDistancia(actividad.coordenadas, coordenadasUser, distancia)
             }
             .map { actividad ->
@@ -503,5 +526,5 @@ class ActividadService {
                     lugar = actividad.lugar
                 )
             }
-        }
     }
+}
