@@ -70,7 +70,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verUsuariosPorActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
-                auth.requestMatchers("/Usuario/verTodosLosUsuarios").authenticated()
+                auth.requestMatchers("/Usuario/verTodosLosUsuarios/{username}").authenticated()
                 auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}").authenticated()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()

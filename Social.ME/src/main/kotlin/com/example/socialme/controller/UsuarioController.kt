@@ -95,15 +95,15 @@ class UsuarioController {
         return ResponseEntity(usuarioService.verUsuariosPorActividad(actividadId), HttpStatus.OK)
     }
 
-    @GetMapping("/verTodosLosUsuarios")
+    @GetMapping("/verTodosLosUsuarios/{username}")
     fun verTodosLosUsuarios(
         httpRequest: HttpServletRequest,
+        @PathVariable username: String
     ): ResponseEntity<List<UsuarioDTO>> {
-        return ResponseEntity(usuarioService.verTodosLosUsuarios(),HttpStatus.OK)
+        return ResponseEntity(usuarioService.verTodosLosUsuarios(username),HttpStatus.OK)
 
     }
 
-    // Añadir a tu UsuarioController.kt en el backend
     @PostMapping("/verificarCodigo")
     fun verificarCodigo(@RequestBody verificacionDTO: VerificacionDTO): ResponseEntity<Boolean> {
         val resultado = usuarioService.verificarCodigo(verificacionDTO.email, verificacionDTO.codigo)

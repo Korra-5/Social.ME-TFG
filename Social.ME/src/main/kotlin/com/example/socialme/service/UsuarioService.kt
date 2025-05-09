@@ -141,7 +141,16 @@ class UsuarioService : UserDetailsService {
             NotFoundException("Usuario $username no encontrado")
         }
 
-        // Before the deletion attempt, store the ID in a local variable
+        // Verificar si el usuario es creador de alguna comunidad
+        val comunidadesCreadas = comunidadRepository.findAll().filter { it.creador == username }
+
+        if (comunidadesCreadas.isNotEmpty()) {
+            // El usuario es creador de al menos una comunidad
+            val nombresComunidades = comunidadesCreadas.joinToString(", ") { it.nombre }
+            throw BadRequestException("No se puede eliminar la cuenta mientras seas el creador de las siguientes comunidades: $nombresComunidades. Por favor, elimina o cede la propiedad de estas comunidades primero.")
+        }
+
+        // Si no es creador de ninguna comunidad, proceder con la eliminación
         val fotoId = usuario.fotoPerfilId
         try {
             if (!fotoId.isNullOrBlank()) {
@@ -355,19 +364,28 @@ class UsuarioService : UserDetailsService {
         return listaUsuarios
     }
 
-    fun verTodosLosUsuarios(): List<UsuarioDTO> {
-        return usuarioRepository.findAll().map { usuario ->
-            UsuarioDTO(
-                username = usuario.username,
-                email = usuario.email,
-                intereses = usuario.intereses,
-                nombre = usuario.nombre,
-                apellido = usuario.apellidos,
-                fotoPerfilId = usuario.fotoPerfilId,
-                direccion = usuario.direccion,
-                descripcion = usuario.descripcion
-            )
-        }
+    fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
+        return usuarioRepository.findAll()
+            .filter { usuario ->
+                // Excluir al usuario actual
+                usuario.username != username
+            }
+            .sortedBy { usuario ->
+                // Ordenar por nombre, luego por apellido para casos con mismo nombre
+                "${usuario.nombre.lowercase()}${usuario.apellidos.lowercase()}"
+            }
+            .map { usuario ->
+                UsuarioDTO(
+                    username = usuario.username,
+                    email = usuario.email,
+                    intereses = usuario.intereses,
+                    nombre = usuario.nombre,
+                    apellido = usuario.apellidos,
+                    fotoPerfilId = usuario.fotoPerfilId,
+                    direccion = usuario.direccion,
+                    descripcion = usuario.descripcion
+                )
+            }
     }
 
 
