@@ -137,18 +137,21 @@ class ComunidadService {
         )
     }
 
-    /**
-     * Devuelve todas las comunidades que no son privadas y que están dentro del radio de distancia especificado
-     * Si no se especifica distancia o coordenadas del usuario, devuelve todas las comunidades no privadas
-     * Filtra las comunidades a las que el usuario ya está unido
-     */
-    fun verComunidadesPublicasEnZona(distancia: Float? = null, username: String) : List<ComunidadDTO> {
+    fun verComunidadesPublicasEnZona(
+        distancia: Float? = null,
+        username: String
+    ): List<ComunidadDTO> {
+        // Obtenemos todas las comunidades
         val todasLasComunidades = comunidadRepository.findAll()
-        val coordenadasUser = usuarioRepository.findFirstByUsername(username).orElseThrow {
-            throw NotFoundException("Usuario no existe")
-        }.coordenadas
 
-        // Obtener las comunidades a las que el usuario ya está unido
+        // Obtenemos el usuario para acceder a sus coordenadas e intereses
+        val usuario = usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { throw NotFoundException("Usuario no existe") }
+
+        val coordenadasUser = usuario.coordenadas
+        val interesesUser = usuario.intereses
+
+        // Obtenemos las comunidades a las que el usuario ya está unido
         val comunidadesDelUsuario = participantesComunidadRepository.findByUsername(username)
             .map { it.comunidad }
             .toSet()
@@ -163,6 +166,7 @@ class ComunidadService {
                 // Verificar la distancia
                 verificarDistancia(comunidad.coordenadas, coordenadasUser, distancia)
             }
+            // Ya no filtramos por intereses para mostrar todas
             .map { comunidad ->
                 ComunidadDTO(
                     url = comunidad.url,
@@ -180,6 +184,13 @@ class ComunidadService {
                     codigoUnion = comunidad.codigoUnion
                 )
             }
+            .sortedWith(compareByDescending<ComunidadDTO> { comunidadDTO ->
+                // Primera ordenación: por número de intereses coincidentes
+                comunidadDTO.intereses.count { interes -> interesesUser.contains(interes) }
+            }.thenByDescending {
+                // Segunda ordenación: por fecha de creación (las más recientes primero)
+                it.fechaCreacion
+            })
     }
 
     /**

@@ -319,16 +319,30 @@ class ActividadService {
      * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
      * Filtra las actividades en las que el usuario ya está inscrito
      */
-    fun verActividadesPublicasEnZona(distancia: Float? = null, username:String): List<ActividadDTO> {
+    fun verActividadesPublicasEnZona(
+        distancia: Float? = null,
+        username: String
+    ): List<ActividadDTO> {
+        // Obtenemos todas las actividades
         val todasLasActividades = actividadRepository.findAll()
-        val coordenadasUser = usuarioRepository.findFirstByUsername(username).orElseThrow {
-            throw NotFoundException("Usuario no existe")
-        }.coordenadas
 
-        // Obtener las actividades a las que el usuario ya está inscrito
+        // Obtenemos el usuario para acceder a sus coordenadas e intereses
+        val usuario = usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { throw NotFoundException("Usuario no existe") }
+
+        val coordenadasUser = usuario.coordenadas
+        val interesesUser = usuario.intereses
+
+        // Obtenemos las actividades a las que el usuario ya está inscrito
         val actividadesDelUsuario = participantesActividadRepository.findByUsername(username)
             .map { it.idActividad }
             .toSet()
+
+        // Crear un mapa que asocie cada actividad con su comunidad correspondiente
+        // para no tener que buscar la comunidad múltiples veces
+        val actividadesComunidades = todasLasActividades.associateWith { actividad ->
+            comunidadRepository.findById(actividad.comunidad).orElse(null)
+        }
 
         return todasLasActividades
             .filter { !it.privada } // Solo actividades públicas
@@ -340,8 +354,10 @@ class ActividadService {
                 // Verificar la distancia
                 verificarDistancia(actividad.coordenadas, coordenadasUser, distancia)
             }
+            // Ya no filtramos por intereses para mostrar todas
             .map { actividad ->
                 ActividadDTO(
+                    _id = actividad._id,
                     nombre = actividad.nombre,
                     descripcion = actividad.descripcion,
                     privada = actividad.privada,
@@ -349,11 +365,19 @@ class ActividadService {
                     fotosCarruselIds = actividad.fotosCarruselIds,
                     fechaFinalizacion = actividad.fechaFinalizacion,
                     fechaInicio = actividad.fechaInicio,
-                    _id = actividad._id,
                     coordenadas = actividad.coordenadas,
                     lugar = actividad.lugar
                 )
             }
+            .sortedWith(compareByDescending<ActividadDTO> { actividadDTO ->
+                // Primera ordenación: por número de intereses coincidentes
+                // Buscamos la comunidad asociada a esta actividad
+                val comunidadIntereses = actividadesComunidades[todasLasActividades.find { it._id == actividadDTO._id }]?.intereses ?: emptyList()
+                comunidadIntereses.count { interes -> interesesUser.contains(interes) }
+            }.thenByDescending {
+                // Segunda ordenación: por fecha de inicio (las más próximas primero)
+                it.fechaInicio
+            })
     }
 
     private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
