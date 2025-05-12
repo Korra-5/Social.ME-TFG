@@ -77,6 +77,14 @@ class ComunidadController {
     }
 
 
+    @GetMapping("/verComunidadesPorUsuarioCreador/{username}")
+    fun verComunidadesPorUsuarioCreador(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<List<ComunidadDTO>> {
+        return  ResponseEntity(comunidadService.verComunidadesPorUsuarioCreador(username),HttpStatus.OK)
+    }
+
     @GetMapping("/verTodasComunidadesPublicas")
     fun verTodasComunidadesPublicas(
         httpRequest: HttpServletRequest,

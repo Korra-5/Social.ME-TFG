@@ -2,6 +2,7 @@ package com.example.socialme.service
 
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.Coordenadas
@@ -53,6 +54,11 @@ class ComunidadService {
 
         if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
             throw NotFoundException("Usuario no encontrado")
+        }
+
+        val comunidadesCreadas = comunidadRepository.countByCreador(comunidadCreateDTO.creador)
+        if (comunidadesCreadas >= 3) {
+            throw ForbiddenException("Has alcanzado el límite máximo de 3 comunidades creadas")
         }
 
 
@@ -583,5 +589,38 @@ class ComunidadService {
         } while (codigoExistente) // Repetir si el código ya existe
 
         return codigoGenerado
+    }
+
+    fun verComunidadesPorUsuarioCreador(username: String): List<ComunidadDTO> {
+        // Verificar que el usuario existe
+        if (!usuarioRepository.existsByUsername(username)) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        // Buscar todas las comunidades donde el usuario es creador
+        val comunidades = comunidadRepository.findByCreador(username)
+
+        // Si no es creador de ninguna comunidad, devolver lista vacía
+        if (comunidades.isEmpty()) {
+            return emptyList()
+        }
+
+        return comunidades.map { comunidad ->
+            ComunidadDTO(
+                url = comunidad.url,
+                nombre = comunidad.nombre,
+                comunidadGlobal = comunidad.comunidadGlobal,
+                creador = comunidad.creador,
+                intereses = comunidad.intereses,
+                fotoCarruselIds = comunidad.fotoCarruselIds,
+                fotoPerfilId = comunidad.fotoPerfilId,
+                descripcion = comunidad.descripcion,
+                fechaCreacion = comunidad.fechaCreacion,
+                administradores = comunidad.administradores,
+                privada = comunidad.privada,
+                coordenadas = comunidad.coordenadas,
+                codigoUnion = comunidad.codigoUnion
+            )
+        }
     }
 }
