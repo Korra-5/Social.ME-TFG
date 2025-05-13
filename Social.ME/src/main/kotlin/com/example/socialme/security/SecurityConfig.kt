@@ -77,6 +77,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
                 auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verificarPremium").authenticated()
+                auth.requestMatchers("/Usuario/actualizarPremium/{username}").authenticated()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }

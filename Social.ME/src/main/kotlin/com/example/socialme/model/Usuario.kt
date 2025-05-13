@@ -19,5 +19,6 @@ data class Usuario(
     var fotoPerfilId: String?,
     var direccion: Direccion?,
     val fechaUnion: Date,
-    var coordenadas: Coordenadas?  // Añadimos coordenadas opcionales
+    var coordenadas: Coordenadas?,
+    var premium:Boolean
 )

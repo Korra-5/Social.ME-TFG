@@ -101,7 +101,8 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = fotoPerfilId, // Aquí se garantiza que no es null
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
-            coordenadas = null
+            coordenadas = null,
+            premium =false
         )
 
         // Insertar el usuario en la base de datos
@@ -117,6 +118,7 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
             fotoPerfilId = fotoPerfilId,
+            premium = usuario.premium
         )
     }
 
@@ -169,7 +171,8 @@ class UsuarioService : UserDetailsService {
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
-            fotoPerfilId = usuario.fotoPerfilId ?: ""
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            premium = usuario.premium
         )
 
         usuarioRepository.delete(usuario)
@@ -270,7 +273,8 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             fotoPerfilId = nuevaFotoPerfilId,
             direccion = usuario.direccion,
-            descripcion = usuario.descripcion
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
         )
     }
 
@@ -287,6 +291,7 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = usuario.fotoPerfilId,
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
+            premium = usuario.premium
         )
     }
 
@@ -318,7 +323,8 @@ class UsuarioService : UserDetailsService {
                     apellido = usuario.apellidos,
                     fotoPerfilId = usuario.fotoPerfilId,
                     direccion = usuario.direccion,
-                    descripcion = usuario.descripcion
+                    descripcion = usuario.descripcion,
+                    premium = usuario.premium
                 )
             )
         }
@@ -355,7 +361,8 @@ class UsuarioService : UserDetailsService {
                     apellido = usuario.apellidos,
                     fotoPerfilId = usuario.fotoPerfilId,
                     direccion = usuario.direccion,
-                    descripcion = usuario.descripcion
+                    descripcion = usuario.descripcion,
+                    premium = usuario.premium
                 )
             )
         }
@@ -383,7 +390,8 @@ class UsuarioService : UserDetailsService {
                     apellido = usuario.apellidos,
                     fotoPerfilId = usuario.fotoPerfilId,
                     direccion = usuario.direccion,
-                    descripcion = usuario.descripcion
+                    descripcion = usuario.descripcion,
+                    premium = usuario.premium
                 )
             }
     }
@@ -466,5 +474,26 @@ class UsuarioService : UserDetailsService {
         return codigoAlmacenado == codigo
     }
 
+    // Agregar este método en UsuarioService
+    fun actualizarPremium(username: String): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario $username no encontrado")
+        }
+
+        usuario.premium = true
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
 
 }

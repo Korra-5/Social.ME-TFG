@@ -14,4 +14,5 @@ data class UsuarioDTO(
     val fotoPerfilId: String?,
     val direccion: Direccion?,
     val descripcion: String,
+    val premium:Boolean
 )
