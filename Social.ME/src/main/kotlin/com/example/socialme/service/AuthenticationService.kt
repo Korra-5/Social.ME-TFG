@@ -3,6 +3,7 @@ package com.example.socialme.service
 import com.example.socialme.dto.LoginUsuarioDTO
 import com.example.socialme.error.exception.UnauthorizedException
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.context.annotation.Lazy
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service
 class AuthenticationService {
 
     @Autowired
+    @Lazy
     private lateinit var authenticationManager: AuthenticationManager
 
     @Autowired

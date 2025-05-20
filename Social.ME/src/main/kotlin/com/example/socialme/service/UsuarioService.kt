@@ -32,9 +32,6 @@ class UsuarioService : UserDetailsService {
     private lateinit var externalAPIService: ExternalAPIService
 
     @Autowired
-    private lateinit var denunciaRepository: DenunciaRepository
-
-    @Autowired
     private lateinit var comunidadService: ComunidadService
 
     @Autowired
