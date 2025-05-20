@@ -22,12 +22,6 @@ import org.springframework.web.bind.annotation.*
 class UsuarioController {
 
     @Autowired
-    private lateinit var authenticationManager: AuthenticationManager
-
-    @Autowired
-    private lateinit var tokenService: TokenService
-
-    @Autowired
     private lateinit var usuarioService: UsuarioService
 
     @Autowired

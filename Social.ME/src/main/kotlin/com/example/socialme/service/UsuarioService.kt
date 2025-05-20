@@ -5,12 +5,7 @@ import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.error.exception.UnauthorizedException
-import com.example.socialme.model.Bloqueo
-import com.example.socialme.model.Coordenadas
-import com.example.socialme.model.PaymentVerificationRequest
-import com.example.socialme.model.SolicitudAmistad
-import com.example.socialme.model.Usuario
-import com.example.socialme.model.VerificacionDTO
+import com.example.socialme.model.*
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -34,10 +29,7 @@ import javax.mail.internet.*
 class UsuarioService : UserDetailsService {
 
     @Autowired
-    private lateinit var authenticationManager: AuthenticationManager
-
-    @Autowired
-    private lateinit var tokenService: TokenService
+    private lateinit var externalAPIService: ExternalAPIService
 
     @Autowired
     private lateinit var denunciaRepository: DenunciaRepository
@@ -61,7 +53,7 @@ class UsuarioService : UserDetailsService {
     private lateinit var passwordEncoder: PasswordEncoder
 
     @Autowired
-    private lateinit var externalApiService: ExternalAPIService
+    private lateinit var authenticationService: AuthenticationService
 
     @Autowired
     private lateinit var participantesActividadRepository: ParticipantesActividadRepository
@@ -93,6 +85,10 @@ class UsuarioService : UserDetailsService {
         // Primero, verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
+        }
+
+        if (usuarioInsertadoDTO.direccion != null) {
+            verificarDireccion(usuarioInsertadoDTO.direccion)
         }
 
         // Procesar la foto de perfil si se proporciona en Base64;
@@ -148,18 +144,9 @@ class UsuarioService : UserDetailsService {
     }
 
     fun login(usuario: LoginUsuarioDTO): String {
-        val authentication: Authentication
-        try {
-            authentication = authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken(usuario.username, usuario.password)
-            )
-        } catch (e: AuthenticationException) {
-            throw UnauthorizedException("Credenciales incorrectas")
-        }
-
-        // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
-        // PASAMOS A GENERAR EL TOKEN
-        return tokenService.generarToken(authentication)
+        // Usar el nuevo servicio de autenticación
+        val token = authenticationService.login(usuario)
+        return token
     }
 
     fun modificarCoordenadasUsuario(coordenadas: Coordenadas?, username: String) {
@@ -256,10 +243,8 @@ class UsuarioService : UserDetailsService {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
-        // Si se intenta modificar a un admin y el usuario actual no es admin, denegar permiso
-        if (usuario.roles == "ADMIN" && userActual.roles != "ADMIN") {
-            throw ForbiddenException("No tienes permisos para modificar a un administrador")
-        }
+        verificarDireccion(usuarioUpdateDTO.direccion)
+
 
         if (usuarioUpdateDTO.newUsername != null) {
             usuarioRepository.findFirstByUsername(usuarioUpdateDTO.newUsername).ifPresent {
@@ -490,31 +475,6 @@ class UsuarioService : UserDetailsService {
             descripcion = usuario.descripcion,
             premium = usuario.premium
         )
-    }
-
-    fun verificarPremium(paymentData: PaymentVerificationRequest): ResponseEntity<Map<String, Any>> {
-        // Verificar el pago con PayPal
-        val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
-
-        return if (isValidPayment) {
-            // Actualizar usuario a premium
-            val usuario = actualizarPremium(paymentData.username)
-            ResponseEntity.ok(mapOf(
-                "success" to true,
-                "message" to "Premium activado correctamente",
-                "usuario" to usuario
-            ))
-        } else {
-            ResponseEntity.badRequest().body(mapOf(
-                "success" to false,
-                "message" to "El pago no pudo ser verificado"
-            ))
-        }
-    }
-
-    fun reenviarCodigo(email: String): ResponseEntity<Boolean> {
-        val resultado = verificarGmail(email)
-        return ResponseEntity.ok(resultado)
     }
 
     fun verUsuariosPorComunidad(comunidad: String, usuarioActual: String): List<UsuarioDTO> {
@@ -1096,30 +1056,18 @@ class UsuarioService : UserDetailsService {
         return true
     }
 
-    // Método para ver todas las denuncias (solo accesible para admins)
-    fun verTodasLasDenuncias(): List<DenunciaDTO> {
-        val auth = SecurityContextHolder.getContext().authentication
-        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
-            throw NotFoundException("Usuario autenticado no encontrado")
+
+    fun verificarDireccion(direccion: Direccion): Boolean {
+        // Verificar que la provincia existe
+        if (!externalAPIService.verificarProvinciaExiste(direccion.provincia)) {
+            throw BadRequestException("La provincia '${direccion.provincia}' no existe en España")
         }
 
-        // Solo los admins pueden ver todas las denuncias
-        if (userActual.roles != "ADMIN") {
-            throw ForbiddenException("Solo los administradores pueden ver todas las denuncias")
+        // Verificar que el municipio existe en esa provincia
+        if (!externalAPIService.verificarMunicipioExiste(direccion.municipio, direccion.provincia)) {
+            throw BadRequestException("El municipio '${direccion.municipio}' no existe en la provincia de '${direccion.provincia}'")
         }
 
-        // Obtener todas las denuncias
-        val todasLasDenuncias = denunciaRepository.findAll()
-
-        // Mapear las denuncias a DTOs
-        return todasLasDenuncias.map { denuncia ->
-            DenunciaDTO(
-                motivo = denuncia.motivo,
-                cuerpo = denuncia.cuerpo,
-                nombreItemDenunciado = denuncia.nombreItemDenunciado,
-                tipoItemDenunciado = denuncia.tipoItemDenunciado,
-                fechaCreacion = denuncia.fechaCreacion
-            )
-        }
+        return true
     }
 }
