@@ -79,6 +79,16 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verificarPremium").authenticated()
                 auth.requestMatchers("/Usuario/actualizarPremium/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verSolicitudesAmistad/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verAmigos/{username}").authenticated()
+                auth.requestMatchers("/Usuario/enviarSolicitudAmistad").authenticated()
+                auth.requestMatchers("/Usuario/aceptarSolicitud/{id}").authenticated()
+                auth.requestMatchers("/Usuario/rechazarSolicitud/{id}").authenticated()
+                auth.requestMatchers("/Usuario/verificarSolicitudPendiente/{remitente}/{destinatario}").authenticated()
+                auth.requestMatchers("/Usuario/bloquearUsuario").authenticated()
+                auth.requestMatchers("/Usuario/desbloquearUsuario").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosBloqueados/{username}").authenticated()
+                auth.requestMatchers("/Usuario/existeBloqueo/{usuario1}/{usuario2}").authenticated()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
@@ -118,8 +128,4 @@ class SecurityConfig {
     fun jwtDecoder(): JwtDecoder {
         return NimbusJwtDecoder.withPublicKey(rsaKeys.publicKey).build()
     }
-
-
-
-
 }

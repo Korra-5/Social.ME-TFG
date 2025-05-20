@@ -1,16 +1,13 @@
 package com.example.socialme.service
 
-import com.example.socialme.dto.UsuarioDTO
-import com.example.socialme.dto.UsuarioRegisterDTO
-import com.example.socialme.dto.UsuarioUpdateDTO
+import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
+import com.example.socialme.model.Bloqueo
 import com.example.socialme.model.Coordenadas
+import com.example.socialme.model.SolicitudAmistad
 import com.example.socialme.model.Usuario
-import com.example.socialme.repository.ComunidadRepository
-import com.example.socialme.repository.ParticipantesActividadRepository
-import com.example.socialme.repository.ParticipantesComunidadRepository
-import com.example.socialme.repository.UsuarioRepository
+import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
@@ -24,6 +21,12 @@ import javax.mail.internet.*
 
 @Service
 class UsuarioService : UserDetailsService {
+
+    @Autowired
+    private lateinit var bloqueoRepository: BloqueoRepository
+
+    @Autowired
+    private lateinit var solicitudesAmistadRepository: SolicitudesAmistadRepository
 
     @Autowired
     private lateinit var comunidadRepository: ComunidadRepository
@@ -295,106 +298,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    fun verUsuariosPorComunidad(comunidad: String): List<UsuarioDTO> {
-        // Verificar que la comunidad existe
-        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
-            throw NotFoundException("Comunidad $comunidad no encontrada")
-        }
-
-        // Obtener la lista de participantes de la comunidad
-        val participantes = participantesComunidadRepository.findParticipantesByComunidad(comunidad)
-
-        // Crear una lista para almacenar los DTOs de usuario
-        val listaUsuarios = mutableListOf<UsuarioDTO>()
-
-        // Para cada participante, buscar su información completa y crear un DTO
-        participantes.forEach { participante ->
-            val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
-                throw NotFoundException("Usuario ${participante.username} no encontrado")
-            }
-
-            // Crear y añadir el DTO a la lista
-            listaUsuarios.add(
-                UsuarioDTO(
-                    username = usuario.username,
-                    email = usuario.email,
-                    intereses = usuario.intereses,
-                    nombre = usuario.nombre,
-                    apellido = usuario.apellidos,
-                    fotoPerfilId = usuario.fotoPerfilId,
-                    direccion = usuario.direccion,
-                    descripcion = usuario.descripcion,
-                    premium = usuario.premium
-                )
-            )
-        }
-
-        // Devolver la lista de DTOs
-        return listaUsuarios
-    }
-
-
-    fun verUsuariosPorActividad(actividadId: String): List<UsuarioDTO> {
-        // Obtener la lista de participantes de la actividad
-        val participantes = participantesActividadRepository.findByidActividad(actividadId)
-
-        if (participantes.isEmpty()) {
-            throw NotFoundException("No se encontraron participantes para la actividad con id $actividadId")
-        }
-
-        // Crear una lista para almacenar los DTOs de usuario
-        val listaUsuarios = mutableListOf<UsuarioDTO>()
-
-        // Para cada participante, buscar su información completa y crear un DTO
-        participantes.forEach { participante ->
-            val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
-                throw NotFoundException("Usuario ${participante.username} no encontrado")
-            }
-
-            // Crear y añadir el DTO a la lista
-            listaUsuarios.add(
-                UsuarioDTO(
-                    username = usuario.username,
-                    email = usuario.email,
-                    intereses = usuario.intereses,
-                    nombre = usuario.nombre,
-                    apellido = usuario.apellidos,
-                    fotoPerfilId = usuario.fotoPerfilId,
-                    direccion = usuario.direccion,
-                    descripcion = usuario.descripcion,
-                    premium = usuario.premium
-                )
-            )
-        }
-
-        // Devolver la lista de DTOs
-        return listaUsuarios
-    }
-
-    fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
-        return usuarioRepository.findAll()
-            .filter { usuario ->
-                // Excluir al usuario actual
-                usuario.username != username
-            }
-            .sortedBy { usuario ->
-                // Ordenar por nombre, luego por apellido para casos con mismo nombre
-                "${usuario.nombre.lowercase()}${usuario.apellidos.lowercase()}"
-            }
-            .map { usuario ->
-                UsuarioDTO(
-                    username = usuario.username,
-                    email = usuario.email,
-                    intereses = usuario.intereses,
-                    nombre = usuario.nombre,
-                    apellido = usuario.apellidos,
-                    fotoPerfilId = usuario.fotoPerfilId,
-                    direccion = usuario.direccion,
-                    descripcion = usuario.descripcion,
-                    premium = usuario.premium
-                )
-            }
-    }
 
 
     fun verificarGmail(gmail: String): Boolean {
@@ -496,4 +399,473 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    fun verUsuariosPorComunidad(comunidad: String, usuarioActual: String): List<UsuarioDTO> {
+        // Verificar que la comunidad existe
+        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
+            throw NotFoundException("Comunidad $comunidad no encontrada")
+        }
+
+        // Verificar que el usuario actual existe
+        usuarioRepository.findFirstByUsername(usuarioActual).orElseThrow {
+            throw NotFoundException("Usuario $usuarioActual no encontrado")
+        }
+
+        // Obtener usuarios con los que hay bloqueo
+        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(usuarioActual)
+            .map { it.bloqueado }
+            .toSet()
+
+        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(usuarioActual)
+            .map { it.bloqueador }
+            .toSet()
+
+        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
+
+        // Obtener la lista de participantes de la comunidad
+        val participantes = participantesComunidadRepository.findParticipantesByComunidad(comunidad)
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaUsuarios = mutableListOf<UsuarioDTO>()
+
+        // Para cada participante, buscar su información completa y crear un DTO
+        participantes.forEach { participante ->
+            // Saltarse los usuarios con los que hay bloqueo
+            if (!usuariosConBloqueo.contains(participante.username)) {
+                val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
+                    throw NotFoundException("Usuario ${participante.username} no encontrado")
+                }
+
+                // Crear y añadir el DTO a la lista
+                listaUsuarios.add(
+                    UsuarioDTO(
+                        username = usuario.username,
+                        email = usuario.email,
+                        intereses = usuario.intereses,
+                        nombre = usuario.nombre,
+                        apellido = usuario.apellidos,
+                        fotoPerfilId = usuario.fotoPerfilId,
+                        direccion = usuario.direccion,
+                        descripcion = usuario.descripcion,
+                        premium = usuario.premium
+                    )
+                )
+            }
+        }
+
+        // Devolver la lista de DTOs
+        return listaUsuarios
+    }
+
+    fun verUsuariosPorActividad(actividadId: String, usuarioActual: String): List<UsuarioDTO> {
+        // Verificar que el usuario actual existe
+        usuarioRepository.findFirstByUsername(usuarioActual).orElseThrow {
+            throw NotFoundException("Usuario $usuarioActual no encontrado")
+        }
+
+        // Obtener usuarios con los que hay bloqueo
+        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(usuarioActual)
+            .map { it.bloqueado }
+            .toSet()
+
+        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(usuarioActual)
+            .map { it.bloqueador }
+            .toSet()
+
+        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
+
+        // Obtener la lista de participantes de la actividad
+        val participantes = participantesActividadRepository.findByidActividad(actividadId)
+
+        if (participantes.isEmpty()) {
+            throw NotFoundException("No se encontraron participantes para la actividad con id $actividadId")
+        }
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaUsuarios = mutableListOf<UsuarioDTO>()
+
+        // Para cada participante, buscar su información completa y crear un DTO
+        participantes.forEach { participante ->
+            // Saltarse los usuarios con los que hay bloqueo
+            if (!usuariosConBloqueo.contains(participante.username)) {
+                val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
+                    throw NotFoundException("Usuario ${participante.username} no encontrado")
+                }
+
+                // Crear y añadir el DTO a la lista
+                listaUsuarios.add(
+                    UsuarioDTO(
+                        username = usuario.username,
+                        email = usuario.email,
+                        intereses = usuario.intereses,
+                        nombre = usuario.nombre,
+                        apellido = usuario.apellidos,
+                        fotoPerfilId = usuario.fotoPerfilId,
+                        direccion = usuario.direccion,
+                        descripcion = usuario.descripcion,
+                        premium = usuario.premium
+                    )
+                )
+            }
+        }
+
+        // Devolver la lista de DTOs
+        return listaUsuarios
+    }
+
+    fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
+        // Buscar el usuario actual para verificar que existe
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Obtener usuarios que el usuario actual ha bloqueado
+        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(username)
+            .map { it.bloqueado }
+            .toSet()
+
+        // Obtener usuarios que han bloqueado al usuario actual
+        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(username)
+            .map { it.bloqueador }
+            .toSet()
+
+        // Combinar ambos conjuntos para tener todos los usuarios con los que hay bloqueo
+        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
+
+        return usuarioRepository.findAll()
+            .filter { usuario ->
+                // Excluir al usuario actual
+                usuario.username != username &&
+                        // Excluir a los usuarios con los que hay bloqueo
+                        !usuariosConBloqueo.contains(usuario.username)
+            }
+            .sortedBy { usuario ->
+                // Ordenar por nombre, luego por apellido para casos con mismo nombre
+                "${usuario.nombre.lowercase()}${usuario.apellidos.lowercase()}"
+            }
+            .map { usuario ->
+                UsuarioDTO(
+                    username = usuario.username,
+                    email = usuario.email,
+                    intereses = usuario.intereses,
+                    nombre = usuario.nombre,
+                    apellido = usuario.apellidos,
+                    fotoPerfilId = usuario.fotoPerfilId,
+                    direccion = usuario.direccion,
+                    descripcion = usuario.descripcion,
+                    premium = usuario.premium
+                )
+            }
+    }
+
+    fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
+        // Verificar que ambos usuarios existen
+        val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
+            throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
+        }
+
+        val usuarioBloqueado = usuarioRepository.findFirstByUsername(bloqueado).orElseThrow {
+            throw NotFoundException("Usuario a bloquear $bloqueado no encontrado")
+        }
+
+        // Verificar que no se está intentando bloquear a uno mismo
+        if (bloqueador == bloqueado) {
+            throw BadRequestException("No puedes bloquearte a ti mismo")
+        }
+
+        // Verificar si ya existe un bloqueo
+        if (bloqueoRepository.existsByBloqueadorAndBloqueado(bloqueador, bloqueado)) {
+            throw BadRequestException("Ya has bloqueado a este usuario")
+        }
+
+        // Crear el nuevo bloqueo
+        val nuevoBloqueo = Bloqueo(
+            _id = UUID.randomUUID().toString(),
+            bloqueador = bloqueador,
+            bloqueado = bloqueado,
+            fechaBloqueo = Date()
+        )
+
+        // Guardar el bloqueo en la base de datos
+        val bloqueoGuardado = bloqueoRepository.save(nuevoBloqueo)
+
+        // Eliminar cualquier solicitud de amistad pendiente entre estos usuarios
+        eliminarSolicitudesAmistad(bloqueador, bloqueado)
+
+        // Eliminar amistad existente si la hay
+        eliminarAmistad(bloqueador, bloqueado)
+
+        // Retornar DTO
+        return BloqueoDTO(
+            _id = bloqueoGuardado._id,
+            bloqueador = bloqueoGuardado.bloqueador,
+            bloqueado = bloqueoGuardado.bloqueado,
+            fechaBloqueo = bloqueoGuardado.fechaBloqueo
+        )
+    }
+
+    /**
+     * Desbloquea a un usuario
+     */
+    fun desbloquearUsuario(bloqueador: String, bloqueado: String): Boolean {
+        // Buscar el bloqueo existente
+        val bloqueo = bloqueoRepository.findByBloqueadorAndBloqueado(bloqueador, bloqueado).orElseThrow {
+            throw NotFoundException("No existe un bloqueo de $bloqueador hacia $bloqueado")
+        }
+
+        // Eliminar el bloqueo
+        bloqueoRepository.delete(bloqueo)
+
+        return true
+    }
+
+    /**
+     * Verifica si un usuario ha bloqueado a otro
+     */
+    fun existeBloqueo(usuario1: String, usuario2: String): Boolean {
+        // Comprobar si existe un bloqueo en cualquier dirección
+        return bloqueoRepository.existsByBloqueadorAndBloqueado(usuario1, usuario2) ||
+                bloqueoRepository.existsByBloqueadorAndBloqueado(usuario2, usuario1)
+    }
+
+    /**
+     * Obtiene la lista de usuarios bloqueados por un usuario
+     */
+    fun verUsuariosBloqueados(username: String): List<UsuarioDTO> {
+        // Verificar que el usuario existe
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Obtener todos los bloqueos realizados por el usuario
+        val bloqueos = bloqueoRepository.findAllByBloqueador(username)
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaUsuariosBloqueados = mutableListOf<UsuarioDTO>()
+
+        // Para cada bloqueo, buscar la información del usuario bloqueado
+        bloqueos.forEach { bloqueo ->
+            val usuarioBloqueado = usuarioRepository.findFirstByUsername(bloqueo.bloqueado).orElseThrow {
+                throw NotFoundException("Usuario bloqueado ${bloqueo.bloqueado} no encontrado")
+            }
+
+            // Crear y añadir el DTO a la lista
+            listaUsuariosBloqueados.add(
+                UsuarioDTO(
+                    username = usuarioBloqueado.username,
+                    email = usuarioBloqueado.email,
+                    intereses = usuarioBloqueado.intereses,
+                    nombre = usuarioBloqueado.nombre,
+                    apellido = usuarioBloqueado.apellidos,
+                    fotoPerfilId = usuarioBloqueado.fotoPerfilId,
+                    direccion = usuarioBloqueado.direccion,
+                    descripcion = usuarioBloqueado.descripcion,
+                    premium = usuarioBloqueado.premium
+                )
+            )
+        }
+
+        // Devolver la lista de DTOs de usuarios bloqueados
+        return listaUsuariosBloqueados
+    }
+
+
+    fun eliminarSolicitudesAmistad(usuario1: String, usuario2: String) {
+        // Buscar solicitudes en ambas direcciones
+        val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(usuario1, usuario2) +
+                solicitudesAmistadRepository.findByRemitenteAndDestinatario(usuario2, usuario1)
+
+        // Eliminar todas las solicitudes encontradas
+        solicitudesAmistadRepository.deleteAll(solicitudes)
+    }
+
+    fun eliminarAmistad(usuario1: String, usuario2: String) {
+        // Buscar relaciones de amistad aceptadas en ambas direcciones
+        val amistad1 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario1, usuario2, true)
+        val amistad2 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario2, usuario1, true)
+
+        // Eliminar la amistad si existe
+        if (amistad1 != null) {
+            solicitudesAmistadRepository.delete(amistad1)
+        }
+
+        if (amistad2 != null) {
+            solicitudesAmistadRepository.delete(amistad2)
+        }
+    }
+    /**
+     * Función para ver las solicitudes de amistad pendientes de un usuario
+     * Corresponde al endpoint: GET /Usuario/verSolicitudesAmistad/{username}
+     */
+    fun verSolicitudesAmistad(username: String): List<SolicitudAmistadDTO> {
+        // Verificar que el usuario existe
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Obtener todas las solicitudes de amistad pendientes (no aceptadas) donde el usuario es el destinatario
+        val solicitudesPendientes = solicitudesAmistadRepository.findByDestinatarioAndAceptada(username, false)
+
+        // Convertir a DTO
+        return solicitudesPendientes.map { solicitud ->
+            SolicitudAmistadDTO(
+                _id = solicitud._id,
+                remitente = solicitud.remitente,
+                destinatario = solicitud.destinatario,
+                fechaEnviada = solicitud.fechaEnviada,
+                aceptada = solicitud.aceptada
+            )
+        }
+    }
+
+    /**
+     * Función para ver los amigos de un usuario (solicitudes aceptadas)
+     * Corresponde al endpoint: GET /Usuario/verAmigos/{username}
+     */
+    fun verAmigos(username: String): List<UsuarioDTO> {
+        // Verificar que el usuario existe
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Obtener usuarios con los que hay bloqueo
+        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(username)
+            .map { it.bloqueado }
+            .toSet()
+
+        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(username)
+            .map { it.bloqueador }
+            .toSet()
+
+        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
+
+        // Buscar todas las solicitudes aceptadas donde el usuario es remitente o destinatario
+        val amigosComoRemitente = solicitudesAmistadRepository.findByRemitenteAndAceptada(username, true)
+        val amigosComoDestinatario = solicitudesAmistadRepository.findByDestinatarioAndAceptada(username, true)
+
+        // Crear una lista para almacenar los usernames de los amigos
+        val usernamesAmigos = mutableSetOf<String>()
+
+        // Añadir usernames de amigos donde el usuario actual es el remitente
+        amigosComoRemitente.forEach { solicitud ->
+            // No añadir si hay bloqueo
+            if (!usuariosConBloqueo.contains(solicitud.destinatario)) {
+                usernamesAmigos.add(solicitud.destinatario)
+            }
+        }
+
+        // Añadir usernames de amigos donde el usuario actual es el destinatario
+        amigosComoDestinatario.forEach { solicitud ->
+            // No añadir si hay bloqueo
+            if (!usuariosConBloqueo.contains(solicitud.remitente)) {
+                usernamesAmigos.add(solicitud.remitente)
+            }
+        }
+
+        // Crear una lista para almacenar los DTOs de usuario
+        val listaAmigos = mutableListOf<UsuarioDTO>()
+
+        // Para cada username de amigo, buscar su información completa y crear un DTO
+        usernamesAmigos.forEach { amigoUsername ->
+            val amigo = usuarioRepository.findFirstByUsername(amigoUsername).orElseThrow {
+                throw NotFoundException("Usuario amigo $amigoUsername no encontrado")
+            }
+
+            // Crear y añadir el DTO a la lista
+            listaAmigos.add(
+                UsuarioDTO(
+                    username = amigo.username,
+                    email = amigo.email,
+                    intereses = amigo.intereses,
+                    nombre = amigo.nombre,
+                    apellido = amigo.apellidos,
+                    fotoPerfilId = amigo.fotoPerfilId,
+                    direccion = amigo.direccion,
+                    descripcion = amigo.descripcion,
+                    premium = amigo.premium
+                )
+            )
+        }
+
+        // Devolver la lista de DTOs de amigos
+        return listaAmigos
+    }
+
+    /**
+     * Función para enviar una solicitud de amistad
+     * Corresponde al endpoint: POST /Usuario/enviarSolicitudAmistad
+     */
+    fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
+        // Verificar que ambos usuarios existen
+        val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
+            throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
+        }
+
+        val destinatario = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.destinatario).orElseThrow {
+            throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
+        }
+
+        // Verificar que no existe un bloqueo entre los usuarios
+        if (existeBloqueo(solicitudAmistadDTO.remitente, solicitudAmistadDTO.destinatario)) {
+            throw BadRequestException("No puedes enviar solicitudes de amistad a usuarios bloqueados o que te han bloqueado")
+        }
+
+        // Verificar que no exista ya una solicitud pendiente entre estos usuarios
+        val solicitudExistente = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
+            solicitudAmistadDTO.remitente,
+            solicitudAmistadDTO.destinatario
+        )
+
+        if (solicitudExistente.isNotEmpty()) {
+            throw BadRequestException("Ya existe una solicitud de amistad entre estos usuarios")
+        }
+
+        // Crear la nueva solicitud de amistad con estado no aceptado (false)
+        val nuevaSolicitud = SolicitudAmistad(
+            _id = UUID.randomUUID().toString(),
+            remitente = solicitudAmistadDTO.remitente,
+            destinatario = solicitudAmistadDTO.destinatario,
+            fechaEnviada = Date(),
+            aceptada = false
+        )
+
+        // Guardar la solicitud en la base de datos
+        solicitudesAmistadRepository.save(nuevaSolicitud)
+
+        // Retornar DTO
+        return SolicitudAmistadDTO(
+            _id = nuevaSolicitud._id,
+            remitente = nuevaSolicitud.remitente,
+            destinatario = nuevaSolicitud.destinatario,
+            fechaEnviada = nuevaSolicitud.fechaEnviada,
+            aceptada = nuevaSolicitud.aceptada
+        )
+    }
+
+
+    fun aceptarSolicitud(id: String): Boolean {
+        // Buscar la solicitud por ID
+        val solicitud = solicitudesAmistadRepository.findById(id).orElseThrow {
+            throw NotFoundException("Solicitud de amistad con ID $id no encontrada")
+        }
+
+        // Verificar que la solicitud no haya sido aceptada ya
+        if (solicitud.aceptada) {
+            throw BadRequestException("Esta solicitud ya ha sido aceptada")
+        }
+
+        // Crear una nueva solicitud con los mismos datos pero con aceptada = true
+        // (Como SolicitudAmistad usa vals inmutables, necesitamos crear una nueva instancia)
+        val solicitudAceptada = SolicitudAmistad(
+            _id = solicitud._id,
+            remitente = solicitud.remitente,
+            destinatario = solicitud.destinatario,
+            fechaEnviada = solicitud.fechaEnviada,
+            aceptada = true
+        )
+
+        // Guardar la solicitud actualizada
+        solicitudesAmistadRepository.save(solicitudAceptada)
+
+        return true
+    }
 }

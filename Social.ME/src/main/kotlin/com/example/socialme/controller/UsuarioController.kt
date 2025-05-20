@@ -1,9 +1,6 @@
 package com.example.socialme.controller
 
-import com.example.socialme.dto.LoginUsuarioDTO
-import com.example.socialme.dto.UsuarioDTO
-import com.example.socialme.dto.UsuarioRegisterDTO
-import com.example.socialme.dto.UsuarioUpdateDTO
+import com.example.socialme.dto.*
 import com.example.socialme.error.exception.UnauthorizedException
 import com.example.socialme.model.PaymentVerificationRequest
 import com.example.socialme.model.VerificacionDTO
@@ -26,10 +23,13 @@ class UsuarioController {
 
     @Autowired
     private lateinit var authenticationManager: AuthenticationManager
+
     @Autowired
     private lateinit var tokenService: TokenService
+
     @Autowired
     private lateinit var usuarioService: UsuarioService
+
     @Autowired
     private lateinit var payPalService: PayPalService
 
@@ -55,7 +55,7 @@ class UsuarioController {
         // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
         // PASAMOS A GENERAR EL TOKEN
         val token = tokenService.generarToken(authentication)
-        usuarioService.modificarCoordenadasUsuario(usuario.coordenadas,usuario.username)
+        usuarioService.modificarCoordenadasUsuario(usuario.coordenadas, usuario.username)
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
     }
 
@@ -71,7 +71,7 @@ class UsuarioController {
     fun modificarUsuario(
         httpRequest: HttpServletRequest,
         @RequestBody usuarioUpdateDTO: UsuarioUpdateDTO
-    ):ResponseEntity<UsuarioDTO> {
+    ) : ResponseEntity<UsuarioDTO> {
         return ResponseEntity(usuarioService.modificarUsuario(usuarioUpdateDTO), HttpStatus.OK)
     }
 
@@ -86,17 +86,19 @@ class UsuarioController {
     @GetMapping("/verUsuariosPorComunidad/{comunidad}")
     fun verUsuariosPorComunidad(
         httpRequest: HttpServletRequest,
-        @PathVariable comunidad: String
+        @PathVariable comunidad: String,
+        @RequestParam usuarioActual: String
     ) : ResponseEntity<List<UsuarioDTO>> {
-        return ResponseEntity(usuarioService.verUsuariosPorComunidad(comunidad), HttpStatus.OK)
+        return ResponseEntity(usuarioService.verUsuariosPorComunidad(comunidad, usuarioActual), HttpStatus.OK)
     }
 
     @GetMapping("/verUsuariosPorActividad/{actividadId}")
     fun verUsuariosPorActividad(
         httpRequest: HttpServletRequest,
-        @PathVariable actividadId: String
-    ) : ResponseEntity<List<UsuarioDTO>>  {
-        return ResponseEntity(usuarioService.verUsuariosPorActividad(actividadId), HttpStatus.OK)
+        @PathVariable actividadId: String,
+        @RequestParam usuarioActual: String
+    ) : ResponseEntity<List<UsuarioDTO>> {
+        return ResponseEntity(usuarioService.verUsuariosPorActividad(actividadId, usuarioActual), HttpStatus.OK)
     }
 
     @GetMapping("/verTodosLosUsuarios/{username}")
@@ -104,8 +106,7 @@ class UsuarioController {
         httpRequest: HttpServletRequest,
         @PathVariable username: String
     ): ResponseEntity<List<UsuarioDTO>> {
-        return ResponseEntity(usuarioService.verTodosLosUsuarios(username),HttpStatus.OK)
-
+        return ResponseEntity(usuarioService.verTodosLosUsuarios(username), HttpStatus.OK)
     }
 
     @PostMapping("/verificarCodigo")
@@ -152,4 +153,68 @@ class UsuarioController {
         }
     }
 
+    @GetMapping("/verSolicitudesAmistad/{username}")
+    fun verSolicitudesAmistad(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<List<SolicitudAmistadDTO>> {
+        return ResponseEntity(usuarioService.verSolicitudesAmistad(username), HttpStatus.OK)
+    }
+
+    @GetMapping("/verAmigos/{username}")
+    fun verAmigos(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<List<UsuarioDTO>> {
+        return ResponseEntity(usuarioService.verAmigos(username), HttpStatus.OK)
+    }
+
+    @PostMapping("/enviarSolicitudAmistad")
+    fun enviarSolicitudAmistad(
+        httpRequest: HttpServletRequest,
+        @RequestBody solicitudAmistadDTO: SolicitudAmistadDTO
+    ): ResponseEntity<SolicitudAmistadDTO> {
+        return ResponseEntity(usuarioService.enviarSolicitudAmistad(solicitudAmistadDTO), HttpStatus.CREATED)
+    }
+
+    @PutMapping("/aceptarSolicitud/{id}")
+    fun aceptarSolicitud(
+        httpRequest: HttpServletRequest,
+        @PathVariable id: String
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(usuarioService.aceptarSolicitud(id), HttpStatus.OK)
+    }
+
+    @PostMapping("/bloquearUsuario")
+    fun bloquearUsuario(
+        httpRequest: HttpServletRequest,
+        @RequestBody bloqueoDTO: BloqueoDTO
+    ): ResponseEntity<BloqueoDTO> {
+        return ResponseEntity(
+            usuarioService.bloquearUsuario(bloqueoDTO.bloqueador, bloqueoDTO.bloqueado),
+            HttpStatus.CREATED
+        )
+    }
+
+    @DeleteMapping("/desbloquearUsuario")
+    fun desbloquearUsuario(
+        httpRequest: HttpServletRequest,
+        @RequestBody bloqueoDTO: BloqueoDTO
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(
+            usuarioService.desbloquearUsuario(bloqueoDTO.bloqueador, bloqueoDTO.bloqueado),
+            HttpStatus.OK
+        )
+    }
+
+    @GetMapping("/verUsuariosBloqueados/{username}")
+    fun verUsuariosBloqueados(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<List<UsuarioDTO>> {
+        return ResponseEntity(
+            usuarioService.verUsuariosBloqueados(username),
+            HttpStatus.OK
+        )
+    }
 }
