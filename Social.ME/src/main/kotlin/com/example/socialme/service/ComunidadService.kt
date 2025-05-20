@@ -37,6 +37,26 @@ class ComunidadService {
 
     @Autowired
     private lateinit var gridFSService: GridFSService
+
+    // Función auxiliar para convertir de forma segura Comunidad a ComunidadDTO
+    private fun crearComunidadDTO(comunidad: Comunidad): ComunidadDTO {
+        return ComunidadDTO(
+            url = comunidad.url,
+            nombre = comunidad.nombre,
+            descripcion = comunidad.descripcion,
+            intereses = comunidad.intereses ?: emptyList(),
+            fotoPerfilId = comunidad.fotoPerfilId ?: "",
+            fotoCarruselIds = comunidad.fotoCarruselIds ?: emptyList(),
+            creador = comunidad.creador,
+            administradores = comunidad.administradores ?: emptyList(),
+            fechaCreacion = comunidad.fechaCreacion,
+            comunidadGlobal = comunidad.comunidadGlobal,
+            privada = comunidad.privada,
+            coordenadas = comunidad.coordenadas,
+            codigoUnion = comunidad.codigoUnion
+        )
+    }
+
     fun crearComunidad(comunidadCreateDTO: ComunidadCreateDTO): ComunidadDTO {
         val auth = SecurityContextHolder.getContext().authentication
         val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
@@ -96,8 +116,8 @@ class ComunidadService {
                 creador = comunidadCreateDTO.creador,
                 intereses = comunidadCreateDTO.intereses,
                 fotoPerfilId = fotoPerfilId,
-                fotoCarruselIds = null,
-                administradores = null,
+                fotoCarruselIds = emptyList(),  // Inicializado como lista vacía en lugar de null
+                administradores = emptyList(),  // Inicializado como lista vacía en lugar de null
                 fechaCreacion = Date.from(Instant.now()),
                 url = formattedUrl,
                 comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
@@ -120,21 +140,7 @@ class ComunidadService {
         comunidadRepository.insert(comunidad)
         participantesComunidadRepository.insert(participantesComunidad)
 
-        return ComunidadDTO(
-            url = formattedUrl,
-            nombre = comunidadCreateDTO.nombre,
-            comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
-            creador = comunidadCreateDTO.creador,
-            intereses = comunidadCreateDTO.intereses,
-            fotoCarruselIds = null,
-            fotoPerfilId = fotoPerfilId,
-            descripcion = comunidadCreateDTO.descripcion,
-            fechaCreacion = Date.from(Instant.now()),
-            administradores = null,
-            privada = comunidadCreateDTO.privada,
-            coordenadas = comunidadCreateDTO.coordenadas,
-            codigoUnion = comunidadCreateDTO.codigoUnion
-        )
+        return crearComunidadDTO(comunidad)
     }
 
     fun verComunidadPorUrl(url: String): ComunidadDTO {
@@ -160,21 +166,7 @@ class ComunidadService {
             }
         }
 
-        return ComunidadDTO(
-            nombre = comunidad.nombre,
-            descripcion = comunidad.descripcion,
-            creador = comunidad.creador,
-            intereses = comunidad.intereses,
-            fotoPerfilId = comunidad.fotoPerfilId,
-            fotoCarruselIds = comunidad.fotoCarruselIds,
-            administradores = comunidad.administradores,
-            fechaCreacion = comunidad.fechaCreacion,
-            comunidadGlobal = comunidad.comunidadGlobal,
-            privada = comunidad.privada,
-            url = comunidad.url,
-            coordenadas = comunidad.coordenadas,
-            codigoUnion = comunidad.codigoUnion
-        )
+        return crearComunidadDTO(comunidad)
     }
 
     fun verComunidadesPublicasEnZona(distancia: Float? = null, username: String): List<ComunidadDTO> {
@@ -186,21 +178,7 @@ class ComunidadService {
         // Los admins pueden ver todas las comunidades, incluso las privadas
         if (userActual.roles == "ADMIN") {
             return comunidadRepository.findAll().map { comunidad ->
-                ComunidadDTO(
-                    url = comunidad.url,
-                    nombre = comunidad.nombre,
-                    descripcion = comunidad.descripcion,
-                    intereses = comunidad.intereses,
-                    fotoPerfilId = comunidad.fotoPerfilId,
-                    fotoCarruselIds = comunidad.fotoCarruselIds,
-                    creador = comunidad.creador,
-                    administradores = comunidad.administradores,
-                    fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
-                    privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
-                )
+                crearComunidadDTO(comunidad)
             }
         }
 
@@ -216,7 +194,7 @@ class ComunidadService {
             .orElseThrow { throw NotFoundException("Usuario no existe") }
 
         val coordenadasUser = usuario.coordenadas
-        val interesesUser = usuario.intereses
+        val interesesUser = usuario.intereses ?: emptyList()  // Manejo seguro de nulos
 
         // Obtenemos las comunidades a las que el usuario ya está unido
         val comunidadesDelUsuario = participantesComunidadRepository.findByUsername(username)
@@ -235,25 +213,12 @@ class ComunidadService {
             }
             // Ya no filtramos por intereses para mostrar todas
             .map { comunidad ->
-                ComunidadDTO(
-                    url = comunidad.url,
-                    nombre = comunidad.nombre,
-                    descripcion = comunidad.descripcion,
-                    intereses = comunidad.intereses,
-                    fotoPerfilId = comunidad.fotoPerfilId,
-                    fotoCarruselIds = comunidad.fotoCarruselIds,
-                    creador = comunidad.creador,
-                    administradores = comunidad.administradores,
-                    fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
-                    privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
-                )
+                crearComunidadDTO(comunidad)
             }
             .sortedWith(compareByDescending<ComunidadDTO> { comunidadDTO ->
                 // Primera ordenación: por número de intereses coincidentes
-                comunidadDTO.intereses.count { interes -> interesesUser.contains(interes) }
+                val interesesComunidad = comunidadDTO.intereses ?: emptyList()  // Manejo seguro de nulos
+                interesesComunidad.count { interes -> interesesUser.contains(interes) }
             }.thenByDescending {
                 // Segunda ordenación: por fecha de creación (las más recientes primero)
                 it.fechaCreacion
@@ -316,27 +281,17 @@ class ComunidadService {
             throw ForbiddenException("No tienes permisos para eliminar esta comunidad")
         }
 
-        val comunidadDto = ComunidadDTO(
-            url = comunidad.url,
-            nombre = comunidad.nombre,
-            comunidadGlobal = comunidad.comunidadGlobal,
-            creador = comunidad.creador,
-            intereses = comunidad.intereses,
-            fotoCarruselIds = comunidad.fotoCarruselIds,
-            fotoPerfilId = comunidad.fotoPerfilId,
-            descripcion = comunidad.descripcion,
-            fechaCreacion = comunidad.fechaCreacion,
-            administradores = comunidad.administradores,
-            privada = comunidad.privada,
-            coordenadas = comunidad.coordenadas,
-            codigoUnion = comunidad.codigoUnion
-        )
+        val comunidadDto = crearComunidadDTO(comunidad)
 
         // Delete images from GridFS
         try {
-            gridFSService.deleteFile(comunidad.fotoPerfilId)
+            if (!comunidad.fotoPerfilId.isNullOrBlank()) {
+                gridFSService.deleteFile(comunidad.fotoPerfilId)
+            }
             comunidad.fotoCarruselIds?.forEach { fileId ->
-                gridFSService.deleteFile(fileId)
+                if (!fileId.isNullOrBlank()) {
+                    gridFSService.deleteFile(fileId)
+                }
             }
         } catch (e: Exception) {
             // Log error but continue with deletion
@@ -412,7 +367,8 @@ class ComunidadService {
         // Los admins pueden modificar cualquier comunidad
         if (userActual.roles != "ADMIN") {
             // Verificar si el usuario autenticado es creador o administrador de la comunidad
-            if (auth.name != comunidadExistente.creador && !comunidadExistente.administradores!!.contains(auth.name)) {
+            val administradores = comunidadExistente.administradores ?: emptyList()
+            if (auth.name != comunidadExistente.creador && !administradores.contains(auth.name)) {
                 throw ForbiddenException("No tienes permisos para modificar esta comunidad")
             }
         }
@@ -425,7 +381,8 @@ class ComunidadService {
         }
 
         // Verificar que los administradores existan
-        comunidadUpdateDTO.administradores?.forEach { admin ->
+        var administradores = comunidadUpdateDTO.administradores ?: emptyList()
+        administradores.forEach { admin ->
             if (!usuarioRepository.existsByUsername(admin)) {
                 throw NotFoundException("Administrador con username '$admin' no encontrado")
             }
@@ -493,7 +450,7 @@ class ComunidadService {
             }
         } else {
             // Mantener las fotos de carrusel existentes
-            comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds
+            comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds ?: emptyList()
         }
 
         // Actualizar la información de la comunidad
@@ -502,7 +459,7 @@ class ComunidadService {
             nombre = comunidadUpdateDTO.nombre
             descripcion = comunidadUpdateDTO.descripcion
             intereses = comunidadUpdateDTO.intereses
-            administradores = comunidadUpdateDTO.administradores
+            administradores = administradores
             fotoPerfilId = nuevaFotoPerfilId
             fotoCarruselIds = nuevasFotosCarruselIds
         }
@@ -511,47 +468,31 @@ class ComunidadService {
 
         // Si se ha cambiado la URL, actualizar referencias en otras colecciones
         if (urlAntigua != comunidadActualizada.url) {
-            // Actualizar referencias en ActividadesComunidad
-            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElseThrow {
-                NotFoundException("Actividades no encontradas")
-            }
-            actividades.forEach { actividad ->
-                actividad.comunidad = comunidadActualizada.url
-                actividadesComunidadRepository.save(actividad)
+            try {
+                // Actualizar referencias en ActividadesComunidad
+                val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElse(emptyList())
+                actividades.forEach { actividad ->
+                    actividad.comunidad = comunidadActualizada.url
+                    actividadesComunidadRepository.save(actividad)
+                }
+            } catch (e: Exception) {
+                println("Error al actualizar referencias de actividades: ${e.message}")
             }
 
-            // Actualizar referencias en ParticipantesComunidad
-            val participantes = participantesComunidadRepository.findByComunidad(urlAntigua)
-            participantes.forEach { participante ->
-                participante.comunidad = comunidadActualizada.url
-                participantesComunidadRepository.save(participante)
+            try {
+                // Actualizar referencias en ParticipantesComunidad
+                val participantes = participantesComunidadRepository.findByComunidad(urlAntigua)
+                participantes.forEach { participante ->
+                    participante.comunidad = comunidadActualizada.url
+                    participantesComunidadRepository.save(participante)
+                }
+            } catch (e: Exception) {
+                println("Error al actualizar referencias de participantes: ${e.message}")
             }
         }
 
         // Retornar el DTO actualizado
-        return ComunidadDTO(
-            url = comunidadActualizada.url,
-            nombre = comunidadActualizada.nombre,
-            comunidadGlobal = comunidadActualizada.comunidadGlobal,
-            creador = comunidadActualizada.creador,
-            intereses = comunidadActualizada.intereses,
-            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
-            fotoPerfilId = comunidadActualizada.fotoPerfilId,
-            descripcion = comunidadActualizada.descripcion,
-            fechaCreacion = comunidadActualizada.fechaCreacion,
-            administradores = comunidadActualizada.administradores,
-            privada = comunidadActualizada.privada,
-            coordenadas = comunidadActualizada.coordenadas,
-            codigoUnion = if (comunidadExistente.privada) {
-                comunidadExistente.codigoUnion
-            } else {
-                if (comunidadActualizada.privada) {
-                    generarCodigoUnico()
-                } else {
-                    null
-                }
-            }
-        )
+        return crearComunidadDTO(comunidadActualizada)
     }
 
     fun salirComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
@@ -653,7 +594,8 @@ class ComunidadService {
             NotFoundException("Usuario no encontrado")
         }
 
-        return comunidad.creador == username || comunidad.administradores!!.contains(username)
+        val administradores = comunidad.administradores ?: emptyList()
+        return comunidad.creador == username || administradores.contains(username)
     }
 
     fun verTodasComunidadesPublicas(): List<ComunidadDTO> {
@@ -665,21 +607,7 @@ class ComunidadService {
         // Los admins pueden ver todas las comunidades, incluso las privadas
         if (userActual.roles == "ADMIN") {
             return comunidadRepository.findAll().map { comunidad ->
-                ComunidadDTO(
-                    url = comunidad.url,
-                    nombre = comunidad.nombre,
-                    descripcion = comunidad.descripcion,
-                    intereses = comunidad.intereses,
-                    fotoPerfilId = comunidad.fotoPerfilId,
-                    fotoCarruselIds = comunidad.fotoCarruselIds,
-                    creador = comunidad.creador,
-                    administradores = comunidad.administradores,
-                    fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
-                    privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
-                )
+                crearComunidadDTO(comunidad)
             }
         }
 
@@ -688,21 +616,7 @@ class ComunidadService {
         return todasLasComunidades
             .filter { !it.privada }
             .map { comunidad ->
-                ComunidadDTO(
-                    url = comunidad.url,
-                    nombre = comunidad.nombre,
-                    descripcion = comunidad.descripcion,
-                    intereses = comunidad.intereses,
-                    fotoPerfilId = comunidad.fotoPerfilId,
-                    fotoCarruselIds = comunidad.fotoCarruselIds,
-                    creador = comunidad.creador,
-                    administradores = comunidad.administradores,
-                    fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
-                    privada = comunidad.privada,
-                    coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
-                )
+                crearComunidadDTO(comunidad)
             }
     }
 
@@ -780,21 +694,7 @@ class ComunidadService {
         }
 
         return comunidades.map { comunidad ->
-            ComunidadDTO(
-                url = comunidad.url,
-                nombre = comunidad.nombre,
-                comunidadGlobal = comunidad.comunidadGlobal,
-                creador = comunidad.creador,
-                intereses = comunidad.intereses,
-                fotoCarruselIds = comunidad.fotoCarruselIds,
-                fotoPerfilId = comunidad.fotoPerfilId,
-                descripcion = comunidad.descripcion,
-                fechaCreacion = comunidad.fechaCreacion,
-                administradores = comunidad.administradores,
-                privada = comunidad.privada,
-                coordenadas = comunidad.coordenadas,
-                codigoUnion = comunidad.codigoUnion
-            )
+            crearComunidadDTO(comunidad)
         }
     }
 
@@ -806,6 +706,7 @@ class ComunidadService {
             trimmed
         }
     }
+
     private fun generarCodigoUnico(): String {
         val caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
         val longitud = 10
@@ -827,5 +728,4 @@ class ComunidadService {
 
         return codigoGenerado
     }
-
 }

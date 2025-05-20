@@ -163,8 +163,8 @@ class UsuarioService : UserDetailsService {
 
     fun eliminarUsuario(username: String): UsuarioDTO {
         val auth = SecurityContextHolder.getContext().authentication
-        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
-            throw NotFoundException("Usuario autenticado no encontrado")
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow{
+            BadRequestException("Usuario $username no existe")
         }
 
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
