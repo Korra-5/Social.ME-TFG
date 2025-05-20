@@ -42,22 +42,15 @@ class UsuarioController {
         return ResponseEntity(user, HttpStatus.CREATED)
     }
 
+
     @PostMapping("/login")
-    fun login(@RequestBody usuario: LoginUsuarioDTO) : ResponseEntity<Any>? {
-
-        val authentication: Authentication
-        try {
-            authentication = authenticationManager.authenticate(UsernamePasswordAuthenticationToken(usuario.username, usuario.password))
-        } catch (e: AuthenticationException) {
-            throw UnauthorizedException("Credenciales incorrectas")
-        }
-
-        // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
-        // PASAMOS A GENERAR EL TOKEN
-        val token = tokenService.generarToken(authentication)
+    fun login(@RequestBody usuario: LoginUsuarioDTO): ResponseEntity<Any> {
+        // Usar el método de login de UsuarioService
+        val token = usuarioService.login(usuario)
         usuarioService.modificarCoordenadasUsuario(usuario.coordenadas, usuario.username)
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
     }
+
 
     @DeleteMapping("/eliminarUsuario/{username}")
     fun eliminarUsuario(

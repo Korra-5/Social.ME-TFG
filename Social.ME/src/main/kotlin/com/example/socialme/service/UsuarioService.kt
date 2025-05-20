@@ -147,6 +147,21 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    fun login(usuario: LoginUsuarioDTO): String {
+        val authentication: Authentication
+        try {
+            authentication = authenticationManager.authenticate(
+                UsernamePasswordAuthenticationToken(usuario.username, usuario.password)
+            )
+        } catch (e: AuthenticationException) {
+            throw UnauthorizedException("Credenciales incorrectas")
+        }
+
+        // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
+        // PASAMOS A GENERAR EL TOKEN
+        return tokenService.generarToken(authentication)
+    }
+
     fun modificarCoordenadasUsuario(coordenadas: Coordenadas?, username: String) {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow { NotFoundException("Usuario $username no existe") }
         try {
