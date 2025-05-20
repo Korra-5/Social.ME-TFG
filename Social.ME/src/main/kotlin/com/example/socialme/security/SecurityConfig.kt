@@ -9,6 +9,7 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
+import org.springframework.context.annotation.Lazy
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
@@ -110,6 +111,7 @@ class SecurityConfig {
      * Método que inicializa un objeto de tipo AuthenticationManager
      */
     @Bean
+    @Lazy
     fun authenticationManager(authenticationConfiguration: AuthenticationConfiguration) : AuthenticationManager {
         return authenticationConfiguration.authenticationManager
     }
