@@ -2,13 +2,24 @@ package com.example.socialme.service
 
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
+import com.example.socialme.error.exception.UnauthorizedException
 import com.example.socialme.model.Bloqueo
 import com.example.socialme.model.Coordenadas
+import com.example.socialme.model.PaymentVerificationRequest
 import com.example.socialme.model.SolicitudAmistad
 import com.example.socialme.model.Usuario
+import com.example.socialme.model.VerificacionDTO
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
+import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.Authentication
+import org.springframework.security.core.AuthenticationException
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
@@ -21,6 +32,18 @@ import javax.mail.internet.*
 
 @Service
 class UsuarioService : UserDetailsService {
+
+    @Autowired
+    private lateinit var authenticationManager: AuthenticationManager
+
+    @Autowired
+    private lateinit var tokenService: TokenService
+
+    @Autowired
+    private lateinit var denunciaRepository: DenunciaRepository
+
+    @Autowired
+    private lateinit var comunidadService: ComunidadService
 
     @Autowired
     private lateinit var bloqueoRepository: BloqueoRepository
@@ -49,6 +72,9 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+    @Autowired
+    private lateinit var payPalService: PayPalService
+
     // Mapa para almacenar temporalmente los códigos de verificación
     private val verificacionCodigos = mutableMapOf<String, String>()
 
@@ -64,14 +90,10 @@ class UsuarioService : UserDetailsService {
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
-
-
         // Primero, verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
         }
-
-
 
         // Procesar la foto de perfil si se proporciona en Base64;
         // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
@@ -105,7 +127,7 @@ class UsuarioService : UserDetailsService {
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
             coordenadas = null,
-            premium =false
+            premium = false
         )
 
         // Insertar el usuario en la base de datos
@@ -130,7 +152,7 @@ class UsuarioService : UserDetailsService {
         try {
             // Actualizamos las coordenadas del usuario
             usuario.coordenadas = Coordenadas(
-                coordenadas!!.latitud,coordenadas.longitud
+                coordenadas!!.latitud, coordenadas.longitud
             )
 
             // Guardamos el usuario actualizado
@@ -140,22 +162,35 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-
     fun eliminarUsuario(username: String): UsuarioDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Si el usuario a eliminar es admin, solo otro admin puede eliminarlo
+        if (usuario.roles == "ADMIN" && userActual.roles != "ADMIN") {
+            throw ForbiddenException("No tienes permisos para eliminar a un administrador")
+        }
+
+        if (auth.name != username && userActual.roles != "ADMIN") {
+            throw ForbiddenException("No tienes permisos para realizar esta acción")
         }
 
         // Verificar si el usuario es creador de alguna comunidad
         val comunidadesCreadas = comunidadRepository.findAll().filter { it.creador == username }
 
-        if (comunidadesCreadas.isNotEmpty()) {
-            // El usuario es creador de al menos una comunidad
+        if (comunidadesCreadas.isNotEmpty() && userActual.roles != "ADMIN") {
+            // El usuario es creador de al menos una comunidad y no es admin quien elimina
             val nombresComunidades = comunidadesCreadas.joinToString(", ") { it.nombre }
             throw BadRequestException("No se puede eliminar la cuenta mientras seas el creador de las siguientes comunidades: $nombresComunidades. Por favor, elimina o cede la propiedad de estas comunidades primero.")
         }
 
-        // Si no es creador de ninguna comunidad, proceder con la eliminación
+        // Si no es creador de ninguna comunidad o es admin quien elimina, proceder con la eliminación
         val fotoId = usuario.fotoPerfilId
         try {
             if (!fotoId.isNullOrBlank()) {
@@ -178,20 +213,42 @@ class UsuarioService : UserDetailsService {
             premium = usuario.premium
         )
 
+        // Si es admin quien elimina y el usuario es creador de comunidades, transferir propiedad o eliminar
+        if (userActual.roles == "ADMIN" && comunidadesCreadas.isNotEmpty()) {
+            // Opción: eliminar todas las comunidades creadas por este usuario
+            comunidadesCreadas.forEach { comunidad ->
+                comunidadService.eliminarComunidad(comunidad.url)
+            }
+        }
+
         usuarioRepository.delete(usuario)
         return userDTO
     }
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden modificar a cualquier usuario
+        if (userActual.roles != "ADMIN" && auth.name != usuarioUpdateDTO.currentUsername) {
+            throw ForbiddenException("No tienes permisos para modificar este usuario")
+        }
 
         // Buscar el usuario existente usando currentUsername
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
-        if (usuarioUpdateDTO.newUsername!=null) {
-            usuarioRepository.findFirstByUsername(usuarioUpdateDTO.newUsername).orElseThrow {
-                throw NotFoundException("Usuario ${usuarioUpdateDTO.newUsername} ya existe, prueba con otro nombre")
+        // Si se intenta modificar a un admin y el usuario actual no es admin, denegar permiso
+        if (usuario.roles == "ADMIN" && userActual.roles != "ADMIN") {
+            throw ForbiddenException("No tienes permisos para modificar a un administrador")
+        }
+
+        if (usuarioUpdateDTO.newUsername != null) {
+            usuarioRepository.findFirstByUsername(usuarioUpdateDTO.newUsername).ifPresent {
+                throw BadRequestException("Usuario ${usuarioUpdateDTO.newUsername} ya existe, prueba con otro nombre")
             }
         }
 
@@ -201,8 +258,6 @@ class UsuarioService : UserDetailsService {
                 throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
             }
         }
-
-
 
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId: String =
@@ -281,10 +336,21 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    fun verUsuarioPorUsername(username: String):UsuarioDTO{
-        val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
+    fun verUsuarioPorUsername(username: String): UsuarioDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username not found")
         }
+
+        // No mostrar información de admins a usuarios no-admin
+        if (usuario.roles == "ADMIN" && userActual.roles != "ADMIN") {
+            throw ForbiddenException("No tienes permisos para ver información de este usuario")
+        }
+
         return UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
@@ -297,8 +363,6 @@ class UsuarioService : UserDetailsService {
             premium = usuario.premium
         )
     }
-
-
 
     fun verificarGmail(gmail: String): Boolean {
         // Configuración para el servidor de correo (usando Gmail como ejemplo)
@@ -377,10 +441,24 @@ class UsuarioService : UserDetailsService {
         return codigoAlmacenado == codigo
     }
 
-    // Agregar este método en UsuarioService
     fun actualizarPremium(username: String): UsuarioDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden actualizar el estado premium de cualquier usuario
+        if (userActual.roles != "ADMIN" && auth.name != username) {
+            throw ForbiddenException("No tienes permisos para actualizar el estado premium de este usuario")
+        }
+
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
+        }
+
+        // No permitir actualizar a premium a un admin
+        if (usuario.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden ser premium")
         }
 
         usuario.premium = true
@@ -399,7 +477,42 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    fun verificarPremium(paymentData: PaymentVerificationRequest): ResponseEntity<Map<String, Any>> {
+        // Verificar el pago con PayPal
+        val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
+
+        return if (isValidPayment) {
+            // Actualizar usuario a premium
+            val usuario = actualizarPremium(paymentData.username)
+            ResponseEntity.ok(mapOf(
+                "success" to true,
+                "message" to "Premium activado correctamente",
+                "usuario" to usuario
+            ))
+        } else {
+            ResponseEntity.badRequest().body(mapOf(
+                "success" to false,
+                "message" to "El pago no pudo ser verificado"
+            ))
+        }
+    }
+
+    fun reenviarCodigo(email: String): ResponseEntity<Boolean> {
+        val resultado = verificarGmail(email)
+        return ResponseEntity.ok(resultado)
+    }
+
     fun verUsuariosPorComunidad(comunidad: String, usuarioActual: String): List<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val user = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver usuarios de cualquier comunidad
+        if (user.roles != "ADMIN" && auth.name != usuarioActual) {
+            throw ForbiddenException("No tienes permisos para ver los usuarios de una comunidad usando este filtro")
+        }
+
         // Verificar que la comunidad existe
         comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
             throw NotFoundException("Comunidad $comunidad no encontrada")
@@ -429,24 +542,26 @@ class UsuarioService : UserDetailsService {
 
         // Para cada participante, buscar su información completa y crear un DTO
         participantes.forEach { participante ->
-            // Saltarse los usuarios con los que hay bloqueo
-            if (!usuariosConBloqueo.contains(participante.username)) {
-                val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
-                    throw NotFoundException("Usuario ${participante.username} no encontrado")
-                }
+            // Saltarse los usuarios con los que hay bloqueo y los admins (si el usuario actual no es admin)
+            val usuarioParticipante = usuarioRepository.findFirstByUsername(participante.username).orElse(null)
+
+            if (usuarioParticipante != null &&
+                !usuariosConBloqueo.contains(participante.username) &&
+                (user.roles == "ADMIN" || usuarioParticipante.roles != "ADMIN")
+            ) {
 
                 // Crear y añadir el DTO a la lista
                 listaUsuarios.add(
                     UsuarioDTO(
-                        username = usuario.username,
-                        email = usuario.email,
-                        intereses = usuario.intereses,
-                        nombre = usuario.nombre,
-                        apellido = usuario.apellidos,
-                        fotoPerfilId = usuario.fotoPerfilId,
-                        direccion = usuario.direccion,
-                        descripcion = usuario.descripcion,
-                        premium = usuario.premium
+                        username = usuarioParticipante.username,
+                        email = usuarioParticipante.email,
+                        intereses = usuarioParticipante.intereses,
+                        nombre = usuarioParticipante.nombre,
+                        apellido = usuarioParticipante.apellidos,
+                        fotoPerfilId = usuarioParticipante.fotoPerfilId,
+                        direccion = usuarioParticipante.direccion,
+                        descripcion = usuarioParticipante.descripcion,
+                        premium = usuarioParticipante.premium
                     )
                 )
             }
@@ -457,6 +572,16 @@ class UsuarioService : UserDetailsService {
     }
 
     fun verUsuariosPorActividad(actividadId: String, usuarioActual: String): List<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val user = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver usuarios de cualquier actividad
+        if (user.roles != "ADMIN" && auth.name != usuarioActual) {
+            throw ForbiddenException("No tienes permisos para ver los usuarios de una actividad usando este filtro")
+        }
+
         // Verificar que el usuario actual existe
         usuarioRepository.findFirstByUsername(usuarioActual).orElseThrow {
             throw NotFoundException("Usuario $usuarioActual no encontrado")
@@ -485,24 +610,26 @@ class UsuarioService : UserDetailsService {
 
         // Para cada participante, buscar su información completa y crear un DTO
         participantes.forEach { participante ->
-            // Saltarse los usuarios con los que hay bloqueo
-            if (!usuariosConBloqueo.contains(participante.username)) {
-                val usuario = usuarioRepository.findFirstByUsername(participante.username).orElseThrow {
-                    throw NotFoundException("Usuario ${participante.username} no encontrado")
-                }
+            // Saltarse los usuarios con los que hay bloqueo y los admins (si el usuario actual no es admin)
+            val usuarioParticipante = usuarioRepository.findFirstByUsername(participante.username).orElse(null)
+
+            if (usuarioParticipante != null &&
+                !usuariosConBloqueo.contains(participante.username) &&
+                (user.roles == "ADMIN" || usuarioParticipante.roles != "ADMIN")
+            ) {
 
                 // Crear y añadir el DTO a la lista
                 listaUsuarios.add(
                     UsuarioDTO(
-                        username = usuario.username,
-                        email = usuario.email,
-                        intereses = usuario.intereses,
-                        nombre = usuario.nombre,
-                        apellido = usuario.apellidos,
-                        fotoPerfilId = usuario.fotoPerfilId,
-                        direccion = usuario.direccion,
-                        descripcion = usuario.descripcion,
-                        premium = usuario.premium
+                        username = usuarioParticipante.username,
+                        email = usuarioParticipante.email,
+                        intereses = usuarioParticipante.intereses,
+                        nombre = usuarioParticipante.nombre,
+                        apellido = usuarioParticipante.apellidos,
+                        fotoPerfilId = usuarioParticipante.fotoPerfilId,
+                        direccion = usuarioParticipante.direccion,
+                        descripcion = usuarioParticipante.descripcion,
+                        premium = usuarioParticipante.premium
                     )
                 )
             }
@@ -513,6 +640,16 @@ class UsuarioService : UserDetailsService {
     }
 
     fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver todos los usuarios
+        if (userActual.roles != "ADMIN" && auth.name != username) {
+            throw ForbiddenException("No tienes permisos para obtener esta lista de usuarios")
+        }
+
         // Buscar el usuario actual para verificar que existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username no encontrado")
@@ -536,7 +673,9 @@ class UsuarioService : UserDetailsService {
                 // Excluir al usuario actual
                 usuario.username != username &&
                         // Excluir a los usuarios con los que hay bloqueo
-                        !usuariosConBloqueo.contains(usuario.username)
+                        !usuariosConBloqueo.contains(usuario.username) &&
+                        // Si el usuario actual no es admin, excluir a los admins
+                        (userActual.roles == "ADMIN" || usuario.roles != "ADMIN")
             }
             .sortedBy { usuario ->
                 // Ordenar por nombre, luego por apellido para casos con mismo nombre
@@ -558,6 +697,20 @@ class UsuarioService : UserDetailsService {
     }
 
     fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins no pueden ser bloqueados ni bloquear a otros usuarios
+        if (userActual.roles == "ADMIN") {
+            throw ForbiddenException("Los administradores no pueden bloquear a otros usuarios")
+        }
+
+        if (auth.name != bloqueador) {
+            throw ForbiddenException("No tienes permisos para bloquear usuarios en nombre de otros")
+        }
+
         // Verificar que ambos usuarios existen
         val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
             throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
@@ -565,6 +718,11 @@ class UsuarioService : UserDetailsService {
 
         val usuarioBloqueado = usuarioRepository.findFirstByUsername(bloqueado).orElseThrow {
             throw NotFoundException("Usuario a bloquear $bloqueado no encontrado")
+        }
+
+        // No permitir bloquear a un admin
+        if (usuarioBloqueado.roles == "ADMIN") {
+            throw ForbiddenException("No puedes bloquear a un administrador")
         }
 
         // Verificar que no se está intentando bloquear a uno mismo
@@ -603,10 +761,17 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    /**
-     * Desbloquea a un usuario
-     */
     fun desbloquearUsuario(bloqueador: String, bloqueado: String): Boolean {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins no deberían tener bloqueos, pero si los tienen pueden gestionar sus propios bloqueos
+        if (userActual.roles != "ADMIN" && auth.name != bloqueador) {
+            throw ForbiddenException("No tienes permisos para desbloquear usuarios en nombre de otros")
+        }
+
         // Buscar el bloqueo existente
         val bloqueo = bloqueoRepository.findByBloqueadorAndBloqueado(bloqueador, bloqueado).orElseThrow {
             throw NotFoundException("No existe un bloqueo de $bloqueador hacia $bloqueado")
@@ -618,19 +783,23 @@ class UsuarioService : UserDetailsService {
         return true
     }
 
-    /**
-     * Verifica si un usuario ha bloqueado a otro
-     */
     fun existeBloqueo(usuario1: String, usuario2: String): Boolean {
         // Comprobar si existe un bloqueo en cualquier dirección
         return bloqueoRepository.existsByBloqueadorAndBloqueado(usuario1, usuario2) ||
                 bloqueoRepository.existsByBloqueadorAndBloqueado(usuario2, usuario1)
     }
 
-    /**
-     * Obtiene la lista de usuarios bloqueados por un usuario
-     */
     fun verUsuariosBloqueados(username: String): List<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver los usuarios bloqueados por cualquier usuario
+        if (userActual.roles != "ADMIN" && auth.name != username) {
+            throw ForbiddenException("No tienes permisos para ver los usuarios bloqueados por este usuario")
+        }
+
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username no encontrado")
@@ -668,7 +837,6 @@ class UsuarioService : UserDetailsService {
         return listaUsuariosBloqueados
     }
 
-
     fun eliminarSolicitudesAmistad(usuario1: String, usuario2: String) {
         // Buscar solicitudes en ambas direcciones
         val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(usuario1, usuario2) +
@@ -692,11 +860,18 @@ class UsuarioService : UserDetailsService {
             solicitudesAmistadRepository.delete(amistad2)
         }
     }
-    /**
-     * Función para ver las solicitudes de amistad pendientes de un usuario
-     * Corresponde al endpoint: GET /Usuario/verSolicitudesAmistad/{username}
-     */
+
     fun verSolicitudesAmistad(username: String): List<SolicitudAmistadDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver las solicitudes de amistad de cualquier usuario
+        if (userActual.roles != "ADMIN" && auth.name != username) {
+            throw ForbiddenException("No tienes permisos para ver las solicitudes de amistad de este usuario")
+        }
+
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username no encontrado")
@@ -717,11 +892,17 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-    /**
-     * Función para ver los amigos de un usuario (solicitudes aceptadas)
-     * Corresponde al endpoint: GET /Usuario/verAmigos/{username}
-     */
     fun verAmigos(username: String): List<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins pueden ver los amigos de cualquier usuario
+        if (userActual.roles != "ADMIN" && auth.name != username) {
+            throw ForbiddenException("No tienes permisos para ver los amigos de este usuario")
+        }
+
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username no encontrado")
@@ -770,31 +951,44 @@ class UsuarioService : UserDetailsService {
                 throw NotFoundException("Usuario amigo $amigoUsername no encontrado")
             }
 
-            // Crear y añadir el DTO a la lista
-            listaAmigos.add(
-                UsuarioDTO(
-                    username = amigo.username,
-                    email = amigo.email,
-                    intereses = amigo.intereses,
-                    nombre = amigo.nombre,
-                    apellido = amigo.apellidos,
-                    fotoPerfilId = amigo.fotoPerfilId,
-                    direccion = amigo.direccion,
-                    descripcion = amigo.descripcion,
-                    premium = amigo.premium
+            // Si el usuario actual no es admin, no mostrar amigos que sean admin
+            if (userActual.roles == "ADMIN" || amigo.roles != "ADMIN") {
+                // Crear y añadir el DTO a la lista
+                listaAmigos.add(
+                    UsuarioDTO(
+                        username = amigo.username,
+                        email = amigo.email,
+                        intereses = amigo.intereses,
+                        nombre = amigo.nombre,
+                        apellido = amigo.apellidos,
+                        fotoPerfilId = amigo.fotoPerfilId,
+                        direccion = amigo.direccion,
+                        descripcion = amigo.descripcion,
+                        premium = amigo.premium
+                    )
                 )
-            )
+            }
         }
 
         // Devolver la lista de DTOs de amigos
         return listaAmigos
     }
 
-    /**
-     * Función para enviar una solicitud de amistad
-     * Corresponde al endpoint: POST /Usuario/enviarSolicitudAmistad
-     */
     fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Los admins no pueden enviar ni recibir solicitudes de amistad
+        if (userActual.roles == "ADMIN") {
+            throw ForbiddenException("Los administradores no pueden enviar solicitudes de amistad")
+        }
+
+        if (auth.name != solicitudAmistadDTO.remitente) {
+            throw ForbiddenException("No tienes permisos para enviar solicitudes de amistad en nombre de otros")
+        }
+
         // Verificar que ambos usuarios existen
         val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
             throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
@@ -802,6 +996,11 @@ class UsuarioService : UserDetailsService {
 
         val destinatario = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.destinatario).orElseThrow {
             throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
+        }
+
+        // No permitir enviar solicitud a un admin
+        if (destinatario.roles == "ADMIN") {
+            throw ForbiddenException("No puedes enviar solicitudes de amistad a administradores")
         }
 
         // Verificar que no existe un bloqueo entre los usuarios
@@ -841,11 +1040,24 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-
     fun aceptarSolicitud(id: String): Boolean {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
         // Buscar la solicitud por ID
         val solicitud = solicitudesAmistadRepository.findById(id).orElseThrow {
             throw NotFoundException("Solicitud de amistad con ID $id no encontrada")
+        }
+
+        // Los admins no pueden aceptar solicitudes de amistad
+        if (userActual.roles == "ADMIN") {
+            throw ForbiddenException("Los administradores no pueden aceptar solicitudes de amistad")
+        }
+
+        if (auth.name != solicitud.destinatario) {
+            throw ForbiddenException("No tienes permisos para aceptar esta solicitud de amistad")
         }
 
         // Verificar que la solicitud no haya sido aceptada ya
@@ -867,5 +1079,32 @@ class UsuarioService : UserDetailsService {
         solicitudesAmistadRepository.save(solicitudAceptada)
 
         return true
+    }
+
+    // Método para ver todas las denuncias (solo accesible para admins)
+    fun verTodasLasDenuncias(): List<DenunciaDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
+        val userActual = usuarioRepository.findFirstByUsername(auth.name).orElseThrow {
+            throw NotFoundException("Usuario autenticado no encontrado")
+        }
+
+        // Solo los admins pueden ver todas las denuncias
+        if (userActual.roles != "ADMIN") {
+            throw ForbiddenException("Solo los administradores pueden ver todas las denuncias")
+        }
+
+        // Obtener todas las denuncias
+        val todasLasDenuncias = denunciaRepository.findAll()
+
+        // Mapear las denuncias a DTOs
+        return todasLasDenuncias.map { denuncia ->
+            DenunciaDTO(
+                motivo = denuncia.motivo,
+                cuerpo = denuncia.cuerpo,
+                nombreItemDenunciado = denuncia.nombreItemDenunciado,
+                tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                fechaCreacion = denuncia.fechaCreacion
+            )
+        }
     }
 }

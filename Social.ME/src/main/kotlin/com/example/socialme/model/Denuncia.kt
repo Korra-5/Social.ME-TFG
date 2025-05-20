@@ -10,10 +10,9 @@ data class Denuncia(
     val _id: String?,
     val motivo: String,
     val cuerpo: String,
-    val nombreItemDenunciado:String,
-    val tipoItemDenunciado:String,
-    val usuarioDenunciante:String,
-    val fechaCreacion: Date
-) {
-
-}
+    val nombreItemDenunciado: String,
+    val tipoItemDenunciado: String,
+    val usuarioDenunciante: String,
+    val fechaCreacion: Date,
+    var solucionado: Boolean = false  // Propiedad añadida con valor por defecto false
+)

@@ -89,6 +89,10 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/desbloquearUsuario").authenticated()
                 auth.requestMatchers("/Usuario/verUsuariosBloqueados/{username}").authenticated()
                 auth.requestMatchers("/Usuario/existeBloqueo/{usuario1}/{usuario2}").authenticated()
+                auth.requestMatchers("/Denuncia/verTodasLasDenuncias").authenticated()
+                auth.requestMatchers("/Denuncia/verDenunciasNoCompletadas").authenticated()
+                auth.requestMatchers("/Denuncia/completarDenuncia/{denunciaId}/{completado}").authenticated()
+                auth.requestMatchers("/Usuario/verTodasLasDenuncias").authenticated()
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
