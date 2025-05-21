@@ -628,4 +628,59 @@ class ComunidadService {
             )
         }
     }
+
+    fun eliminarUsuarioDeComunidad(
+        participantesComunidadDTO: ParticipantesComunidadDTO,
+        usuarioSolicitante: String
+    ): ParticipantesComunidadDTO {
+        val usuarioAEliminar = participantesComunidadDTO.username
+        val comunidadUrl = participantesComunidadDTO.comunidad
+
+        // Verificar que la comunidad existe
+        val comunidad = comunidadRepository.findComunidadByUrl(comunidadUrl)
+            .orElseThrow { NotFoundException("Comunidad no encontrada") }
+
+        // Verificar que el usuario a eliminar existe
+        usuarioRepository.findFirstByUsername(usuarioAEliminar)
+            .orElseThrow { NotFoundException("Usuario a eliminar no encontrado") }
+
+        // Verificar que el usuario solicitante existe
+        usuarioRepository.findFirstByUsername(usuarioSolicitante)
+            .orElseThrow { NotFoundException("Usuario solicitante no encontrado") }
+
+        // Verificar si el usuario a eliminar pertenece a la comunidad
+        val participacion = participantesComunidadRepository.findByUsernameAndComunidad(
+            usuarioAEliminar, comunidadUrl
+        ).orElseThrow { BadRequestException("El usuario a eliminar no pertenece a esta comunidad") }
+
+        // Verificar si el usuario solicitante es creador o administrador
+        val esCreador = comunidad.creador == usuarioSolicitante
+        val esAdmin = comunidad.administradores?.contains(usuarioSolicitante) ?: false
+
+        if (!esCreador && !esAdmin) {
+            throw ForbiddenException("No tienes permisos para eliminar usuarios de esta comunidad")
+        }
+
+        // Verificar permisos según roles
+        // El creador puede eliminar a cualquiera
+        // Los administradores solo pueden eliminar a usuarios normales
+        if (!esCreador && esAdmin) {
+            val usuarioAEliminarEsCreador = comunidad.creador == usuarioAEliminar
+            val usuarioAEliminarEsAdmin = comunidad.administradores?.contains(usuarioAEliminar) ?: false
+
+            if (usuarioAEliminarEsCreador || usuarioAEliminarEsAdmin) {
+                throw ForbiddenException("Los administradores no pueden eliminar al creador ni a otros administradores")
+            }
+        }
+
+        // No permitir que el creador se elimine a sí mismo
+        if (esCreador && usuarioAEliminar == usuarioSolicitante) {
+            throw BadRequestException("El creador no puede abandonar la comunidad")
+        }
+
+        // Eliminar al usuario de la comunidad
+        participantesComunidadRepository.delete(participacion)
+
+        return participantesComunidadDTO
+    }
 }

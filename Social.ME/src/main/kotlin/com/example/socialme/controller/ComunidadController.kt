@@ -141,5 +141,14 @@ class ComunidadController {
     ):ResponseEntity<Boolean> {
         return ResponseEntity(comunidadService.verificarCreadorAdministradorComunidad(comunidadUrl, username), HttpStatus.OK)
     }
+
+    @DeleteMapping("/eliminarUsuarioDeComunidad/{usuarioSolicitante}")
+    fun eliminarUsuarioDeComunidad(
+        httpRequest: HttpServletRequest,
+        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO,
+        @PathVariable usuarioSolicitante: String
+    ) : ResponseEntity<ParticipantesComunidadDTO> {
+        return ResponseEntity(comunidadService.eliminarUsuarioDeComunidad(participantesComunidadDTO, usuarioSolicitante), HttpStatus.OK)
+    }
 }
 
