@@ -9,7 +9,6 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import com.nimbusds.jose.jwk.source.JWKSource
 import com.nimbusds.jose.proc.SecurityContext
-import org.springframework.context.annotation.Lazy
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.Customizer
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration
@@ -80,20 +79,13 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verificarPremium").authenticated()
                 auth.requestMatchers("/Usuario/actualizarPremium/{username}").authenticated()
-                auth.requestMatchers("/Usuario/verSolicitudesAmistad/{username}").authenticated()
-                auth.requestMatchers("/Usuario/verAmigos/{username}").authenticated()
-                auth.requestMatchers("/Usuario/enviarSolicitudAmistad").authenticated()
-                auth.requestMatchers("/Usuario/aceptarSolicitud/{id}").authenticated()
-                auth.requestMatchers("/Usuario/rechazarSolicitud/{id}").authenticated()
-                auth.requestMatchers("/Usuario/verificarSolicitudPendiente/{remitente}/{destinatario}").authenticated()
-                auth.requestMatchers("/Usuario/bloquearUsuario").authenticated()
-                auth.requestMatchers("/Usuario/desbloquearUsuario").authenticated()
-                auth.requestMatchers("/Usuario/verUsuariosBloqueados/{username}").authenticated()
-                auth.requestMatchers("/Usuario/existeBloqueo/{usuario1}/{usuario2}").authenticated()
                 auth.requestMatchers("/Denuncia/verTodasLasDenuncias").authenticated()
                 auth.requestMatchers("/Denuncia/verDenunciasNoCompletadas").authenticated()
                 auth.requestMatchers("/Denuncia/completarDenuncia/{denunciaId}/{completado}").authenticated()
-                auth.requestMatchers("/Usuario/verTodasLasDenuncias").authenticated()
+                auth.requestMatchers("/Notificacion/obtenerNotificaciones/{username}").authenticated()
+                auth.requestMatchers("/Notificacion/contarNoLeidas/{username}").authenticated()
+                auth.requestMatchers("/Notificacion/marcarComoLeida/{notificacionId}").authenticated()
+                auth.requestMatchers("/ws/**").permitAll() // WebSockets
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
@@ -111,7 +103,6 @@ class SecurityConfig {
      * Método que inicializa un objeto de tipo AuthenticationManager
      */
     @Bean
-    @Lazy
     fun authenticationManager(authenticationConfiguration: AuthenticationConfiguration) : AuthenticationManager {
         return authenticationConfiguration.authenticationManager
     }

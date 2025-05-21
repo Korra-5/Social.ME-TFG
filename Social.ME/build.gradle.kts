@@ -33,6 +33,12 @@ dependencies {
 	implementation("org.mongodb:mongodb-driver-kotlin-sync:5.3.0")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("com.sun.mail:javax.mail:1.6.2")
+	// WebSocket
+	implementation ("org.springframework.boot:spring-boot-starter-websocket")
+
+	// Para el soporte de SockJS
+	implementation ("org.webjars:sockjs-client:1.5.1")
+	implementation ("org.webjars:stomp-websocket:2.3.4")
 }
 
 kotlin {
