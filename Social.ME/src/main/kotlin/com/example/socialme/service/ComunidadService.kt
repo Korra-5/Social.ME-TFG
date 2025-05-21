@@ -26,6 +26,9 @@ class ComunidadService {
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
 
     @Autowired
+    private lateinit var chatService: ChatService
+
+    @Autowired
     private lateinit var comunidadRepository: ComunidadRepository
 
     @Autowired
@@ -282,6 +285,8 @@ class ComunidadService {
 
         // Finalmente eliminar la comunidad
         comunidadRepository.delete(comunidad)
+
+        chatService.eliminarMensajesComunidad(url)
 
         return comunidadDto
     }

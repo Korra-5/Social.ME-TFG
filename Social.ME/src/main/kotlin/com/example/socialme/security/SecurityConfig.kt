@@ -85,6 +85,9 @@ class SecurityConfig {
                 auth.requestMatchers("/Notificacion/obtenerNotificaciones/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/contarNoLeidas/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/marcarComoLeida/{notificacionId}").authenticated()
+                // In SecurityConfig.kt, add these to your authorizeHttpRequests configuration
+                auth.requestMatchers("/Chat/enviarMensaje").authenticated()
+                auth.requestMatchers("/Chat/obtenerMensajes/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
