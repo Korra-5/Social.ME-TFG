@@ -136,34 +136,6 @@ class UsuarioController {
         return ResponseEntity(usuarioService.actualizarPremium(username), HttpStatus.OK)
     }
 
-    @PostMapping("/verificarPremium")
-    fun verificarPremium(
-        httpRequest: HttpServletRequest,
-        @RequestBody paymentData: PaymentVerificationRequest
-    ): ResponseEntity<Map<String, Any>> {
-        // Verificar el pago con PayPal
-        val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
-
-        return if (isValidPayment) {
-            // Actualizar usuario a premium
-            val usuario = usuarioService.actualizarPremium(paymentData.username)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "message" to "Premium activado correctamente",
-                    "usuario" to usuario
-                )
-            )
-        } else {
-            ResponseEntity.badRequest().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "El pago no pudo ser verificado"
-                )
-            )
-        }
-    }
-
     @GetMapping("/verSolicitudesAmistad/{username}")
     fun verSolicitudesAmistad(
         httpRequest: HttpServletRequest,
@@ -229,5 +201,32 @@ class UsuarioController {
         )
     }
 
+    @PostMapping("/verificarPremium")
+    fun verificarPremium(
+        httpRequest: HttpServletRequest,
+        @RequestBody paymentData: PaymentVerificationRequest
+    ): ResponseEntity<Map<String, Any>> {
+        // Verificar el pago con PayPal
+        val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
+
+        return if (isValidPayment) {
+            // Actualizar usuario a premium
+            val usuario = usuarioService.actualizarPremium(paymentData.username)
+            ResponseEntity.ok(
+                mapOf(
+                    "success" to true,
+                    "message" to "Premium activado correctamente",
+                    "usuario" to usuario
+                )
+            )
+        } else {
+            ResponseEntity.badRequest().body(
+                mapOf(
+                    "success" to false,
+                    "message" to "El pago no pudo ser verificado"
+                )
+            )
+        }
+    }
 
 }

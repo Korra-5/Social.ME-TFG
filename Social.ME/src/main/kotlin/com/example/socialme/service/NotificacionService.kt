@@ -19,7 +19,7 @@ class NotificacionService {
     @Autowired
     private lateinit var simpMessagingTemplate: SimpMessagingTemplate
 
-    // Método para crear una notificación y guardarla en la base de datos
+    // Crear una notificación y guardarla en la base de datos
     fun crearNotificacion(
         tipo: String,
         titulo: String,
@@ -50,13 +50,13 @@ class NotificacionService {
         return notificacionDTO
     }
 
-    // Método para obtener todas las notificaciones de un usuario
+    // Obtener todas las notificaciones de un usuario
     fun obtenerNotificacionesUsuario(username: String): List<NotificacionDTO> {
         val notificaciones = notificacionRepository.findByUsuarioDestinoOrderByFechaCreacionDesc(username)
         return notificaciones.map { mapToDTO(it) }
     }
 
-    // Método para marcar una notificación como leída
+    // Marcar una notificación como leída
     fun marcarComoLeida(notificacionId: String): NotificacionDTO {
         val notificacion = notificacionRepository.findById(notificacionId).orElseThrow {
             throw Exception("Notificación no encontrada")
@@ -68,12 +68,12 @@ class NotificacionService {
         return mapToDTO(savedNotificacion)
     }
 
-    // Método para contar notificaciones no leídas
+    // Contar notificaciones no leídas
     fun contarNoLeidas(username: String): Long {
         return notificacionRepository.countByUsuarioDestinoAndLeida(username, false)
     }
 
-    // Método para convertir de entidad a DTO
+    // Convertir de entidad a DTO
     private fun mapToDTO(notificacion: Notificacion): NotificacionDTO {
         return NotificacionDTO(
             _id = notificacion._id,

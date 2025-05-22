@@ -10,13 +10,13 @@ data class Actividad(
     val _id: String?,
     var nombre: String,
     var descripcion: String,
-    var fotosCarruselIds: List<String>,  // Changed from base64 to ID list
+    var fotosCarruselIds: List<String>,
     val comunidad: String,
     val creador: String,
     val fechaCreacion: Date,
     var fechaInicio: Date,
     var fechaFinalizacion: Date,
     val privada: Boolean,
-    var coordenadas: Coordenadas,  // Reemplazando el campo "lugar" por coordenadas
-    var lugar: String  // Mantenemos la dirección textual para referencia
+    var coordenadas: Coordenadas,
+    var lugar: String
 )

@@ -8,5 +8,5 @@ data class DenunciaDTO(
     val nombreItemDenunciado: String,
     val tipoItemDenunciado: String,
     val fechaCreacion: Date,
-    val solucionado: Boolean = false  // Nueva propiedad
+    val solucionado: Boolean = false
 )

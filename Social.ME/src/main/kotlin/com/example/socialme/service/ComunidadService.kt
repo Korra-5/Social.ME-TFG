@@ -42,8 +42,8 @@ class ComunidadService {
             throw BadRequestException("Comunidad existente")
         }
 
-        //Sustituye por guiones los espacios para que las url sean más accesibles
-        val formattedUrl = comunidadCreateDTO.url.trim().split(Regex("\\s+")).joinToString("-")
+        //Sustituye por guiones los espacios para que las url sean más accesibles (también las paso a minusculas)
+        val formattedUrl = comunidadCreateDTO.url.trim().split(Regex("\\s+")).joinToString("-").toLowerCase()
 
         if (comunidadCreateDTO.nombre.length > 40) {
             throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
@@ -65,7 +65,7 @@ class ComunidadService {
         }
 
 
-        // Handle profile photo upload to GridFS
+        // Formatea la foto de perfil a Gridfs
         val fotoPerfilId = if (comunidadCreateDTO.fotoPerfilBase64 != null) {
             gridFSService.storeFileFromBase64(
                 comunidadCreateDTO.fotoPerfilBase64,
@@ -166,7 +166,7 @@ class ComunidadService {
             .toSet()
 
         return todasLasComunidades
-            .filter { !it.privada } // Solo comunidades públicas
+            .filter { !it.privada }
             .filter { comunidad ->
                 // Filtrar aquellas a las que el usuario no esté unido ya
                 !comunidadesDelUsuario.contains(comunidad.url)
@@ -175,7 +175,6 @@ class ComunidadService {
                 // Verificar la distancia
                 verificarDistancia(comunidad.coordenadas, coordenadasUser, distancia)
             }
-            // Ya no filtramos por intereses para mostrar todas
             .map { comunidad ->
                 ComunidadDTO(
                     url = comunidad.url,
@@ -202,17 +201,14 @@ class ComunidadService {
             })
     }
 
-    /**
-     * Verifica si una comunidad está dentro del radio de distancia especificado
-     * @return true si está dentro de la distancia o si algún parámetro es nulo, false en caso contrario
-     */
+    // Verifica si una comunidad está dentro del radio de distancia especificado
     private fun verificarDistancia(coordenadasComunidad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
-        // Si falta algún parámetro necesario para el cálculo de distancia, devolvemos true para incluir la comunidad
+        // Si falta algún parámetro necesario para el cálculo de distancia, devuelve true para incluir la comunidad
         if (coordenadasComunidad == null || coordenadasUser == null || distanciaKm == null) {
             return true
         }
 
-        // Calculamos la distancia entre las coordenadas del usuario y las de la comunidad
+        // Cálculo de la distancia
         val distanciaCalculada = GeoUtils.calcularDistancia(coordenadasUser, coordenadasComunidad)
 
         // Verificamos si la distancia calculada es menor o igual que la distancia especificada
@@ -266,14 +262,14 @@ class ComunidadService {
             codigoUnion = comunidad.codigoUnion
         )
 
-        // Delete images from GridFS
+        // Elimina imagenes de GridFS
         try {
             gridFSService.deleteFile(comunidad.fotoPerfilId)
             comunidad.fotoCarruselIds?.forEach { fileId ->
                 gridFSService.deleteFile(fileId)
             }
         } catch (e: Exception) {
-            // Log error but continue with deletion
+            // Log para mis pruebas
             println("Error deleting GridFS files: ${e.message}")
         }
 
@@ -352,10 +348,8 @@ class ComunidadService {
                 )
             ) ?: ""
         } else if (comunidadUpdateDTO.fotoPerfilId != null) {
-            // Si se proporciona explícitamente un ID de foto
             comunidadUpdateDTO.fotoPerfilId
         } else {
-            // Mantener la foto de perfil existente
             comunidadExistente.fotoPerfilId
         }
 
@@ -662,8 +656,6 @@ class ComunidadService {
         }
 
         // Verificar permisos según roles
-        // El creador puede eliminar a cualquiera
-        // Los administradores solo pueden eliminar a usuarios normales
         if (!esCreador && esAdmin) {
             val usuarioAEliminarEsCreador = comunidad.creador == usuarioAEliminar
             val usuarioAEliminarEsAdmin = comunidad.administradores?.contains(usuarioAEliminar) ?: false

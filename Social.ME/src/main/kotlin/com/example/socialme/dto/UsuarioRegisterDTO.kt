@@ -13,6 +13,6 @@ data class UsuarioRegisterDTO(
     val apellidos: String,
     val descripcion: String,
     val intereses: List<String>,
-    val fotoPerfilBase64: String? = null,  // Used for receiving base64 image
-    val fotoPerfilId: String? = null,      // Used if file already uploaded
+    val fotoPerfilBase64: String? = null,
+    val fotoPerfilId: String? = null,
 )

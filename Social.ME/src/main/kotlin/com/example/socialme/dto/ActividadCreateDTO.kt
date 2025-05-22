@@ -12,10 +12,10 @@ data class ActividadCreateDTO(
     val creador: String,
     val fechaInicio: Date,
     val fechaFinalizacion: Date,
-    val fotosCarruselBase64: List<String>? = null,  // Used for receiving base64 images
-    val fotosCarruselIds: List<String>? = null,     // Used if files already uploaded
+    val fotosCarruselBase64: List<String>? = null,
+    val fotosCarruselIds: List<String>? = null,
     val privada: Boolean,
-    val coordenadas: Coordenadas,  // Coordenadas geográficas
+    val coordenadas: Coordenadas,
     var lugar: String
 
 )

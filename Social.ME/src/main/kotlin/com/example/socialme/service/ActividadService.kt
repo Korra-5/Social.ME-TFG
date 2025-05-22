@@ -118,19 +118,17 @@ class ActividadService {
         )
     }
 
-    // Add GridFS handling to eliminarActividad
     fun eliminarActividad(id: String): ActividadDTO {
         val actividad = actividadRepository.findActividadBy_id(id).orElseThrow {
             throw NotFoundException("Esta actividad no existe")
         }
 
-        // Delete activity images from GridFS
         try {
             actividad.fotosCarruselIds.forEach { fileId ->
                 gridFSService.deleteFile(fileId)
             }
         } catch (e: Exception) {
-            // Log error but continue with deletion
+            // Log de pruebas
             println("Error deleting GridFS files: ${e.message}")
         }
 
@@ -159,7 +157,6 @@ class ActividadService {
         return actividadDTO
     }
 
-    // Update the modificarActividad method to handle GridFS
     fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
         // Buscar la actividad existente
         val actividad = actividadRepository.findActividadBy_id(actividadUpdateDTO._id)
@@ -174,7 +171,6 @@ class ActividadService {
         val nombreAntiguo = actividad.nombre
         val nombreNuevo = actividadUpdateDTO.nombre
 
-        // Process new carousel photos if they exist in base64 format
         val nuevasFotos =
             if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
                 actividadUpdateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
@@ -191,7 +187,6 @@ class ActividadService {
                 }
             } else actividadUpdateDTO.fotosCarruselIds ?: emptyList()
 
-        // Delete old photos that are not in the new list
         val viejasFotos = actividad.fotosCarruselIds
         val fotosParaEliminar = viejasFotos.filter { !nuevasFotos.contains(it) }
 
@@ -217,7 +212,6 @@ class ActividadService {
         // Guardar la actividad actualizada
         val actividadActualizada = actividadRepository.save(actividad)
 
-        // Si el nombre ha cambiado, actualizar en otras colecciones
         if (nombreAntiguo != nombreNuevo) {
             // Actualizar en ParticipantesActividad
             val participantes = participantesActividadRepository.findByidActividad(actividadUpdateDTO._id)
@@ -252,7 +246,6 @@ class ActividadService {
         )
     }
 
-    // Also update verActividadNoParticipaUsuario to use the new fotosCarruselIds field
     fun verActividadNoParticipaUsuario(username: String): List<ActividadDTO> {
         val participaciones = participantesComunidadRepository.findComunidadByUsername(username).orElseThrow {
             throw BadRequestException("Usuario no existe")
@@ -314,11 +307,7 @@ class ActividadService {
         )
         return actividadDTO
     }
-    /**
-     * Devuelve todas las actividades públicas que están dentro del radio de distancia especificado
-     * Si no se especifica distancia o coordenadas del usuario, devuelve todas las actividades públicas
-     * Filtra las actividades en las que el usuario ya está inscrito
-     */
+
     fun verActividadesPublicasEnZona(
         distancia: Float? = null,
         username: String
@@ -354,7 +343,6 @@ class ActividadService {
                 // Verificar la distancia
                 verificarDistancia(actividad.coordenadas, coordenadasUser, distancia)
             }
-            // Ya no filtramos por intereses para mostrar todas
             .map { actividad ->
                 ActividadDTO(
                     _id = actividad._id,
@@ -370,12 +358,9 @@ class ActividadService {
                 )
             }
             .sortedWith(compareByDescending<ActividadDTO> { actividadDTO ->
-                // Primera ordenación: por número de intereses coincidentes
-                // Buscamos la comunidad asociada a esta actividad
                 val comunidadIntereses = actividadesComunidades[todasLasActividades.find { it._id == actividadDTO._id }]?.intereses ?: emptyList()
                 comunidadIntereses.count { interes -> interesesUser.contains(interes) }
             }.thenByDescending {
-                // Segunda ordenación: por fecha de inicio (las más próximas primero)
                 it.fechaInicio
             })
     }

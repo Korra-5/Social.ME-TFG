@@ -9,12 +9,12 @@ import java.util.*
 data class Notificacion(
     @BsonId
     val _id: String?,
-    val tipo: String,  // "ACTIVIDAD_PROXIMA", "ACTIVIDAD_INICIANDO", etc.
+    val tipo: String,
     val titulo: String,
     val mensaje: String,
     val usuarioDestino: String,
-    val entidadId: String?,  // ID de la actividad relacionada
-    val entidadNombre: String?,  // Nombre de la actividad relacionada
+    val entidadId: String?,
+    val entidadNombre: String?,
     val fechaCreacion: Date,
-    val leida: Boolean = false  // Para marcar si el usuario ya leyó la notificación
+    val leida: Boolean = false
 )

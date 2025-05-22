@@ -74,7 +74,7 @@ class UsuarioService : UserDetailsService {
         if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
         }
-        // Primero, verificar el correo electrónico
+        // Verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
         }
@@ -192,6 +192,7 @@ class UsuarioService : UserDetailsService {
 
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
@@ -203,9 +204,6 @@ class UsuarioService : UserDetailsService {
             }
         }
 
-        // CORREGIDO: NO cambiar el email hasta que se verifique
-        var emailAActualizar = usuario.email // Mantener el email actual por defecto
-
         // Verificar el correo electrónico si se ha cambiado
         if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
             // Verificar que el nuevo email no esté en uso por otro usuario
@@ -213,15 +211,12 @@ class UsuarioService : UserDetailsService {
                 throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
             }
 
-            // IMPORTANTE: Solo verificar el email, pero NO cambiarlo aún
             if (!verificarGmail(usuarioUpdateDTO.email)) {
                 throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
             }
-
-            // TEMPORAL: Guardar el nuevo email en una tabla temporal o sistema de verificación
-            // Por ahora, lanzamos una excepción indicando que debe verificar primero
-            throw BadRequestException("Se ha enviado un código de verificación a ${usuarioUpdateDTO.email}. Verifica tu email antes de que se actualice tu perfil.")
         }
+
+
 
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId: String =
@@ -247,20 +242,18 @@ class UsuarioService : UserDetailsService {
                     )
                 ) ?: ""
             } else if (usuarioUpdateDTO.fotoPerfilId != null) {
-                // Si se proporciona explícitamente un ID de foto
                 usuarioUpdateDTO.fotoPerfilId
             } else {
-                // Mantener la foto de perfil existente
                 usuario.fotoPerfilId ?: ""
             }
 
-        // Guardar el antiguo username para actualizar referencias si se cambia
+        // Guardar el antiguo username
         val antiguoUsername = usuario.username
 
-        // Actualizar la información del usuario (SIN cambiar el email aún)
+        // Actualizar la información del usuario
         usuario.apply {
             username = usuarioUpdateDTO.newUsername ?: antiguoUsername
-            email = emailAActualizar // MANTENER el email actual, no el nuevo
+            email = usuarioUpdateDTO.email ?: usuario.email // Mantener el email existente si no se proporciona uno nuevo
             nombre = usuarioUpdateDTO.nombre ?: usuario.nombre
             apellidos = usuarioUpdateDTO.apellido ?: usuario.apellidos
             descripcion = usuarioUpdateDTO.descripcion ?: usuario.descripcion
@@ -289,7 +282,7 @@ class UsuarioService : UserDetailsService {
         // Retornar el DTO actualizado
         return UsuarioDTO(
             username = usuario.username,
-            email = usuario.email, // Email sin cambiar
+            email = usuario.email,
             intereses = usuario.intereses,
             nombre = usuario.nombre,
             apellido = usuario.apellidos,
@@ -352,14 +345,14 @@ class UsuarioService : UserDetailsService {
     }
 
     fun verificarGmail(gmail: String): Boolean {
-        // Configuración para el servidor de correo (usando Gmail como ejemplo)
+        // Configuración para el servidor de correo
         val props = Properties()
         props.put("mail.smtp.auth", "true")
         props.put("mail.smtp.starttls.enable", "true")
         props.put("mail.smtp.host", "smtp.gmail.com")
         props.put("mail.smtp.port", "587")
 
-        // Credenciales de tu cuenta de correo (desde donde enviarás la verificación)
+        // Credenciales de la cuenta de correo
         val username = System.getenv("EMAIL_USERNAME") ?: ""
         val password = System.getenv("EMAIL_PASSWORD") ?: ""
 
@@ -405,9 +398,6 @@ class UsuarioService : UserDetailsService {
 
             println("Correo de verificación enviado exitosamente a $gmail")
 
-            // Aquí se debería implementar un mecanismo para verificar que el usuario
-            // ingrese el código correcto, pero para simplificar, asumimos que la verificación
-            // es exitosa si el correo se envía correctamente
             return true
 
         } catch (e: MessagingException) {
@@ -417,18 +407,15 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-    // Método para generar un código de verificación aleatorio
     private fun generarCodigoVerificacion(): String {
         return (100000..999999).random().toString()
     }
 
-    // Método para verificar un código ingresado por el usuario
     fun verificarCodigo(email: String, codigo: String): Boolean {
         val codigoAlmacenado = verificacionCodigos[email]
         return codigoAlmacenado == codigo
     }
 
-    // Agregar este método en UsuarioService
     fun actualizarPremium(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
@@ -503,7 +490,6 @@ class UsuarioService : UserDetailsService {
             }
         }
 
-        // Devolver la lista de DTOs
         return listaUsuarios
     }
 
@@ -654,9 +640,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    /**
-     * Desbloquea a un usuario
-     */
     fun desbloquearUsuario(bloqueador: String, bloqueado: String): Boolean {
         // Buscar el bloqueo existente
         val bloqueo = bloqueoRepository.findByBloqueadorAndBloqueado(bloqueador, bloqueado).orElseThrow {
@@ -669,18 +652,12 @@ class UsuarioService : UserDetailsService {
         return true
     }
 
-    /**
-     * Verifica si un usuario ha bloqueado a otro
-     */
     fun existeBloqueo(usuario1: String, usuario2: String): Boolean {
         // Comprobar si existe un bloqueo en cualquier dirección
         return bloqueoRepository.existsByBloqueadorAndBloqueado(usuario1, usuario2) ||
                 bloqueoRepository.existsByBloqueadorAndBloqueado(usuario2, usuario1)
     }
 
-    /**
-     * Obtiene la lista de usuarios bloqueados por un usuario
-     */
     fun verUsuariosBloqueados(username: String): List<UsuarioDTO> {
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -743,10 +720,8 @@ class UsuarioService : UserDetailsService {
             solicitudesAmistadRepository.delete(amistad2)
         }
     }
-    /**
-     * Función para ver las solicitudes de amistad pendientes de un usuario
-     * Corresponde al endpoint: GET /Usuario/verSolicitudesAmistad/{username}
-     */
+
+
     fun verSolicitudesAmistad(username: String): List<SolicitudAmistadDTO> {
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -768,10 +743,7 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-    /**
-     * Función para ver los amigos de un usuario (solicitudes aceptadas)
-     * Corresponde al endpoint: GET /Usuario/verAmigos/{username}
-     */
+
     fun verAmigos(username: String): List<UsuarioDTO> {
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -841,10 +813,6 @@ class UsuarioService : UserDetailsService {
         return listaAmigos
     }
 
-    /**
-     * Función para enviar una solicitud de amistad
-     * Corresponde al endpoint: POST /Usuario/enviarSolicitudAmistad
-     */
     fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
         // Verificar que ambos usuarios existen
         val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
@@ -870,7 +838,7 @@ class UsuarioService : UserDetailsService {
             throw BadRequestException("Ya existe una solicitud de amistad entre estos usuarios")
         }
 
-        // Crear la nueva solicitud de amistad con estado no aceptado (false)
+        // Crear la nueva solicitud de amistad con estado no aceptado
         val nuevaSolicitud = SolicitudAmistad(
             _id = UUID.randomUUID().toString(),
             remitente = solicitudAmistadDTO.remitente,
@@ -905,7 +873,6 @@ class UsuarioService : UserDetailsService {
         }
 
         // Crear una nueva solicitud con los mismos datos pero con aceptada = true
-        // (Como SolicitudAmistad usa vals inmutables, necesitamos crear una nueva instancia)
         val solicitudAceptada = SolicitudAmistad(
             _id = solicitud._id,
             remitente = solicitud.remitente,

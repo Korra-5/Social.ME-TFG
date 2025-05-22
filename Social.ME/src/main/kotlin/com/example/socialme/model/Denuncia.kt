@@ -14,5 +14,5 @@ data class Denuncia(
     val tipoItemDenunciado: String,
     val usuarioDenunciante: String,
     val fechaCreacion: Date,
-    var solucionado: Boolean = false  // Propiedad añadida con valor por defecto false
+    var solucionado: Boolean = false
 )

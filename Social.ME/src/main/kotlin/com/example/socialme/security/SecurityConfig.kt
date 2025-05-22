@@ -34,7 +34,7 @@ class SecurityConfig {
     fun securityFilterChain(http: HttpSecurity) : SecurityFilterChain {
 
         return http
-            .csrf { csrf -> csrf.disable() } // Cross-Site Forgery
+            .csrf { csrf -> csrf.disable() }
             .authorizeHttpRequests { auth ->
 
                 // ==================== ENDPOINTS PÚBLICOS ====================

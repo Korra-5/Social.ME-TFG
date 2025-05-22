@@ -32,7 +32,6 @@ class DenunciaController {
         return ResponseEntity(denunciaService.crearDenuncia(denunciaCreateDTO), HttpStatus.OK)
     }
 
-    // Nuevo endpoint para ver todas las denuncias (solo accesible para admins)
     @GetMapping("/verTodasLasDenuncias")
     fun verTodasLasDenuncias(
         httpRequest: HttpServletRequest
@@ -40,7 +39,6 @@ class DenunciaController {
         return ResponseEntity(denunciaService.verTodasLasDenuncias(), HttpStatus.OK)
     }
 
-    // Nuevo endpoint para ver denuncias no completadas (solo accesible para admins)
     @GetMapping("/verDenunciasNoCompletadas")
     fun verDenunciasNoCompletadas(
         httpRequest: HttpServletRequest
@@ -48,7 +46,6 @@ class DenunciaController {
         return ResponseEntity(denunciaService.verDenunciasNoCompletadas(), HttpStatus.OK)
     }
 
-    // Nuevo endpoint para marcar una denuncia como completada (solo accesible para admins)
     @PutMapping("/completarDenuncia/{denunciaId}/{completado}")
     fun completarDenuncia(
         httpRequest: HttpServletRequest,
