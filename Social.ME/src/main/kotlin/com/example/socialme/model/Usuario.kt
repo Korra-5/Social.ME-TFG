@@ -20,5 +20,7 @@ data class Usuario(
     var direccion: Direccion?,
     val fechaUnion: Date,
     var coordenadas: Coordenadas?,
-    var premium:Boolean
+    var premium: Boolean,
+    var emailVerificado: Boolean = false,  // NUEVO CAMPO
+    var emailPendienteVerificacion: String? = null  // NUEVO CAMPO para cambios de email
 )

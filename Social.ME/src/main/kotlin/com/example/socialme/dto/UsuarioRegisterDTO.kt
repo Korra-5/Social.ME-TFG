@@ -1,7 +1,6 @@
 package com.example.socialme.dto
 
 import com.example.socialme.model.Direccion
-import java.util.*
 
 data class UsuarioRegisterDTO(
     val username: String,

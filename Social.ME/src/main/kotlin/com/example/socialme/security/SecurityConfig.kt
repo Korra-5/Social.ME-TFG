@@ -43,6 +43,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
+                auth.requestMatchers("/Usuario/confirmarCambioEmail").authenticated()
 
                 // ==================== USUARIO ====================
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
@@ -77,7 +78,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/contarUsuariosEnUnaComunidad/{comunidad}").authenticated()
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
-                // NUEVO ENDPOINT AÑADIDO:
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
 
                 // ==================== ACTIVIDAD ====================

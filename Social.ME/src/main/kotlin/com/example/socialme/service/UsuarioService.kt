@@ -15,6 +15,7 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
+import org.springframework.scheduling.annotation.Scheduled
 import java.time.Instant
 import java.util.*
 import javax.mail.*
@@ -50,8 +51,10 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
-    // Mapa para almacenar temporalmente los códigos de verificación
+    // Mapas para almacenar temporalmente los códigos de verificación y datos pendientes
     private val verificacionCodigos = mutableMapOf<String, String>()
+    private val registrosPendientes = mutableMapOf<String, UsuarioRegisterDTO>()
+    private val cambiosEmailPendientes = mutableMapOf<String, String>() // username -> nuevo email
 
     override fun loadUserByUsername(username: String?): UserDetails {
         val usuario: Usuario = usuarioRepository.findFirstByUsername(username!!)
@@ -64,8 +67,106 @@ class UsuarioService : UserDetailsService {
             .build()
     }
 
-    fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
+    // NUEVO MÉTODO: Solo envía código, no registra usuario
+    fun iniciarRegistro(usuarioInsertadoDTO: UsuarioRegisterDTO): Boolean {
+        if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
+            throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
+        }
 
+        // Verificar que el email no existe
+        if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
+        }
+
+        // Solo enviar código de verificación, NO registrar usuario
+        if (verificarGmail(usuarioInsertadoDTO.email)) {
+            // Guardar datos de registro para procesar después
+            registrosPendientes[usuarioInsertadoDTO.email] = usuarioInsertadoDTO
+            return true
+        } else {
+            throw BadRequestException("No se pudo enviar el código de verificación al email ${usuarioInsertadoDTO.email}")
+        }
+    }
+
+    // NUEVO MÉTODO: Confirmar registro después de verificar código
+    fun confirmarRegistro(email: String, codigo: String): UsuarioDTO {
+        // Verificar el código
+        if (!verificarCodigo(email, codigo)) {
+            throw BadRequestException("Código de verificación incorrecto")
+        }
+
+        // Obtener datos de registro pendientes
+        val datosRegistro = registrosPendientes[email]
+            ?: throw BadRequestException("No hay registro pendiente para el email $email")
+
+        // Verificar nuevamente que no existan conflictos (por si acaso)
+        if (usuarioRepository.existsByUsername(datosRegistro.username)) {
+            throw BadRequestException("El nombre de usuario ${datosRegistro.username} ya está en uso")
+        }
+
+        if (usuarioRepository.existsByEmail(datosRegistro.email)) {
+            throw BadRequestException("El email ${datosRegistro.email} ya está registrado")
+        }
+
+        // Procesar la foto de perfil
+        val fotoPerfilId: String =
+            if (datosRegistro.fotoPerfilBase64 != null && datosRegistro.fotoPerfilBase64.isNotBlank()) {
+                gridFSService.storeFileFromBase64(
+                    datosRegistro.fotoPerfilBase64,
+                    "profile_${datosRegistro.username}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to datosRegistro.username
+                    )
+                ) ?: ""
+            } else {
+                datosRegistro.fotoPerfilId ?: ""
+            }
+
+        // Crear el usuario CON email verificado
+        val usuario = Usuario(
+            _id = null,
+            username = datosRegistro.username,
+            password = passwordEncoder.encode(datosRegistro.password),
+            roles = datosRegistro.rol.toString(),
+            nombre = datosRegistro.nombre,
+            apellidos = datosRegistro.apellidos,
+            descripcion = datosRegistro.descripcion,
+            email = datosRegistro.email,
+            intereses = datosRegistro.intereses,
+            fotoPerfilId = fotoPerfilId,
+            direccion = datosRegistro.direccion,
+            fechaUnion = Date.from(Instant.now()),
+            coordenadas = null,
+            premium = false,
+            emailVerificado = true  // NUEVO: Marcar como verificado
+        )
+
+        // Insertar el usuario en la base de datos
+        usuarioRepository.insert(usuario)
+
+        // Limpiar datos pendientes
+        registrosPendientes.remove(email)
+        verificacionCodigos.remove(email)
+
+        // Retornar DTO
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            descripcion = usuario.descripcion,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            direccion = usuario.direccion,
+            fotoPerfilId = fotoPerfilId,
+            premium = usuario.premium
+        )
+    }
+
+    // MÉTODO ORIGINAL mantenido para compatibilidad (DEPRECATED)
+    @Deprecated("Usar iniciarRegistro() y confirmarRegistro() en su lugar")
+    fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
         if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
             throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
         }
@@ -78,8 +179,6 @@ class UsuarioService : UserDetailsService {
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
         }
-
-
 
         // Procesar la foto de perfil si se proporciona en Base64;
         // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
@@ -109,11 +208,12 @@ class UsuarioService : UserDetailsService {
             descripcion = usuarioInsertadoDTO.descripcion,
             email = usuarioInsertadoDTO.email,
             intereses = usuarioInsertadoDTO.intereses,
-            fotoPerfilId = fotoPerfilId, // Aquí se garantiza que no es null
+            fotoPerfilId = fotoPerfilId,
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
             coordenadas = null,
-            premium =false
+            premium = false,
+            emailVerificado = false  // No verificado en el método original
         )
 
         // Insertar el usuario en la base de datos
@@ -133,6 +233,332 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    // NUEVO MÉTODO: Solo guarda cambios temporalmente si hay cambio de email
+    fun iniciarCambioEmail(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        // Verificar si el email ha cambiado
+        if (usuarioUpdateDTO.email != usuario.email) {
+            // Verificar que el nuevo email no esté en uso
+            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
+            }
+
+            // Enviar código de verificación al nuevo email
+            if (!verificarGmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("No se pudo enviar el código de verificación al email ${usuarioUpdateDTO.email}")
+            }
+
+            // Guardar el nuevo email como pendiente
+            cambiosEmailPendientes[usuario.username] = usuarioUpdateDTO.email
+
+            // Realizar otras actualizaciones SIN cambiar el email
+            return actualizarUsuarioSinEmail(usuarioUpdateDTO)
+        } else {
+            // Si no hay cambio de email, proceder normalmente
+            return actualizarUsuarioCompleto(usuarioUpdateDTO)
+        }
+    }
+
+    // NUEVO MÉTODO: Confirmar cambio de email
+    fun confirmarCambioEmail(username: String, codigo: String): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
+
+        val nuevoEmail = cambiosEmailPendientes[username]
+            ?: throw BadRequestException("No hay cambio de email pendiente para el usuario $username")
+
+        // Verificar el código
+        if (!verificarCodigo(nuevoEmail, codigo)) {
+            throw BadRequestException("Código de verificación incorrecto")
+        }
+
+        // Verificar que el email sigue disponible
+        if (usuarioRepository.existsByEmail(nuevoEmail)) {
+            throw BadRequestException("El email $nuevoEmail ya está registrado por otro usuario")
+        }
+
+        // Actualizar el email
+        usuario.email = nuevoEmail
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        // Limpiar datos pendientes
+        cambiosEmailPendientes.remove(username)
+        verificacionCodigos.remove(nuevoEmail)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
+
+    // MÉTODO AUXILIAR: Actualizar usuario sin cambiar email
+    private fun actualizarUsuarioSinEmail(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        // Procesar foto de perfil
+        val nuevaFotoPerfilId: String =
+            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+                val fotoId = usuario.fotoPerfilId
+                try {
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
+                    }
+                } catch (e: Exception) {
+                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
+                }
+
+                gridFSService.storeFileFromBase64(
+                    usuarioUpdateDTO.fotoPerfilBase64,
+                    "profile_${usuario.username}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usuario.username
+                    )
+                ) ?: ""
+            } else {
+                usuario.fotoPerfilId ?: ""
+            }
+
+        // Actualizar información (SIN cambiar email)
+        usuario.apply {
+            nombre = usuarioUpdateDTO.nombre
+            apellidos = usuarioUpdateDTO.apellido
+            descripcion = usuarioUpdateDTO.descripcion
+            intereses = usuarioUpdateDTO.intereses
+            fotoPerfilId = nuevaFotoPerfilId
+            direccion = usuarioUpdateDTO.direccion
+        }
+
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email, // Email sin cambiar
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = nuevaFotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
+
+    // MÉTODO AUXILIAR: Actualizar usuario completo (cuando no hay cambio de email)
+    private fun actualizarUsuarioCompleto(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        // Si se está cambiando el username, validar que el nuevo no exista ya
+        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
+                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
+            }
+        }
+
+        // Procesar la foto de perfil si se proporciona en Base64
+        val nuevaFotoPerfilId: String =
+            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+                // Intentar eliminar la foto de perfil antigua, si existe
+                val fotoId = usuario.fotoPerfilId
+                try {
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
+                    }
+                } catch (e: Exception) {
+                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
+                }
+
+                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
+                gridFSService.storeFileFromBase64(
+                    usuarioUpdateDTO.fotoPerfilBase64,
+                    "profile_${usernameForPhoto}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usernameForPhoto
+                    )
+                ) ?: ""
+            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
+                // Si se proporciona explícitamente un ID de foto
+                usuarioUpdateDTO.fotoPerfilId
+            } else {
+                // Mantener la foto de perfil existente
+                usuario.fotoPerfilId ?: ""
+            }
+
+        // Guardar el antiguo username para actualizar referencias si se cambia
+        val antiguoUsername = usuario.username
+
+        // Actualizar la información del usuario
+        usuario.apply {
+            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
+            email = usuarioUpdateDTO.email
+            nombre = usuarioUpdateDTO.nombre
+            apellidos = usuarioUpdateDTO.apellido
+            descripcion = usuarioUpdateDTO.descripcion
+            intereses = usuarioUpdateDTO.intereses
+            fotoPerfilId = nuevaFotoPerfilId
+            direccion = usuarioUpdateDTO.direccion
+        }
+
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        // Si se ha cambiado el username, actualizar referencias en otras colecciones
+        if (antiguoUsername != usuario.username) {
+            val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
+            participantesActividad.forEach { participante ->
+                participante.username = usuario.username
+                participantesActividadRepository.save(participante)
+            }
+
+            val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
+            participantesComunidad.forEach { participante ->
+                participante.username = usuario.username
+                participantesComunidadRepository.save(participante)
+            }
+        }
+
+        // Retornar el DTO actualizado
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = nuevaFotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
+
+    // MÉTODO ORIGINAL mantenido para compatibilidad (DEPRECATED)
+    @Deprecated("Usar iniciarCambioEmail() y confirmarCambioEmail() en su lugar")
+    fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        // Si se está cambiando el username, validar que el nuevo no exista ya
+        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
+                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
+            }
+        }
+
+        // CORREGIDO: NO cambiar el email hasta que se verifique
+        var emailAActualizar = usuario.email // Mantener el email actual por defecto
+
+        // Verificar el correo electrónico si se ha cambiado
+        if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
+            // Verificar que el nuevo email no esté en uso por otro usuario
+            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
+            }
+
+            // IMPORTANTE: Solo verificar el email, pero NO cambiarlo aún
+            if (!verificarGmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
+            }
+
+            // TEMPORAL: Guardar el nuevo email en una tabla temporal o sistema de verificación
+            // Por ahora, lanzamos una excepción indicando que debe verificar primero
+            throw BadRequestException("Se ha enviado un código de verificación a ${usuarioUpdateDTO.email}. Verifica tu email antes de que se actualice tu perfil.")
+        }
+
+        // Procesar la foto de perfil si se proporciona en Base64
+        val nuevaFotoPerfilId: String =
+            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+                // Intentar eliminar la foto de perfil antigua, si existe
+                val fotoId = usuario.fotoPerfilId
+                try {
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
+                    }
+                } catch (e: Exception) {
+                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
+                }
+
+                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
+                gridFSService.storeFileFromBase64(
+                    usuarioUpdateDTO.fotoPerfilBase64,
+                    "profile_${usernameForPhoto}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usernameForPhoto
+                    )
+                ) ?: ""
+            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
+                // Si se proporciona explícitamente un ID de foto
+                usuarioUpdateDTO.fotoPerfilId
+            } else {
+                // Mantener la foto de perfil existente
+                usuario.fotoPerfilId ?: ""
+            }
+
+        // Guardar el antiguo username para actualizar referencias si se cambia
+        val antiguoUsername = usuario.username
+
+        // Actualizar la información del usuario (SIN cambiar el email aún)
+        usuario.apply {
+            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
+            email = emailAActualizar // MANTENER el email actual, no el nuevo
+            nombre = usuarioUpdateDTO.nombre
+            apellidos = usuarioUpdateDTO.apellido
+            descripcion = usuarioUpdateDTO.descripcion
+            intereses = usuarioUpdateDTO.intereses
+            fotoPerfilId = nuevaFotoPerfilId
+            direccion = usuarioUpdateDTO.direccion
+        }
+
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        // Si se ha cambiado el username, actualizar referencias en otras colecciones
+        if (antiguoUsername != usuario.username) {
+            val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
+            participantesActividad.forEach { participante ->
+                participante.username = usuario.username
+                participantesActividadRepository.save(participante)
+            }
+
+            val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
+            participantesComunidad.forEach { participante ->
+                participante.username = usuario.username
+                participantesComunidadRepository.save(participante)
+            }
+        }
+
+        // Retornar el DTO actualizado
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email, // Email sin cambiar
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = nuevaFotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
+
     fun modificarCoordenadasUsuario(coordenadas: Coordenadas?, username: String) {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow { NotFoundException("Usuario $username no existe") }
         try {
@@ -147,7 +573,6 @@ class UsuarioService : UserDetailsService {
             throw IllegalArgumentException("Formato de coordenadas inválido: $coordenadas")
         }
     }
-
 
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -190,110 +615,6 @@ class UsuarioService : UserDetailsService {
         return userDTO
     }
 
-    fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
-
-        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
-            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
-        }
-
-        // Si se está cambiando el username, validar que el nuevo no exista ya
-        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
-            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
-                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
-            }
-        }
-
-        // Verificar el correo electrónico si se ha cambiado
-        if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
-            // Verificar que el nuevo email no esté en uso por otro usuario
-            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
-                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
-            }
-
-            if (!verificarGmail(usuarioUpdateDTO.email)) {
-                throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
-            }
-        }
-
-
-
-        // Procesar la foto de perfil si se proporciona en Base64
-        val nuevaFotoPerfilId: String =
-            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
-                // Intentar eliminar la foto de perfil antigua, si existe
-                val fotoId = usuario.fotoPerfilId
-                try {
-                    if (!fotoId.isNullOrBlank()) {
-                        gridFSService.deleteFile(fotoId)
-                    }
-                } catch (e: Exception) {
-                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
-                }
-
-                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
-                gridFSService.storeFileFromBase64(
-                    usuarioUpdateDTO.fotoPerfilBase64,
-                    "profile_${usernameForPhoto}_${Date().time}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "profilePhoto",
-                        "username" to usernameForPhoto
-                    )
-                ) ?: ""
-            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
-                // Si se proporciona explícitamente un ID de foto
-                usuarioUpdateDTO.fotoPerfilId
-            } else {
-                // Mantener la foto de perfil existente
-                usuario.fotoPerfilId ?: ""
-            }
-
-        // Guardar el antiguo username para actualizar referencias si se cambia
-        val antiguoUsername = usuario.username
-
-        // Actualizar la información del usuario
-        usuario.apply {
-            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
-            email = usuarioUpdateDTO.email ?: usuario.email // Mantener el email existente si no se proporciona uno nuevo
-            nombre = usuarioUpdateDTO.nombre ?: usuario.nombre
-            apellidos = usuarioUpdateDTO.apellido ?: usuario.apellidos
-            descripcion = usuarioUpdateDTO.descripcion ?: usuario.descripcion
-            intereses = usuarioUpdateDTO.intereses ?: usuario.intereses
-            fotoPerfilId = nuevaFotoPerfilId
-            direccion = usuarioUpdateDTO.direccion ?: usuario.direccion
-        }
-
-        val usuarioActualizado = usuarioRepository.save(usuario)
-
-        // Si se ha cambiado el username, actualizar referencias en otras colecciones
-        if (antiguoUsername != usuario.username) {
-            val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
-            participantesActividad.forEach { participante ->
-                participante.username = usuario.username
-                participantesActividadRepository.save(participante)
-            }
-
-            val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
-            participantesComunidad.forEach { participante ->
-                participante.username = usuario.username
-                participantesComunidadRepository.save(participante)
-            }
-        }
-
-        // Retornar el DTO actualizado
-        return UsuarioDTO(
-            username = usuario.username,
-            email = usuario.email,
-            intereses = usuario.intereses,
-            nombre = usuario.nombre,
-            apellido = usuario.apellidos,
-            fotoPerfilId = nuevaFotoPerfilId,
-            direccion = usuario.direccion,
-            descripcion = usuario.descripcion,
-            premium = usuario.premium
-        )
-    }
-
     fun verUsuarioPorUsername(username: String):UsuarioDTO{
         val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username not found")
@@ -311,7 +632,39 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    // MÉTODO ORIGINAL mantenido para compatibilidad
+    fun confirmarCambioEmail(confirmarCambioEmailDTO: ConfirmarCambioEmailDTO): UsuarioDTO {
+        // Verificar que el usuario existe
+        val usuario = usuarioRepository.findFirstByUsername(confirmarCambioEmailDTO.username).orElseThrow {
+            throw NotFoundException("Usuario ${confirmarCambioEmailDTO.username} no encontrado")
+        }
 
+        // Verificar el código
+        if (!verificarCodigo(confirmarCambioEmailDTO.nuevoEmail, confirmarCambioEmailDTO.codigo)) {
+            throw BadRequestException("Código de verificación incorrecto")
+        }
+
+        // Verificar que el nuevo email no esté en uso (por si acaso)
+        if (usuarioRepository.existsByEmail(confirmarCambioEmailDTO.nuevoEmail)) {
+            throw BadRequestException("El email ${confirmarCambioEmailDTO.nuevoEmail} ya está registrado por otro usuario")
+        }
+
+        // Actualizar el email
+        usuario.email = confirmarCambioEmailDTO.nuevoEmail
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium
+        )
+    }
 
     fun verificarGmail(gmail: String): Boolean {
         // Configuración para el servidor de correo (usando Gmail como ejemplo)
@@ -388,6 +741,24 @@ class UsuarioService : UserDetailsService {
     fun verificarCodigo(email: String, codigo: String): Boolean {
         val codigoAlmacenado = verificacionCodigos[email]
         return codigoAlmacenado == codigo
+    }
+
+    // MÉTODOS AUXILIARES NUEVOS
+    fun hayRegistroPendiente(email: String): Boolean {
+        return registrosPendientes.containsKey(email)
+    }
+
+    fun hayCambioEmailPendiente(username: String): Boolean {
+        return cambiosEmailPendientes.containsKey(username)
+    }
+
+    // MÉTODO PARA LIMPIAR REGISTROS EXPIRADOS (opcional)
+    @Scheduled(fixedRate = 900000) // Cada 15 minutos
+    fun limpiarRegistrosExpirados() {
+        // Implementar lógica para limpiar registros antiguos
+        // Podrías agregar timestamps para controlar la expiración
+        // Por ahora, implementación básica
+        println("Limpiando registros expirados...")
     }
 
     // Agregar este método en UsuarioService
@@ -681,7 +1052,6 @@ class UsuarioService : UserDetailsService {
         return listaUsuariosBloqueados
     }
 
-
     fun eliminarSolicitudesAmistad(usuario1: String, usuario2: String) {
         // Buscar solicitudes en ambas direcciones
         val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(usuario1, usuario2) +
@@ -705,6 +1075,7 @@ class UsuarioService : UserDetailsService {
             solicitudesAmistadRepository.delete(amistad2)
         }
     }
+
     /**
      * Función para ver las solicitudes de amistad pendientes de un usuario
      * Corresponde al endpoint: GET /Usuario/verSolicitudesAmistad/{username}
@@ -854,7 +1225,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-
     fun aceptarSolicitud(id: String): Boolean {
         // Buscar la solicitud por ID
         val solicitud = solicitudesAmistadRepository.findById(id).orElseThrow {
@@ -881,5 +1251,4 @@ class UsuarioService : UserDetailsService {
 
         return true
     }
-
 }
