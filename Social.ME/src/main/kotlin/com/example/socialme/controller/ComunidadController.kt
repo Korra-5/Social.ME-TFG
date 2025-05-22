@@ -150,5 +150,17 @@ class ComunidadController {
     ) : ResponseEntity<ParticipantesComunidadDTO> {
         return ResponseEntity(comunidadService.eliminarUsuarioDeComunidad(participantesComunidadDTO, usuarioSolicitante), HttpStatus.OK)
     }
+    @PutMapping("/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}")
+    fun cambiarCreadorComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable comunidadUrl: String,
+        @PathVariable creadorActual: String,
+        @PathVariable nuevoCreador: String
+    ): ResponseEntity<ComunidadDTO> {
+        return ResponseEntity(
+            comunidadService.cambiarCreadorComunidad(comunidadUrl, creadorActual, nuevoCreador),
+            HttpStatus.OK
+        )
+    }
 }
 

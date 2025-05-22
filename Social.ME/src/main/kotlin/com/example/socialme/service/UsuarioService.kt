@@ -2,6 +2,7 @@ package com.example.socialme.service
 
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
+import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.Bloqueo
 import com.example.socialme.model.Coordenadas
@@ -65,7 +66,14 @@ class UsuarioService : UserDetailsService {
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
 
+        if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
+            throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
+        }
 
+        // Verificar que el email no existe
+        if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
+        }
         // Primero, verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
@@ -184,19 +192,24 @@ class UsuarioService : UserDetailsService {
 
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
 
-        // Buscar el usuario existente usando currentUsername
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
 
-        if (usuarioUpdateDTO.newUsername!=null) {
-            usuarioRepository.findFirstByUsername(usuarioUpdateDTO.newUsername).orElseThrow {
-                throw NotFoundException("Usuario ${usuarioUpdateDTO.newUsername} ya existe, prueba con otro nombre")
+        // Si se está cambiando el username, validar que el nuevo no exista ya
+        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
+                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
             }
         }
 
         // Verificar el correo electrónico si se ha cambiado
         if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
+            // Verificar que el nuevo email no esté en uso por otro usuario
+            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
+            }
+
             if (!verificarGmail(usuarioUpdateDTO.email)) {
                 throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
             }
@@ -868,4 +881,5 @@ class UsuarioService : UserDetailsService {
 
         return true
     }
+
 }

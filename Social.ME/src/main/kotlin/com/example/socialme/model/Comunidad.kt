@@ -15,7 +15,7 @@ data class Comunidad(
     var intereses: List<String>,
     var fotoPerfilId: String,
     var fotoCarruselIds: List<String>?,
-    val creador: String,
+    var creador: String,
     var administradores: List<String>?,
     val fechaCreacion: Date,
     val comunidadGlobal: Boolean,

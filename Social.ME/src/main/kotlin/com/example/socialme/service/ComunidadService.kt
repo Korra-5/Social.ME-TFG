@@ -683,4 +683,66 @@ class ComunidadService {
 
         return participantesComunidadDTO
     }
+
+    fun cambiarCreadorComunidad(comunidadUrl: String, creadorActual: String, nuevoCreador: String): ComunidadDTO {
+        // Verificar que la comunidad existe
+        val comunidad = comunidadRepository.findComunidadByUrl(comunidadUrl).orElseThrow {
+            throw NotFoundException("Comunidad con URL $comunidadUrl no encontrada")
+        }
+
+        // Verificar que el usuario actual es el creador
+        if (comunidad.creador != creadorActual) {
+            throw ForbiddenException("Solo el creador actual puede transferir la propiedad de la comunidad")
+        }
+
+        // Verificar que el nuevo creador existe
+        if (!usuarioRepository.existsByUsername(nuevoCreador)) {
+            throw NotFoundException("El usuario $nuevoCreador no existe")
+        }
+
+        // Verificar que el nuevo creador es miembro de la comunidad
+        if (!participantesComunidadRepository.findByUsernameAndComunidad(nuevoCreador, comunidadUrl).isPresent) {
+            throw BadRequestException("El usuario $nuevoCreador debe ser miembro de la comunidad para convertirse en creador")
+        }
+
+        // Verificar que no es el mismo usuario
+        if (creadorActual == nuevoCreador) {
+            throw BadRequestException("No puedes transferir la propiedad a ti mismo")
+        }
+
+        // Actualizar el creador
+        comunidad.creador = nuevoCreador
+
+        // Si el nuevo creador estaba en la lista de administradores, eliminarlo de ahí
+        val nuevosAdministradores = comunidad.administradores?.toMutableList() ?: mutableListOf()
+        nuevosAdministradores.remove(nuevoCreador)
+
+        // Añadir al creador anterior como administrador si no está ya
+        if (!nuevosAdministradores.contains(creadorActual)) {
+            nuevosAdministradores.add(creadorActual)
+        }
+
+        comunidad.administradores = nuevosAdministradores
+
+        // Guardar los cambios
+        val comunidadActualizada = comunidadRepository.save(comunidad)
+
+        // Retornar el DTO actualizado
+        return ComunidadDTO(
+            url = comunidadActualizada.url,
+            nombre = comunidadActualizada.nombre,
+            comunidadGlobal = comunidadActualizada.comunidadGlobal,
+            creador = comunidadActualizada.creador,
+            intereses = comunidadActualizada.intereses,
+            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
+            fotoPerfilId = comunidadActualizada.fotoPerfilId,
+            descripcion = comunidadActualizada.descripcion,
+            fechaCreacion = comunidadActualizada.fechaCreacion,
+            administradores = comunidadActualizada.administradores,
+            privada = comunidadActualizada.privada,
+            coordenadas = comunidadActualizada.coordenadas,
+            codigoUnion = comunidadActualizada.codigoUnion
+        )
+    }
+
 }
