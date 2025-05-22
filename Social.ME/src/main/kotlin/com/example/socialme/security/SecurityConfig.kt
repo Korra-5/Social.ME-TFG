@@ -36,59 +36,85 @@ class SecurityConfig {
         return http
             .csrf { csrf -> csrf.disable() } // Cross-Site Forgery
             .authorizeHttpRequests { auth ->
+
+                // ==================== ENDPOINTS PÚBLICOS ====================
                 auth.requestMatchers("/Usuario/login").permitAll()
                 auth.requestMatchers("/Usuario/register").permitAll()
-                auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
-                auth.requestMatchers("/Comunidad/salirComunidad").authenticated()
-                auth.requestMatchers("/Comunidad/unirseComunidad").authenticated()
-                auth.requestMatchers("/Comunidad/modificarComunidad").authenticated()
-                auth.requestMatchers("/Comunidad/eliminarComunidad/{url}").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadPorUrl/{url}").authenticated()
-                auth.requestMatchers("/Comunidad/verTodasComunidadesPublicas").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadesPublicasEnZona/{distanciaKm}/{username}").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadesPublicasEnZona/{distanciaKm}/{username}").authenticated()
-                auth.requestMatchers("/Actividad/verTodasActividadesPublicas").authenticated()
-                auth.requestMatchers("/Actividad/verActividadNoParticipaUsuario/{username}").authenticated()
-                auth.requestMatchers("/Actividad/modificarActividad").authenticated()
-                auth.requestMatchers("/Actividad/eliminarActividad/{id}").authenticated()
-                auth.requestMatchers("/Actividad/salirActividad").authenticated()
-                auth.requestMatchers("/Actividad/unirseActividad").authenticated()
-                auth.requestMatchers("/Actividad/verActividadPorId/{id}").authenticated()
-                auth.requestMatchers("/Actividad/crearActividad").authenticated()
-                auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
-                auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
-                auth.requestMatchers("/files/download/{id}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadPorUsername/{username}").authenticated()
-                auth.requestMatchers("/Actividad/booleanUsuarioApuntadoActividad").authenticated()
-                auth.requestMatchers("/Comunidad/booleanUsuarioApuntadoComunidad").authenticated()
-                auth.requestMatchers("/Usuario/verUsuarioPorUsername/{username}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadesPorComunidad/{comunidad}").authenticated()
-                auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
-                auth.requestMatchers("/Comunidad/contarUsuariosEnUnaComunidad/{comunidad}").authenticated()
-                auth.requestMatchers("/Usuario/verUsuariosPorComunidad/{comunidad}").authenticated()
-                auth.requestMatchers("/Usuario/verUsuariosPorActividad/{actividadId}").authenticated()
-                auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
-                auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
-                auth.requestMatchers("/Usuario/verTodosLosUsuarios/{username}").authenticated()
-                auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{Codigo}").authenticated()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
-                auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
-                auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
+                auth.requestMatchers("/ws/**").permitAll() // WebSockets
+
+                // ==================== USUARIO ====================
+                auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
+                auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verUsuarioPorUsername/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosPorComunidad/{comunidad}").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosPorActividad/{actividadId}").authenticated()
+                auth.requestMatchers("/Usuario/verTodosLosUsuarios/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verificarPremium").authenticated()
                 auth.requestMatchers("/Usuario/actualizarPremium/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verSolicitudesAmistad/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verAmigos/{username}").authenticated()
+                auth.requestMatchers("/Usuario/enviarSolicitudAmistad").authenticated()
+                auth.requestMatchers("/Usuario/aceptarSolicitud/{id}").authenticated()
+                auth.requestMatchers("/Usuario/bloquearUsuario").authenticated()
+                auth.requestMatchers("/Usuario/desbloquearUsuario").authenticated()
+                auth.requestMatchers("/Usuario/verUsuariosBloqueados/{username}").authenticated()
+
+                // ==================== COMUNIDAD ====================
+                auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/unirseComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{codigo}").authenticated()
+                auth.requestMatchers("/Comunidad/salirComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/eliminarComunidad/{url}").authenticated()
+                auth.requestMatchers("/Comunidad/modificarComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
+                auth.requestMatchers("/Comunidad/verTodasComunidadesPublicas").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadesPublicasEnZona/{distanciaKm}/{username}").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadPorUrl/{url}").authenticated()
+                auth.requestMatchers("/Comunidad/booleanUsuarioApuntadoComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/contarUsuariosEnUnaComunidad/{comunidad}").authenticated()
+                auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
+                auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
+                // NUEVO ENDPOINT AÑADIDO:
+                auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
+
+                // ==================== ACTIVIDAD ====================
+                auth.requestMatchers("/Actividad/crearActividad").authenticated()
+                auth.requestMatchers("/Actividad/unirseActividad").authenticated()
+                auth.requestMatchers("/Actividad/salirActividad").authenticated()
+                auth.requestMatchers("/Actividad/eliminarActividad/{id}").authenticated()
+                auth.requestMatchers("/Actividad/modificarActividad").authenticated()
+                auth.requestMatchers("/Actividad/verActividadPorId/{id}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadPorUsername/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadNoParticipaUsuario/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPublicasEnZona/{distanciaKm}/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verTodasActividadesPublicas").authenticated()
+                auth.requestMatchers("/Actividad/booleanUsuarioApuntadoActividad").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPorComunidad/{comunidad}").authenticated()
+                auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
+                auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
+
+                // ==================== DENUNCIA ====================
+                auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
+                auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
                 auth.requestMatchers("/Denuncia/verTodasLasDenuncias").authenticated()
                 auth.requestMatchers("/Denuncia/verDenunciasNoCompletadas").authenticated()
                 auth.requestMatchers("/Denuncia/completarDenuncia/{denunciaId}/{completado}").authenticated()
+
+                // ==================== NOTIFICACIONES ====================
                 auth.requestMatchers("/Notificacion/obtenerNotificaciones/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/contarNoLeidas/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/marcarComoLeida/{notificacionId}").authenticated()
-                // In SecurityConfig.kt, add these to your authorizeHttpRequests configuration
+
+                // ==================== CHAT ====================
                 auth.requestMatchers("/Chat/enviarMensaje").authenticated()
                 auth.requestMatchers("/Chat/obtenerMensajes/{comunidadUrl}").authenticated()
-                auth.requestMatchers("/ws/**").permitAll() // WebSockets
+
+                // ==================== FILES ====================
+                auth.requestMatchers("/files/download/{id}").authenticated()
+
             } // Los recursos protegidos y publicos
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
