@@ -201,6 +201,60 @@ class UsuarioController {
         )
     }
 
+    @PutMapping("/cambiarPrivacidadComunidad/{username}/{privacidad}")
+    fun cambiarPrivacidadComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable privacidad:String,
+        @PathVariable username: String
+    ): ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(
+            usuarioService.cambiarPrivacidadComunidad(username, privacidad),
+            HttpStatus.OK
+        )
+    }
+
+    @GetMapping("/verComunidadPorUsuario/{username}")
+    fun verComunidadPorUsuario(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @RequestParam usuarioSolicitante: String
+    ): ResponseEntity<List<ComunidadDTO>> {
+        return ResponseEntity(usuarioService.verComunidadPorUsuario(username, usuarioSolicitante), HttpStatus.OK)
+    }
+
+    @GetMapping("/verActividadPorUsername/{username}")
+    fun verActividadPorUsername(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @RequestParam usuarioSolicitante: String
+    ): ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
+    }
+
+    @PutMapping("/cambiarPrivacidadActividad/{username}/{privacidad}")
+    fun cambiarPrivacidadActividad(
+        httpRequest: HttpServletRequest,
+        @PathVariable privacidad:String,
+        @PathVariable username: String
+    ): ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(
+            usuarioService.cambiarPrivacidadActividad(username, privacidad),
+            HttpStatus.OK
+        )
+    }
+
+    @PutMapping("/cambiarRadarDistancia/{username}/{radar}")
+    fun cambiarRadarDistancia(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @PathVariable radar: String
+    ): ResponseEntity<List<UsuarioDTO>> {
+        return ResponseEntity(
+            usuarioService.cambiarRadarDistancia(username, radar),
+            HttpStatus.OK
+        )
+    }
+
     @PostMapping("/verificarPremium")
     fun verificarPremium(
         httpRequest: HttpServletRequest,

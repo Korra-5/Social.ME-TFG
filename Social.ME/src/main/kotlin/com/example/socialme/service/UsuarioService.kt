@@ -4,10 +4,7 @@ import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
-import com.example.socialme.model.Bloqueo
-import com.example.socialme.model.Coordenadas
-import com.example.socialme.model.SolicitudAmistad
-import com.example.socialme.model.Usuario
+import com.example.socialme.model.*
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.userdetails.User
@@ -22,6 +19,9 @@ import javax.mail.internet.*
 
 @Service
 class UsuarioService : UserDetailsService {
+
+    @Autowired
+    private lateinit var actividadRepository: ActividadRepository
 
     @Autowired
     private lateinit var bloqueoRepository: BloqueoRepository
@@ -113,7 +113,11 @@ class UsuarioService : UserDetailsService {
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
             coordenadas = null,
-            premium =false
+            premium =false,
+            privacidadActividades = "TODOS",
+            privacidadComunidades = "TODOS",
+            radarDistancia = "50.0"
+
         )
 
         // Insertar el usuario en la base de datos
@@ -129,7 +133,10 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
             fotoPerfilId = fotoPerfilId,
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
     }
 
@@ -183,7 +190,10 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
             fotoPerfilId = usuario.fotoPerfilId ?: "",
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
 
         usuarioRepository.delete(usuario)
@@ -289,7 +299,10 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = nuevaFotoPerfilId,
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
     }
 
@@ -306,7 +319,10 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = usuario.fotoPerfilId,
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
     }
 
@@ -340,7 +356,10 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = usuario.fotoPerfilId ?: "",
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
     }
 
@@ -433,7 +452,10 @@ class UsuarioService : UserDetailsService {
             fotoPerfilId = usuario.fotoPerfilId ?: "",
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
-            premium = usuario.premium
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
         )
     }
 
@@ -484,7 +506,10 @@ class UsuarioService : UserDetailsService {
                         fotoPerfilId = usuario.fotoPerfilId,
                         direccion = usuario.direccion,
                         descripcion = usuario.descripcion,
-                        premium = usuario.premium
+                        premium = usuario.premium,
+                        privacidadActividades = usuario.privacidadActividades,
+                        privacidadComunidades = usuario.privacidadComunidades,
+                        radarDistancia = usuario.radarDistancia,
                     )
                 )
             }
@@ -539,7 +564,10 @@ class UsuarioService : UserDetailsService {
                         fotoPerfilId = usuario.fotoPerfilId,
                         direccion = usuario.direccion,
                         descripcion = usuario.descripcion,
-                        premium = usuario.premium
+                        premium = usuario.premium,
+                        privacidadActividades = usuario.privacidadActividades,
+                        privacidadComunidades = usuario.privacidadComunidades,
+                        radarDistancia = usuario.radarDistancia,
                     )
                 )
             }
@@ -589,7 +617,10 @@ class UsuarioService : UserDetailsService {
                     fotoPerfilId = usuario.fotoPerfilId,
                     direccion = usuario.direccion,
                     descripcion = usuario.descripcion,
-                    premium = usuario.premium
+                    premium = usuario.premium,
+                    privacidadActividades = usuario.privacidadActividades,
+                    privacidadComunidades = usuario.privacidadComunidades,
+                    radarDistancia = usuario.radarDistancia,
                 )
             }
     }
@@ -687,7 +718,10 @@ class UsuarioService : UserDetailsService {
                     fotoPerfilId = usuarioBloqueado.fotoPerfilId,
                     direccion = usuarioBloqueado.direccion,
                     descripcion = usuarioBloqueado.descripcion,
-                    premium = usuarioBloqueado.premium
+                    premium = usuarioBloqueado.premium,
+                    privacidadActividades = usuarioBloqueado.privacidadActividades,
+                    privacidadComunidades = usuarioBloqueado.privacidadComunidades,
+                    radarDistancia = usuarioBloqueado.radarDistancia,
                 )
             )
         }
@@ -804,7 +838,10 @@ class UsuarioService : UserDetailsService {
                     fotoPerfilId = amigo.fotoPerfilId,
                     direccion = amigo.direccion,
                     descripcion = amigo.descripcion,
-                    premium = amigo.premium
+                    premium = amigo.premium,
+                    privacidadActividades = amigo.privacidadActividades,
+                    privacidadComunidades = amigo.privacidadComunidades,
+                    radarDistancia = amigo.radarDistancia,
                 )
             )
         }
@@ -886,5 +923,250 @@ class UsuarioService : UserDetailsService {
 
         return true
     }
+    fun verComunidadPorUsuario(username: String, usuarioSolicitante: String): List<ComunidadDTO> {
+        // Verificar que el usuario objetivo existe
+        val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { NotFoundException("Usuario $username no encontrado") }
 
+        // Verificar que el usuario solicitante existe
+        usuarioRepository.findFirstByUsername(usuarioSolicitante)
+            .orElseThrow { NotFoundException("Usuario solicitante $usuarioSolicitante no encontrado") }
+
+        // Si es el propio usuario, mostrar todas sus comunidades
+        if (username == usuarioSolicitante) {
+            val participaciones = participantesComunidadRepository.findByUsername(username)
+            if (participaciones.isEmpty()) {
+                return emptyList()
+            }
+
+            return participaciones.mapNotNull { participante ->
+                val comunidadOpt = comunidadRepository.findComunidadByUrl(participante.comunidad)
+                if (comunidadOpt.isPresent) {
+                    val comunidad = comunidadOpt.get()
+                    ComunidadDTO(
+                        url = comunidad.url,
+                        nombre = comunidad.nombre,
+                        descripcion = comunidad.descripcion,
+                        intereses = comunidad.intereses,
+                        fotoPerfilId = comunidad.fotoPerfilId,
+                        fotoCarruselIds = comunidad.fotoCarruselIds,
+                        creador = comunidad.creador,
+                        administradores = comunidad.administradores,
+                        fechaCreacion = comunidad.fechaCreacion,
+                        comunidadGlobal = comunidad.comunidadGlobal,
+                        privada = comunidad.privada,
+                        coordenadas = comunidad.coordenadas,
+                        codigoUnion = comunidad.codigoUnion
+                    )
+                } else null
+            }
+        }
+
+        // Si no es el propio usuario, verificar configuración de privacidad
+        when (usuarioObjetivo.privacidadComunidades.uppercase()) {
+            "NADIE" -> return emptyList()
+            "AMIGOS" -> {
+                // Verificar si son amigos
+                val sonAmigos = verificarAmistad(username, usuarioSolicitante)
+                if (!sonAmigos) {
+                    return emptyList()
+                }
+            }
+            "TODOS" -> {
+                // Permitir ver las comunidades
+            }
+        }
+
+        // Si llega aquí, puede ver las comunidades
+        val participaciones = participantesComunidadRepository.findByUsername(username)
+        if (participaciones.isEmpty()) {
+            return emptyList()
+        }
+
+        return participaciones.mapNotNull { participante ->
+            val comunidadOpt = comunidadRepository.findComunidadByUrl(participante.comunidad)
+            if (comunidadOpt.isPresent) {
+                val comunidad = comunidadOpt.get()
+                ComunidadDTO(
+                    url = comunidad.url,
+                    nombre = comunidad.nombre,
+                    descripcion = comunidad.descripcion,
+                    intereses = comunidad.intereses,
+                    fotoPerfilId = comunidad.fotoPerfilId,
+                    fotoCarruselIds = comunidad.fotoCarruselIds,
+                    creador = comunidad.creador,
+                    administradores = comunidad.administradores,
+                    fechaCreacion = comunidad.fechaCreacion,
+                    comunidadGlobal = comunidad.comunidadGlobal,
+                    privada = comunidad.privada,
+                    coordenadas = comunidad.coordenadas,
+                    codigoUnion = comunidad.codigoUnion
+                )
+            } else null
+        }
+    }
+
+    fun verificarAmistad(usuario1: String, usuario2: String): Boolean {
+        val amistad1 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario1, usuario2, true)
+        val amistad2 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario2, usuario1, true)
+        return amistad1 != null || amistad2 != null
+    }
+    fun verActividadesPorUsername(username: String, usuarioSolicitante: String): List<ActividadDTO> {
+        // Verificar que el usuario objetivo existe
+        val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { NotFoundException("Usuario $username no encontrado") }
+
+        // Verificar que el usuario solicitante existe
+        usuarioRepository.findFirstByUsername(usuarioSolicitante)
+            .orElseThrow { NotFoundException("Usuario solicitante $usuarioSolicitante no encontrado") }
+
+        // Si es el propio usuario, mostrar todas sus actividades
+        if (username == usuarioSolicitante) {
+            val participantes = participantesActividadRepository.findByUsername(username)
+            val actividadesIds = participantes.map { it.idActividad }
+            val actividadesEncontradas = mutableListOf<Actividad>()
+
+            actividadesIds.forEach { idActividad ->
+                val actividad = actividadRepository.findActividadBy_id(idActividad)
+                actividad.ifPresent { actividadesEncontradas.add(it) }
+            }
+
+            return actividadesEncontradas.map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    _id = actividad._id,
+                    coordenadas = actividad.coordenadas,
+                    lugar = actividad.lugar
+                )
+            }
+        }
+
+        // Si no es el propio usuario, verificar configuración de privacidad
+        when (usuarioObjetivo.privacidadActividades.uppercase()) {
+            "NADIE" -> return emptyList()
+            "AMIGOS" -> {
+                // Verificar si son amigos
+                val sonAmigos = verificarAmistad(username, usuarioSolicitante)
+                if (!sonAmigos) {
+                    return emptyList()
+                }
+            }
+            "TODOS" -> {
+                // Permitir ver las actividades
+            }
+        }
+
+        // Si llega aquí, puede ver las actividades
+        val participantes = participantesActividadRepository.findByUsername(username)
+        val actividadesIds = participantes.map { it.idActividad }
+        val actividadesEncontradas = mutableListOf<Actividad>()
+
+        actividadesIds.forEach { idActividad ->
+            val actividad = actividadRepository.findActividadBy_id(idActividad)
+            actividad.ifPresent { actividadesEncontradas.add(it) }
+        }
+
+        return actividadesEncontradas.map { actividad ->
+            ActividadDTO(
+                nombre = actividad.nombre,
+                descripcion = actividad.descripcion,
+                privada = actividad.privada,
+                creador = actividad.creador,
+                fotosCarruselIds = actividad.fotosCarruselIds,
+                fechaFinalizacion = actividad.fechaFinalizacion,
+                fechaInicio = actividad.fechaInicio,
+                _id = actividad._id,
+                coordenadas = actividad.coordenadas,
+                lugar = actividad.lugar
+            )
+        }
+    }
+    fun cambiarRadarDistancia(username: String, radar: String): List<UsuarioDTO> {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Validar que el radar sea un número válido entre 10 y 100
+        val radarFloat = try {
+            radar.toFloat()
+        } catch (e: NumberFormatException) {
+            throw BadRequestException("El valor del radar debe ser un número válido")
+        }
+
+        if (radarFloat < 10f || radarFloat > 100f) {
+            throw BadRequestException("El radar debe estar entre 10 y 100 km")
+        }
+
+        usuario.radarDistancia = radar
+        usuarioRepository.save(usuario)
+
+        // Devolver lista de usuarios cercanos basada en el nuevo radar (simulado)
+        // En una implementación real, aquí buscarías usuarios dentro del radio especificado
+        return verTodosLosUsuarios(username)
+    }
+    fun cambiarPrivacidadComunidad(username: String, privacidad: String): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Validar que la privacidad sea uno de los valores válidos
+        val privacidadValida = privacidad.uppercase()
+        if (privacidadValida !in listOf("TODOS", "AMIGOS", "NADIE")) {
+            throw BadRequestException("Valor de privacidad inválido. Debe ser: TODOS, AMIGOS o NADIE")
+        }
+
+        usuario.privacidadComunidades = privacidadValida
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+        )
+    }
+
+    fun cambiarPrivacidadActividad(username: String, privacidad: String): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Usuario $username no encontrado")
+        }
+
+        // Validar que la privacidad sea uno de los valores válidos
+        val privacidadValida = privacidad.uppercase()
+        if (privacidadValida !in listOf("TODOS", "AMIGOS", "NADIE")) {
+            throw BadRequestException("Valor de privacidad inválido. Debe ser: TODOS, AMIGOS o NADIE")
+        }
+
+        usuario.privacidadActividades = privacidadValida
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = usuario.fotoPerfilId ?: "",
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+        )
+    }
 }

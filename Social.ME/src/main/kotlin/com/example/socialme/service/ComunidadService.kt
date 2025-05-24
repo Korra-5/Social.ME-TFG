@@ -147,9 +147,12 @@ class ComunidadService {
     }
 
     fun verComunidadesPublicasEnZona(
-        distancia: Float? = null,
         username: String
     ): List<ComunidadDTO> {
+        val distancia=usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario no existe")
+        }.radarDistancia.toFloat()
+
         // Obtenemos todas las comunidades
         val todasLasComunidades = comunidadRepository.findAll()
 

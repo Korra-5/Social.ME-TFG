@@ -309,9 +309,12 @@ class ActividadService {
     }
 
     fun verActividadesPublicasEnZona(
-        distancia: Float? = null,
         username: String
     ): List<ActividadDTO> {
+        val distancia=usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario no existe")
+        }.radarDistancia.toFloat()
+
         // Obtenemos todas las actividades
         val todasLasActividades = actividadRepository.findAll()
 

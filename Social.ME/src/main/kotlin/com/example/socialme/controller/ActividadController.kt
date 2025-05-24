@@ -74,13 +74,12 @@ class ActividadController {
     }
 
 
-    @GetMapping("/verActividadesPublicasEnZona/{distanciaKm}/{username}")
+    @GetMapping("/verActividadesPublicasEnZona/{username}")
     fun verActividadesPublicasEnZona(
         httpRequest: HttpServletRequest,
-        @PathVariable distanciaKm: Float,
         @PathVariable username: String
     ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verActividadesPublicasEnZona(distanciaKm, username), HttpStatus.OK)
+        return  ResponseEntity(actividadService.verActividadesPublicasEnZona(username), HttpStatus.OK)
     }
 
     @GetMapping("/verTodasActividadesPublicas")

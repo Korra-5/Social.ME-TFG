@@ -20,5 +20,8 @@ data class Usuario(
     var direccion: Direccion?,
     val fechaUnion: Date,
     var coordenadas: Coordenadas?,
-    var premium:Boolean
+    var premium:Boolean,
+    var privacidadComunidades: String,
+    var privacidadActividades: String,
+    var radarDistancia:String
 )
