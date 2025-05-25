@@ -226,7 +226,7 @@ class UsuarioController {
         )
     }
 
-    @PutMapping("/verPrivacidadActividad/{username}")
+    @GetMapping("/verPrivacidadActividad/{username}")
     fun verPrivacidadActividad(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
@@ -237,7 +237,7 @@ class UsuarioController {
         )
     }
 
-    @PutMapping("/verPrivacidadComunidad/{username}")
+    @GetMapping("/verPrivacidadComunidad/{username}")
     fun verPrivacidadComunidad(
         httpRequest: HttpServletRequest,
         @PathVariable username: String
@@ -260,7 +260,7 @@ class UsuarioController {
         )
     }
 
-    @PutMapping("/verRadarDistancia/{username}")
+    @GetMapping("/verRadarDistancia/{username}")
     fun verRadarDistancia(
         httpRequest: HttpServletRequest,
         @PathVariable username: String,
