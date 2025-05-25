@@ -1011,6 +1011,7 @@ class UsuarioService : UserDetailsService {
         val amistad2 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario2, usuario1, true)
         return amistad1 != null || amistad2 != null
     }
+
     fun verActividadesPorUsername(username: String, usuarioSolicitante: String): List<ActividadDTO> {
         // Verificar que el usuario objetivo existe
         val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)

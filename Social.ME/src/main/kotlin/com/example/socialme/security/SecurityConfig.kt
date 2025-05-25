@@ -63,8 +63,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/cambiarPrivacidadComunidad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarPrivacidadActividad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarRadarDistancia/{username}/{radar}").authenticated()
-                auth.requestMatchers("/Usuario/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
-                auth.requestMatchers("/Usuario/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
@@ -82,6 +80,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== ACTIVIDAD ====================
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
@@ -97,6 +96,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/verActividadesPorComunidad/{comunidad}").authenticated()
                 auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
+
 
                 // ==================== DENUNCIA ====================
                 auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
