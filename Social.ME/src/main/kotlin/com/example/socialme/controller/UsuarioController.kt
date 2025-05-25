@@ -248,7 +248,7 @@ class UsuarioController {
         httpRequest: HttpServletRequest,
         @PathVariable username: String,
         @PathVariable radar: String
-    ): ResponseEntity<List<UsuarioDTO>> {
+    ): ResponseEntity<UsuarioDTO> {
         return ResponseEntity(
             usuarioService.cambiarRadarDistancia(username, radar),
             HttpStatus.OK

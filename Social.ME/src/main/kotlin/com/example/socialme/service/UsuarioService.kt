@@ -1087,7 +1087,7 @@ class UsuarioService : UserDetailsService {
             )
         }
     }
-    fun cambiarRadarDistancia(username: String, radar: String): List<UsuarioDTO> {
+    fun cambiarRadarDistancia(username: String, radar: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
         }
@@ -1104,11 +1104,25 @@ class UsuarioService : UserDetailsService {
         }
 
         usuario.radarDistancia = radar
-        usuarioRepository.save(usuario)
+        val usuariodto=usuarioRepository.save(usuario)
 
         // Devolver lista de usuarios cercanos basada en el nuevo radar (simulado)
         // En una implementación real, aquí buscarías usuarios dentro del radio especificado
-        return verTodosLosUsuarios(username)
+        return UsuarioDTO(
+            username = usuariodto.username,
+            email = usuariodto.email,
+            intereses = usuariodto.intereses,
+            nombre = usuariodto.nombre,
+            apellido = usuariodto.apellidos,
+            fotoPerfilId = usuariodto.fotoPerfilId ?: "",
+            direccion = usuariodto.direccion,
+            descripcion = usuariodto.descripcion,
+            premium = usuariodto.premium,
+            privacidadActividades = usuariodto.privacidadActividades,
+            privacidadComunidades = usuariodto.privacidadComunidades,
+            radarDistancia = usuariodto.radarDistancia,
+
+        )
     }
     fun cambiarPrivacidadComunidad(username: String, privacidad: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
