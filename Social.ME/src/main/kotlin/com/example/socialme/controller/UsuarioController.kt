@@ -208,7 +208,6 @@ class UsuarioController {
         @PathVariable privacidad:String,
         @PathVariable username: String
     ): ResponseEntity<UsuarioDTO> {
-        val auth = SecurityContextHolder.getContext().authentication
         return ResponseEntity(
             usuarioService.cambiarPrivacidadComunidad(username, privacidad),
             HttpStatus.OK
@@ -221,9 +220,30 @@ class UsuarioController {
         @PathVariable privacidad:String,
         @PathVariable username: String
     ): ResponseEntity<UsuarioDTO> {
-        val auth = SecurityContextHolder.getContext().authentication
         return ResponseEntity(
             usuarioService.cambiarPrivacidadActividad(username, privacidad),
+            HttpStatus.OK
+        )
+    }
+
+    @PutMapping("/verPrivacidadActividad/{username}")
+    fun verPrivacidadActividad(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<String> {
+        return ResponseEntity(
+            usuarioService.verPrivacidadActividad(username),
+            HttpStatus.OK
+        )
+    }
+
+    @PutMapping("/verPrivacidadComunidad/{username}")
+    fun verPrivacidadComunidad(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ): ResponseEntity<String> {
+        return ResponseEntity(
+            usuarioService.verPrivacidadComunidad(username),
             HttpStatus.OK
         )
     }
@@ -236,6 +256,17 @@ class UsuarioController {
     ): ResponseEntity<UsuarioDTO> {
         return ResponseEntity(
             usuarioService.cambiarRadarDistancia(username, radar),
+            HttpStatus.OK
+        )
+    }
+
+    @PutMapping("/verRadarDistancia/{username}")
+    fun verRadarDistancia(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+    ): ResponseEntity<String> {
+        return ResponseEntity(
+            usuarioService.verRadarDistancia(username),
             HttpStatus.OK
         )
     }

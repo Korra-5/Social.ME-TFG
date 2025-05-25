@@ -1184,4 +1184,22 @@ class UsuarioService : UserDetailsService {
             radarDistancia = usuario.radarDistancia,
         )
     }
+
+    fun verRadarDistancia(username:String):String{
+        return usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Este usuario no existe")
+        }.radarDistancia
+    }
+
+    fun verPrivacidadActividad(username:String):String{
+        return usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Este usuario no existe")
+        }.privacidadActividades
+    }
+
+    fun verPrivacidadComunidad(username:String):String{
+        return usuarioRepository.findFirstByUsername(username).orElseThrow {
+            NotFoundException("Este usuario no existe")
+        }.privacidadComunidades
+    }
 }

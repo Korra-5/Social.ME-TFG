@@ -63,6 +63,10 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/cambiarPrivacidadComunidad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarPrivacidadActividad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarRadarDistancia/{username}/{radar}").authenticated()
+                auth.requestMatchers("/Usuario/verPrivacidadActividad/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verPrivacidadComunidad/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verRadarDistancia/{username}").authenticated()
+
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
