@@ -43,7 +43,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
-                auth.requestMatchers("/Usuario/confirmarCambioEmail").authenticated()
 
                 // ==================== USUARIO ====================
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
@@ -64,8 +63,8 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/cambiarPrivacidadComunidad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarPrivacidadActividad/{username}/{privacidad}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarRadarDistancia/{username}/{radar}").authenticated()
-                auth.requestMatchers("/Usuario/verComunidadPorUsuario/{username}").authenticated()
-                auth.requestMatchers("/Usuario/verActividadPorUsername/{username}").authenticated()
+                auth.requestMatchers("/Usuario/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
+                auth.requestMatchers("/Usuario/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
@@ -74,7 +73,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/salirComunidad").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarComunidad/{url}").authenticated()
                 auth.requestMatchers("/Comunidad/modificarComunidad").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadesPorUsuarioCreador/{username}").authenticated()
                 auth.requestMatchers("/Comunidad/verTodasComunidadesPublicas").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadesPublicasEnZona/{username}").authenticated()
@@ -92,7 +90,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/eliminarActividad/{id}").authenticated()
                 auth.requestMatchers("/Actividad/modificarActividad").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorId/{id}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadPorUsername/{username}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadNoParticipaUsuario/{username}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadesPublicasEnZona/{username}").authenticated()
                 auth.requestMatchers("/Actividad/verTodasActividadesPublicas").authenticated()

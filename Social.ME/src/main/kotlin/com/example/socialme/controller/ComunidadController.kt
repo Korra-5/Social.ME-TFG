@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.*
 class ComunidadController {
 
     @Autowired
+    private lateinit var usuarioService: UsuarioService
+
+    @Autowired
     private lateinit var comunidadService: ComunidadService
 
     @PostMapping("/crearComunidad")
@@ -67,12 +70,13 @@ class ComunidadController {
         return ResponseEntity(comunidadService.salirComunidad(participantesComunidadDTO), HttpStatus.OK)
     }
 
-    @GetMapping("/verComunidadPorUsuario/{username}")
+    @GetMapping("/verComunidadPorUsuario/{username}/{usuarioSolicitante}")
     fun verComunidadPorUsuario(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String
-    ) : ResponseEntity<List<Comunidad>> {
-        val comunidades=comunidadService.getComunidadPorUsername(username)
+        @PathVariable username: String,
+        @PathVariable usuarioSolicitante: String
+    ) : ResponseEntity<List<ComunidadDTO>> {
+        val comunidades=usuarioService.verComunidadPorUsuario(username, usuarioSolicitante)
         return ResponseEntity(comunidades, HttpStatus.OK)
     }
 

@@ -2,6 +2,7 @@ package com.example.socialme.controller
 
 import com.example.socialme.dto.*
 import com.example.socialme.service.ActividadService
+import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -11,6 +12,9 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/Actividad")
 class ActividadController {
+
+    @Autowired
+    private lateinit var usuarioService: UsuarioService
 
     @Autowired
     private lateinit var actividadService: ActividadService
@@ -65,12 +69,13 @@ class ActividadController {
         return ResponseEntity(actividadService.verActividadPorId(id), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadPorUsername/{username}")
+    @GetMapping("/verActividadPorUsername/{username}/{usuarioSolicitante}")
     fun verActividadPorUsername(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String
+        @PathVariable username: String,
+        @PathVariable usuarioSolicitante: String
     ) : ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(actividadService.verActividadesPorUsername(username), HttpStatus.OK)
+        return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
     }
 
 

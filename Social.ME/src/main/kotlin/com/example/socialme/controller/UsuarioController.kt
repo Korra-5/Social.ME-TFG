@@ -15,6 +15,7 @@ import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.AuthenticationException
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -207,28 +208,11 @@ class UsuarioController {
         @PathVariable privacidad:String,
         @PathVariable username: String
     ): ResponseEntity<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
         return ResponseEntity(
             usuarioService.cambiarPrivacidadComunidad(username, privacidad),
             HttpStatus.OK
         )
-    }
-
-    @GetMapping("/verComunidadPorUsuario/{username}")
-    fun verComunidadPorUsuario(
-        httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        @RequestParam usuarioSolicitante: String
-    ): ResponseEntity<List<ComunidadDTO>> {
-        return ResponseEntity(usuarioService.verComunidadPorUsuario(username, usuarioSolicitante), HttpStatus.OK)
-    }
-
-    @GetMapping("/verActividadPorUsername/{username}")
-    fun verActividadPorUsername(
-        httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        @RequestParam usuarioSolicitante: String
-    ): ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
     }
 
     @PutMapping("/cambiarPrivacidadActividad/{username}/{privacidad}")
@@ -237,6 +221,7 @@ class UsuarioController {
         @PathVariable privacidad:String,
         @PathVariable username: String
     ): ResponseEntity<UsuarioDTO> {
+        val auth = SecurityContextHolder.getContext().authentication
         return ResponseEntity(
             usuarioService.cambiarPrivacidadActividad(username, privacidad),
             HttpStatus.OK

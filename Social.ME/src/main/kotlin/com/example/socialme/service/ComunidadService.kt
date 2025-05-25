@@ -290,21 +290,6 @@ class ComunidadService {
         return comunidadDto
     }
 
-    fun getComunidadPorUsername(username: String): List<Comunidad> {
-        val participaciones = participantesComunidadRepository.findByUsername(username)
-
-        if (participaciones.isEmpty()) {
-            throw BadRequestException("No existe el usuario o no pertenece a ninguna comunidad")
-        }
-
-        return participaciones.mapNotNull { participante ->
-            val url = participante.comunidad
-            comunidadRepository.findComunidadByUrl(url)
-                .orElseThrow { BadRequestException("La comunidad con URL '$url' no existe") }
-        }
-    }
-
-
     fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
         // Buscar la comunidad existente usando currentURL
         val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {

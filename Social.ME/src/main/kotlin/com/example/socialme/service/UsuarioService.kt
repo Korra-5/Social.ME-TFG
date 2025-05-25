@@ -2,11 +2,11 @@ package com.example.socialme.service
 
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
-import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.*
 import com.example.socialme.repository.*
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.security.core.Authentication
 import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UserDetailsService
