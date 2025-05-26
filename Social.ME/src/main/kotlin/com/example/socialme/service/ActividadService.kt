@@ -8,6 +8,7 @@ import com.example.socialme.model.ActividadesComunidad
 import com.example.socialme.model.Coordenadas
 import com.example.socialme.model.ParticipantesActividad
 import com.example.socialme.repository.*
+import com.example.socialme.utils.ContentValidator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import java.time.Instant
@@ -36,7 +37,14 @@ class ActividadService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+
     fun crearActividad(actividadCreateDTO: ActividadCreateDTO): ActividadDTO {
+
+        // VALIDAR CONTENIDO INAPROPIADO
+        ContentValidator.validarContenidoInapropiado(
+            actividadCreateDTO.nombre,
+            actividadCreateDTO.descripcion
+        )
 
         if (actividadCreateDTO.nombre.length > 25) {
             throw BadRequestException("El nombre de la actividad no puede superar los 25 caracteres")
@@ -118,46 +126,14 @@ class ActividadService {
         )
     }
 
-    fun eliminarActividad(id: String): ActividadDTO {
-        val actividad = actividadRepository.findActividadBy_id(id).orElseThrow {
-            throw NotFoundException("Esta actividad no existe")
-        }
+    fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
 
-        try {
-            actividad.fotosCarruselIds.forEach { fileId ->
-                gridFSService.deleteFile(fileId)
-            }
-        } catch (e: Exception) {
-            // Log de pruebas
-            println("Error deleting GridFS files: ${e.message}")
-        }
-
-        val actividadDTO = ActividadDTO(
-            nombre = actividad.nombre,
-            privada = actividad.privada,
-            creador = actividad.creador,
-            descripcion = actividad.descripcion,
-            fotosCarruselIds = actividad.fotosCarruselIds,
-            fechaFinalizacion = actividad.fechaFinalizacion,
-            fechaInicio = actividad.fechaInicio,
-            coordenadas = actividad.coordenadas,
-            _id = actividad._id,
-            lugar = actividad.lugar,
+        // VALIDAR CONTENIDO INAPROPIADO
+        ContentValidator.validarContenidoInapropiado(
+            actividadUpdateDTO.nombre,
+            actividadUpdateDTO.descripcion
         )
 
-        // Eliminar primero a todos los participantes de la actividad
-        participantesActividadRepository.deleteByIdActividad(id)
-
-        // Después eliminar la referencia en la comunidad
-        actividadesComunidadRepository.deleteByIdActividad(id)
-
-        // Finalmente eliminar la actividad
-        actividadRepository.delete(actividad)
-
-        return actividadDTO
-    }
-
-    fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
         // Buscar la actividad existente
         val actividad = actividadRepository.findActividadBy_id(actividadUpdateDTO._id)
             .orElseThrow { NotFoundException("Esta actividad no existe") }
@@ -229,8 +205,6 @@ class ActividadService {
             actividadesComunidadRepository.save(actividadComunidad)
         }
 
-
-
         // Devolver DTO de la actividad actualizada
         return ActividadDTO(
             nombre = nombreNuevo,
@@ -244,6 +218,45 @@ class ActividadService {
             coordenadas= actividad.coordenadas,
             lugar=actividad.lugar
         )
+    }
+
+    fun eliminarActividad(id: String): ActividadDTO {
+        val actividad = actividadRepository.findActividadBy_id(id).orElseThrow {
+            throw NotFoundException("Esta actividad no existe")
+        }
+
+        try {
+            actividad.fotosCarruselIds.forEach { fileId ->
+                gridFSService.deleteFile(fileId)
+            }
+        } catch (e: Exception) {
+            // Log de pruebas
+            println("Error deleting GridFS files: ${e.message}")
+        }
+
+        val actividadDTO = ActividadDTO(
+            nombre = actividad.nombre,
+            privada = actividad.privada,
+            creador = actividad.creador,
+            descripcion = actividad.descripcion,
+            fotosCarruselIds = actividad.fotosCarruselIds,
+            fechaFinalizacion = actividad.fechaFinalizacion,
+            fechaInicio = actividad.fechaInicio,
+            coordenadas = actividad.coordenadas,
+            _id = actividad._id,
+            lugar = actividad.lugar,
+        )
+
+        // Eliminar primero a todos los participantes de la actividad
+        participantesActividadRepository.deleteByIdActividad(id)
+
+        // Después eliminar la referencia en la comunidad
+        actividadesComunidadRepository.deleteByIdActividad(id)
+
+        // Finalmente eliminar la actividad
+        actividadRepository.delete(actividad)
+
+        return actividadDTO
     }
 
     fun verActividadNoParticipaUsuario(username: String): List<ActividadDTO> {

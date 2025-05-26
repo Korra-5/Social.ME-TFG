@@ -5,6 +5,7 @@ import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
 import com.example.socialme.model.*
 import com.example.socialme.repository.*
+import com.example.socialme.utils.ContentValidator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.userdetails.User
@@ -66,6 +67,14 @@ class UsuarioService : UserDetailsService {
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
 
+        // VALIDAR CONTENIDO INAPROPIADO
+        ContentValidator.validarContenidoInapropiado(
+            usuarioInsertadoDTO.username,
+            usuarioInsertadoDTO.nombre,
+            usuarioInsertadoDTO.apellidos,
+            usuarioInsertadoDTO.descripcion
+        )
+
         if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
             throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
         }
@@ -78,8 +87,6 @@ class UsuarioService : UserDetailsService {
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
         }
-
-
 
         // Procesar la foto de perfil si se proporciona en Base64;
         // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
@@ -109,7 +116,7 @@ class UsuarioService : UserDetailsService {
             descripcion = usuarioInsertadoDTO.descripcion,
             email = usuarioInsertadoDTO.email,
             intereses = usuarioInsertadoDTO.intereses,
-            fotoPerfilId = fotoPerfilId, // Aquí se garantiza que no es null
+            fotoPerfilId = fotoPerfilId,
             direccion = usuarioInsertadoDTO.direccion,
             fechaUnion = Date.from(Instant.now()),
             coordenadas = null,
@@ -117,7 +124,6 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = "TODOS",
             privacidadComunidades = "TODOS",
             radarDistancia = "50.0"
-
         )
 
         // Insertar el usuario en la base de datos
@@ -133,6 +139,117 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             direccion = usuario.direccion,
             fotoPerfilId = fotoPerfilId,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+        )
+    }
+
+    fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
+
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        // VALIDAR CONTENIDO INAPROPIADO
+        ContentValidator.validarContenidoInapropiado(
+            usuarioUpdateDTO.newUsername ?: "",
+            usuarioUpdateDTO.nombre ?: "",
+            usuarioUpdateDTO.apellido ?: "",
+            usuarioUpdateDTO.descripcion ?: ""
+        )
+
+        // Si se está cambiando el username, validar que el nuevo no exista ya
+        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
+                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
+            }
+        }
+
+        // Verificar el correo electrónico si se ha cambiado
+        if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
+            // Verificar que el nuevo email no esté en uso por otro usuario
+            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
+            }
+
+            if (!verificarGmail(usuarioUpdateDTO.email)) {
+                throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
+            }
+        }
+
+        // Procesar la foto de perfil si se proporciona en Base64
+        val nuevaFotoPerfilId: String =
+            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+                // Intentar eliminar la foto de perfil antigua, si existe
+                val fotoId = usuario.fotoPerfilId
+                try {
+                    if (!fotoId.isNullOrBlank()) {
+                        gridFSService.deleteFile(fotoId)
+                    }
+                } catch (e: Exception) {
+                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
+                }
+
+                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
+                gridFSService.storeFileFromBase64(
+                    usuarioUpdateDTO.fotoPerfilBase64,
+                    "profile_${usernameForPhoto}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usernameForPhoto
+                    )
+                ) ?: ""
+            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
+                usuarioUpdateDTO.fotoPerfilId
+            } else {
+                usuario.fotoPerfilId ?: ""
+            }
+
+        // Guardar el antiguo username
+        val antiguoUsername = usuario.username
+
+        // Actualizar la información del usuario
+        usuario.apply {
+            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
+            email = usuarioUpdateDTO.email ?: usuario.email
+            nombre = usuarioUpdateDTO.nombre ?: usuario.nombre
+            apellidos = usuarioUpdateDTO.apellido ?: usuario.apellidos
+            descripcion = usuarioUpdateDTO.descripcion ?: usuario.descripcion
+            intereses = usuarioUpdateDTO.intereses ?: usuario.intereses
+            fotoPerfilId = nuevaFotoPerfilId
+            direccion = usuarioUpdateDTO.direccion ?: usuario.direccion
+        }
+
+        val usuarioActualizado = usuarioRepository.save(usuario)
+
+        // Si se ha cambiado el username, actualizar referencias en otras colecciones
+        if (antiguoUsername != usuario.username) {
+            val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
+            participantesActividad.forEach { participante ->
+                participante.username = usuario.username
+                participantesActividadRepository.save(participante)
+            }
+
+            val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
+            participantesComunidad.forEach { participante ->
+                participante.username = usuario.username
+                participantesComunidadRepository.save(participante)
+            }
+        }
+
+        // Retornar el DTO actualizado
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            fotoPerfilId = nuevaFotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
             premium = usuario.premium,
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
@@ -201,110 +318,6 @@ class UsuarioService : UserDetailsService {
     }
 
 
-    fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
-
-        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
-            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
-        }
-
-        // Si se está cambiando el username, validar que el nuevo no exista ya
-        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
-            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
-                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
-            }
-        }
-
-        // Verificar el correo electrónico si se ha cambiado
-        if (usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email) {
-            // Verificar que el nuevo email no esté en uso por otro usuario
-            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email)) {
-                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
-            }
-
-            if (!verificarGmail(usuarioUpdateDTO.email)) {
-                throw BadRequestException("No se pudo verificar el nuevo correo electrónico ${usuarioUpdateDTO.email}")
-            }
-        }
-
-
-
-        // Procesar la foto de perfil si se proporciona en Base64
-        val nuevaFotoPerfilId: String =
-            if (!usuarioUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
-                // Intentar eliminar la foto de perfil antigua, si existe
-                val fotoId = usuario.fotoPerfilId
-                try {
-                    if (!fotoId.isNullOrBlank()) {
-                        gridFSService.deleteFile(fotoId)
-                    }
-                } catch (e: Exception) {
-                    println("Error al eliminar la foto de perfil antigua: ${e.message}")
-                }
-
-                val usernameForPhoto = usuarioUpdateDTO.newUsername ?: usuarioUpdateDTO.currentUsername
-                gridFSService.storeFileFromBase64(
-                    usuarioUpdateDTO.fotoPerfilBase64,
-                    "profile_${usernameForPhoto}_${Date().time}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "profilePhoto",
-                        "username" to usernameForPhoto
-                    )
-                ) ?: ""
-            } else if (usuarioUpdateDTO.fotoPerfilId != null) {
-                usuarioUpdateDTO.fotoPerfilId
-            } else {
-                usuario.fotoPerfilId ?: ""
-            }
-
-        // Guardar el antiguo username
-        val antiguoUsername = usuario.username
-
-        // Actualizar la información del usuario
-        usuario.apply {
-            username = usuarioUpdateDTO.newUsername ?: antiguoUsername
-            email = usuarioUpdateDTO.email ?: usuario.email // Mantener el email existente si no se proporciona uno nuevo
-            nombre = usuarioUpdateDTO.nombre ?: usuario.nombre
-            apellidos = usuarioUpdateDTO.apellido ?: usuario.apellidos
-            descripcion = usuarioUpdateDTO.descripcion ?: usuario.descripcion
-            intereses = usuarioUpdateDTO.intereses ?: usuario.intereses
-            fotoPerfilId = nuevaFotoPerfilId
-            direccion = usuarioUpdateDTO.direccion ?: usuario.direccion
-        }
-
-        val usuarioActualizado = usuarioRepository.save(usuario)
-
-        // Si se ha cambiado el username, actualizar referencias en otras colecciones
-        if (antiguoUsername != usuario.username) {
-            val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
-            participantesActividad.forEach { participante ->
-                participante.username = usuario.username
-                participantesActividadRepository.save(participante)
-            }
-
-            val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
-            participantesComunidad.forEach { participante ->
-                participante.username = usuario.username
-                participantesComunidadRepository.save(participante)
-            }
-        }
-
-        // Retornar el DTO actualizado
-        return UsuarioDTO(
-            username = usuario.username,
-            email = usuario.email,
-            intereses = usuario.intereses,
-            nombre = usuario.nombre,
-            apellido = usuario.apellidos,
-            fotoPerfilId = nuevaFotoPerfilId,
-            direccion = usuario.direccion,
-            descripcion = usuario.descripcion,
-            premium = usuario.premium,
-            privacidadActividades = usuario.privacidadActividades,
-            privacidadComunidades = usuario.privacidadComunidades,
-            radarDistancia = usuario.radarDistancia,
-        )
-    }
 
     fun verUsuarioPorUsername(username: String):UsuarioDTO{
         val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
