@@ -133,4 +133,11 @@ class ActividadController {
     ): ResponseEntity<Boolean>{
         return ResponseEntity(actividadService.verificarCreadorAdministradorActividad(username, idActividad), HttpStatus.OK)
     }
+
+    @GetMapping("/verComunidadPorActividad/{idActividad}")
+    fun verComunidadPorActividad(
+        @PathVariable("idActividad") idActividad: String
+    ): ResponseEntity<ComunidadDTO>{
+        return ResponseEntity(actividadService.verComunidadPorActividad(idActividad), HttpStatus.OK)
+    }
 }

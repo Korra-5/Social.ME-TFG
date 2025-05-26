@@ -101,6 +101,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
+                auth.requestMatchers("/Actividad/verComunidadPorActividad/{idActividad}").authenticated()
 
 
                 // ==================== DENUNCIA ====================

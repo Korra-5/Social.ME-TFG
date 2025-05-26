@@ -511,4 +511,30 @@ class ActividadService {
                 )
             }
     }
+
+    fun verComunidadPorActividad(IdActividad:String):ComunidadDTO{
+        val comunidad=comunidadRepository.findComunidadByUrl(
+            actividadesComunidadRepository.findActividadesComunidadByIdActividad(IdActividad).orElseThrow{
+            throw NotFoundException("Esta actividad no existe")
+        }.comunidad
+        ).orElseThrow {
+            NotFoundException("Comunidad no encontrado")
+        }
+
+        return ComunidadDTO(
+            nombre = comunidad.nombre,
+            descripcion = comunidad.descripcion,
+            creador = comunidad.creador,
+            intereses = comunidad.intereses,
+            fotoPerfilId = comunidad.fotoPerfilId,
+            fotoCarruselIds = comunidad.fotoCarruselIds,
+            administradores = comunidad.administradores,
+            fechaCreacion = comunidad.fechaCreacion,
+            comunidadGlobal = comunidad.comunidadGlobal,
+            privada = comunidad.privada,
+            url =comunidad.url,
+            coordenadas = comunidad.coordenadas,
+            codigoUnion = comunidad.codigoUnion
+        )
+    }
 }
