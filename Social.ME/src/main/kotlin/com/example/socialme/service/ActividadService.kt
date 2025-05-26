@@ -3,10 +3,7 @@ package com.example.socialme.service
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.NotFoundException
-import com.example.socialme.model.Actividad
-import com.example.socialme.model.ActividadesComunidad
-import com.example.socialme.model.Coordenadas
-import com.example.socialme.model.ParticipantesActividad
+import com.example.socialme.model.*
 import com.example.socialme.repository.*
 import com.example.socialme.utils.ContentValidator
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,6 +12,12 @@ import java.time.Instant
 import java.util.*
 @Service
 class ActividadService {
+
+    @Autowired
+    private lateinit var denunciaRepository: DenunciaRepository
+
+    @Autowired
+    private lateinit var notificacionRepository: NotificacionRepository
 
     @Autowired
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
@@ -125,7 +128,6 @@ class ActividadService {
             lugar = actividadInsertada.lugar,
         )
     }
-
     fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -181,8 +183,8 @@ class ActividadService {
             fotosCarruselIds = nuevasFotos
             fechaInicio = actividadUpdateDTO.fechaInicio
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
-            coordenadas= actividad.coordenadas
-            lugar=actividad.lugar
+            coordenadas = actividad.coordenadas
+            lugar = actividad.lugar
         }
 
         // Guardar la actividad actualizada
@@ -203,6 +205,43 @@ class ActividadService {
 
             actividadComunidad.nombreActividad = nombreNuevo
             actividadesComunidadRepository.save(actividadComunidad)
+
+            // Actualizar denuncias que referencien esta actividad
+            val denunciasComoItem = denunciaRepository.findAll().filter {
+                it.tipoItemDenunciado == "actividad" && it.nombreItemDenunciado == nombreAntiguo
+            }
+            denunciasComoItem.forEach { denuncia ->
+                val denunciaActualizada = Denuncia(
+                    _id = denuncia._id,
+                    motivo = denuncia.motivo,
+                    cuerpo = denuncia.cuerpo,
+                    nombreItemDenunciado = nombreNuevo,
+                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                    usuarioDenunciante = denuncia.usuarioDenunciante,
+                    fechaCreacion = denuncia.fechaCreacion,
+                    solucionado = denuncia.solucionado
+                )
+                denunciaRepository.save(denunciaActualizada)
+            }
+
+            // Actualizar notificaciones que referencien esta actividad
+            val notificacionesActividad = notificacionRepository.findAll().filter {
+                it.entidadNombre == nombreAntiguo
+            }
+            notificacionesActividad.forEach { notificacion ->
+                val notificacionActualizada = Notificacion(
+                    _id = notificacion._id,
+                    tipo = notificacion.tipo,
+                    titulo = notificacion.titulo,
+                    mensaje = notificacion.mensaje,
+                    usuarioDestino = notificacion.usuarioDestino,
+                    entidadId = notificacion.entidadId,
+                    entidadNombre = nombreNuevo,
+                    fechaCreacion = notificacion.fechaCreacion,
+                    leida = notificacion.leida
+                )
+                notificacionRepository.save(notificacionActualizada)
+            }
         }
 
         // Devolver DTO de la actividad actualizada
@@ -215,8 +254,8 @@ class ActividadService {
             fechaInicio = actividad.fechaInicio,
             fotosCarruselIds = actividad.fotosCarruselIds,
             _id = actividad._id,
-            coordenadas= actividad.coordenadas,
-            lugar=actividad.lugar
+            coordenadas = actividad.coordenadas,
+            lugar = actividad.lugar
         )
     }
 

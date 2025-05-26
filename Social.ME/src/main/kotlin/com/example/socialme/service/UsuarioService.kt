@@ -22,10 +22,20 @@ import javax.mail.internet.*
 class UsuarioService : UserDetailsService {
 
     @Autowired
-    private lateinit var actividadRepository: ActividadRepository
+    private lateinit var mensajeRepository: MensajeRepository
+
+    @Autowired
+    private lateinit var notificacionRepository: NotificacionRepository
 
     @Autowired
     private lateinit var bloqueoRepository: BloqueoRepository
+
+    @Autowired
+    private lateinit var denunciaRepository: DenunciaRepository
+
+    @Autowired
+    private lateinit var actividadRepository: ActividadRepository
+
 
     @Autowired
     private lateinit var solicitudesAmistadRepository: SolicitudesAmistadRepository
@@ -145,7 +155,6 @@ class UsuarioService : UserDetailsService {
             radarDistancia = usuario.radarDistancia,
         )
     }
-
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
 
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
@@ -225,19 +234,170 @@ class UsuarioService : UserDetailsService {
 
         val usuarioActualizado = usuarioRepository.save(usuario)
 
-        // Si se ha cambiado el username, actualizar referencias en otras colecciones
+        // Si se ha cambiado el username, actualizar referencias en todas las colecciones
         if (antiguoUsername != usuario.username) {
+            val nuevoUsername = usuario.username
+
+            // 1. Actualizar ParticipantesActividad
             val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
             participantesActividad.forEach { participante ->
-                participante.username = usuario.username
+                participante.username = nuevoUsername
                 participantesActividadRepository.save(participante)
             }
 
+            // 2. Actualizar ParticipantesComunidad
             val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
             participantesComunidad.forEach { participante ->
-                participante.username = usuario.username
+                participante.username = nuevoUsername
                 participantesComunidadRepository.save(participante)
             }
+
+            // 3. Actualizar Mensajes
+            val mensajes = mensajeRepository.findAll().filter { it.username == antiguoUsername }
+            mensajes.forEach { mensaje ->
+                val mensajeActualizado = Mensaje(
+                    _id = mensaje._id,
+                    comunidadUrl = mensaje.comunidadUrl,
+                    username = nuevoUsername,
+                    contenido = mensaje.contenido,
+                    fechaEnvio = mensaje.fechaEnvio,
+                    leido = mensaje.leido
+                )
+                mensajeRepository.save(mensajeActualizado)
+            }
+
+            // 4. Actualizar Notificaciones (usuarioDestino)
+            val notificaciones = notificacionRepository.findByUsuarioDestinoOrderByFechaCreacionDesc(antiguoUsername)
+            notificaciones.forEach { notificacion ->
+                val notificacionActualizada = Notificacion(
+                    _id = notificacion._id,
+                    tipo = notificacion.tipo,
+                    titulo = notificacion.titulo,
+                    mensaje = notificacion.mensaje,
+                    usuarioDestino = nuevoUsername,
+                    entidadId = notificacion.entidadId,
+                    entidadNombre = notificacion.entidadNombre,
+                    fechaCreacion = notificacion.fechaCreacion,
+                    leida = notificacion.leida
+                )
+                notificacionRepository.save(notificacionActualizada)
+            }
+
+            // 5. Actualizar Bloqueos (tanto bloqueador como bloqueado)
+            val bloqueosBloqueador = bloqueoRepository.findAllByBloqueador(antiguoUsername)
+            bloqueosBloqueador.forEach { bloqueo ->
+                val bloqueoActualizado = Bloqueo(
+                    _id = bloqueo._id,
+                    bloqueador = nuevoUsername,
+                    bloqueado = bloqueo.bloqueado,
+                    fechaBloqueo = bloqueo.fechaBloqueo
+                )
+                bloqueoRepository.save(bloqueoActualizado)
+            }
+
+            val bloqueosBloqueado = bloqueoRepository.findAllByBloqueado(antiguoUsername)
+            bloqueosBloqueado.forEach { bloqueo ->
+                val bloqueoActualizado = Bloqueo(
+                    _id = bloqueo._id,
+                    bloqueador = bloqueo.bloqueador,
+                    bloqueado = nuevoUsername,
+                    fechaBloqueo = bloqueo.fechaBloqueo
+                )
+                bloqueoRepository.save(bloqueoActualizado)
+            }
+
+            // 6. Actualizar Denuncias (usuarioDenunciante)
+            val denuncias = denunciaRepository.findAll().filter { it.usuarioDenunciante == antiguoUsername }
+            denuncias.forEach { denuncia ->
+                val denunciaActualizada = Denuncia(
+                    _id = denuncia._id,
+                    motivo = denuncia.motivo,
+                    cuerpo = denuncia.cuerpo,
+                    nombreItemDenunciado = denuncia.nombreItemDenunciado,
+                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                    usuarioDenunciante = nuevoUsername,
+                    fechaCreacion = denuncia.fechaCreacion,
+                    solucionado = denuncia.solucionado
+                )
+                denunciaRepository.save(denunciaActualizada)
+            }
+
+            // 7. Actualizar denuncias donde el usuario es el item denunciado
+            val denunciasComoItem = denunciaRepository.findAll().filter {
+                it.tipoItemDenunciado == "usuario" && it.nombreItemDenunciado == antiguoUsername
+            }
+            denunciasComoItem.forEach { denuncia ->
+                val denunciaActualizada = Denuncia(
+                    _id = denuncia._id,
+                    motivo = denuncia.motivo,
+                    cuerpo = denuncia.cuerpo,
+                    nombreItemDenunciado = nuevoUsername,
+                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                    usuarioDenunciante = denuncia.usuarioDenunciante,
+                    fechaCreacion = denuncia.fechaCreacion,
+                    solucionado = denuncia.solucionado
+                )
+                denunciaRepository.save(denunciaActualizada)
+            }
+
+            // 8. Actualizar SolicitudesAmistad (remitente y destinatario) - CORREGIDO
+            val solicitudesRemitente = solicitudesAmistadRepository.findAll().filter { it.remitente == antiguoUsername }
+            solicitudesRemitente.forEach { solicitud ->
+                val solicitudActualizada = SolicitudAmistad(
+                    _id = solicitud._id,
+                    remitente = nuevoUsername,
+                    destinatario = solicitud.destinatario,
+                    fechaEnviada = solicitud.fechaEnviada,
+                    aceptada = solicitud.aceptada
+                )
+                solicitudesAmistadRepository.save(solicitudActualizada)
+            }
+
+            val solicitudesDestinatario = solicitudesAmistadRepository.findAll().filter { it.destinatario == antiguoUsername }
+            solicitudesDestinatario.forEach { solicitud ->
+                val solicitudActualizada = SolicitudAmistad(
+                    _id = solicitud._id,
+                    remitente = solicitud.remitente,
+                    destinatario = nuevoUsername,
+                    fechaEnviada = solicitud.fechaEnviada,
+                    aceptada = solicitud.aceptada
+                )
+                solicitudesAmistadRepository.save(solicitudActualizada)
+            }
+
+            // 9. Actualizar Actividades (creador)
+            val actividades = actividadRepository.findAll().filter { it.creador == antiguoUsername }
+            actividades.forEach { actividad ->
+                actividad.creador = nuevoUsername
+                actividadRepository.save(actividad)
+            }
+
+            // 10. Actualizar Comunidades (creador y administradores)
+            val comunidades = comunidadRepository.findByCreador(antiguoUsername)
+            comunidades.forEach { comunidad ->
+                val nuevosAdministradores = comunidad.administradores?.map { admin ->
+                    if (admin == antiguoUsername) nuevoUsername else admin
+                }
+
+                comunidad.creador = nuevoUsername
+                comunidad.administradores = nuevosAdministradores
+                comunidadRepository.save(comunidad)
+            }
+
+            // También buscar comunidades donde sea administrador pero no creador
+            val todasComunidades = comunidadRepository.findAll()
+            todasComunidades.forEach { comunidad ->
+                if (comunidad.creador != antiguoUsername && comunidad.administradores?.contains(antiguoUsername) == true) {
+                    val nuevosAdministradores = comunidad.administradores?.map { admin ->
+                        if (admin == antiguoUsername) nuevoUsername else admin
+                    }
+
+                    comunidad.administradores = nuevosAdministradores
+                    comunidadRepository.save(comunidad)
+                }
+            }
+
+            println("Username actualizado de '$antiguoUsername' a '$nuevoUsername' en todas las colecciones")
         }
 
         // Retornar el DTO actualizado

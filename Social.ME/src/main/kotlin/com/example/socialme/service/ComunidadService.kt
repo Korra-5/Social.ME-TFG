@@ -4,13 +4,8 @@ import com.example.socialme.dto.*
 import com.example.socialme.error.exception.BadRequestException
 import com.example.socialme.error.exception.ForbiddenException
 import com.example.socialme.error.exception.NotFoundException
-import com.example.socialme.model.Comunidad
-import com.example.socialme.model.Coordenadas
-import com.example.socialme.model.ParticipantesComunidad
-import com.example.socialme.repository.ActividadesComunidadRepository
-import com.example.socialme.repository.ComunidadRepository
-import com.example.socialme.repository.ParticipantesComunidadRepository
-import com.example.socialme.repository.UsuarioRepository
+import com.example.socialme.model.*
+import com.example.socialme.repository.*
 import com.example.socialme.utils.ContentValidator
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
@@ -19,6 +14,18 @@ import java.util.*
 
 @Service
 class ComunidadService {
+
+    @Autowired
+    private lateinit var mensajeRepository: MensajeRepository
+
+    @Autowired
+    private lateinit var actividadRepository: ActividadRepository
+
+    @Autowired
+    private lateinit var denunciaRepository: DenunciaRepository
+
+    @Autowired
+    private lateinit var notificacionRepository: NotificacionRepository
 
     @Autowired
     private lateinit var actividadesComunidadRepository: ActividadesComunidadRepository
@@ -131,7 +138,6 @@ class ComunidadService {
             codigoUnion = comunidadCreateDTO.codigoUnion
         )
     }
-
     fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -160,8 +166,10 @@ class ComunidadService {
             }
         }
 
-        // Guardar la antigua URL para actualizar referencias
+        // Guardar la antigua URL y nombre para actualizar referencias
         val urlAntigua = comunidadExistente.url
+        val nombreAntiguo = comunidadExistente.nombre
+        val nombreNuevo = comunidadUpdateDTO.nombre
 
         // Procesar la foto de perfil si se proporciona en Base64
         val nuevaFotoPerfilId = if (!comunidadUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
@@ -231,17 +239,14 @@ class ComunidadService {
             intereses = comunidadUpdateDTO.intereses
             administradores = comunidadUpdateDTO.administradores
             fotoPerfilId = nuevaFotoPerfilId
-            fotoCarruselIds = nuevasFotosCarruselIds
-        }
+            fotoCarruselIds = nuevasFotosCarruselIds        }
 
         val comunidadActualizada = comunidadRepository.save(comunidadExistente)
 
         // Si se ha cambiado la URL, actualizar referencias en otras colecciones
         if (urlAntigua != comunidadActualizada.url) {
             // Actualizar referencias en ActividadesComunidad
-            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElseThrow {
-                NotFoundException("Actividades no encontradas")
-            }
+            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElse(emptyList())
             actividades.forEach { actividad ->
                 actividad.comunidad = comunidadActualizada.url
                 actividadesComunidadRepository.save(actividad)
@@ -252,6 +257,66 @@ class ComunidadService {
             participantes.forEach { participante ->
                 participante.comunidad = comunidadActualizada.url
                 participantesComunidadRepository.save(participante)
+            }
+
+            // Actualizar referencias en Mensajes
+            val mensajes = mensajeRepository.findByComunidadUrlOrderByFechaEnvioAsc(urlAntigua)
+            mensajes.forEach { mensaje ->
+                val mensajeActualizado = Mensaje(
+                    _id = mensaje._id,
+                    comunidadUrl = comunidadActualizada.url,
+                    username = mensaje.username,
+                    contenido = mensaje.contenido,
+                    fechaEnvio = mensaje.fechaEnvio,
+                    leido = mensaje.leido
+                )
+                mensajeRepository.save(mensajeActualizado)
+            }
+
+            // Actualizar referencias en Actividades (campo comunidad)
+            val actividadesDeComunidad = actividadRepository.findAll().filter { it.comunidad == urlAntigua }
+            actividadesDeComunidad.forEach { actividad ->
+                actividad.comunidad = comunidadActualizada.url
+                actividadRepository.save(actividad)
+            }
+        }
+
+        // Si se cambió el nombre, actualizar referencias en denuncias
+        if (nombreAntiguo != nombreNuevo) {
+            val denunciasComoItem = denunciaRepository.findAll().filter {
+                it.tipoItemDenunciado == "comunidad" && it.nombreItemDenunciado == nombreAntiguo
+            }
+            denunciasComoItem.forEach { denuncia ->
+                val denunciaActualizada = Denuncia(
+                    _id = denuncia._id,
+                    motivo = denuncia.motivo,
+                    cuerpo = denuncia.cuerpo,
+                    nombreItemDenunciado = nombreNuevo,
+                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                    usuarioDenunciante = denuncia.usuarioDenunciante,
+                    fechaCreacion = denuncia.fechaCreacion,
+                    solucionado = denuncia.solucionado
+                )
+                denunciaRepository.save(denunciaActualizada)
+            }
+
+            // Actualizar notificaciones que referencien esta comunidad
+            val notificacionesComunidad = notificacionRepository.findAll().filter {
+                it.entidadNombre == nombreAntiguo
+            }
+            notificacionesComunidad.forEach { notificacion ->
+                val notificacionActualizada = Notificacion(
+                    _id = notificacion._id,
+                    tipo = notificacion.tipo,
+                    titulo = notificacion.titulo,
+                    mensaje = notificacion.mensaje,
+                    usuarioDestino = notificacion.usuarioDestino,
+                    entidadId = notificacion.entidadId,
+                    entidadNombre = nombreNuevo,
+                    fechaCreacion = notificacion.fechaCreacion,
+                    leida = notificacion.leida
+                )
+                notificacionRepository.save(notificacionActualizada)
             }
         }
 
@@ -269,15 +334,7 @@ class ComunidadService {
             administradores = comunidadActualizada.administradores,
             privada = comunidadActualizada.privada,
             coordenadas = comunidadActualizada.coordenadas,
-            codigoUnion = if (comunidadExistente.privada) {
-                comunidadExistente.codigoUnion
-            }else{
-                if(comunidadActualizada.privada){
-                    generarCodigoUnico()
-                }else{
-                    null
-                }
-            }
+            codigoUnion = comunidadActualizada.codigoUnion
         )
     }
 
