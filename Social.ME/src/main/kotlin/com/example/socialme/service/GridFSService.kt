@@ -50,20 +50,45 @@ class GridFSService {
      */
     fun storeFileFromBase64(base64Content: String, filename: String, contentType: String, metadata: Map<String, String> = emptyMap()): String {
         try {
+            // Validar entrada
+            if (base64Content.isBlank()) {
+                throw RuntimeException("Base64 content is empty")
+            }
+
+            if (filename.isBlank()) {
+                throw RuntimeException("Filename is empty")
+            }
+
             // Remove base64 prefix if present (e.g., "data:image/jpeg;base64,")
             val base64Data = if (base64Content.contains(",")) {
                 base64Content.substring(base64Content.indexOf(",") + 1)
             } else {
                 base64Content
+            }.trim()
+
+            // Validar que el base64 no esté vacío después de limpiar
+            if (base64Data.isBlank()) {
+                throw RuntimeException("Base64 data is empty after cleaning")
             }
 
-            val decodedData = Base64.getDecoder().decode(base64Data)
+            // Decodificar con manejo de errores
+            val decodedData = try {
+                Base64.getDecoder().decode(base64Data)
+            } catch (e: IllegalArgumentException) {
+                throw RuntimeException("Invalid base64 encoding: ${e.message}")
+            }
+
+            if (decodedData.isEmpty()) {
+                throw RuntimeException("Decoded data is empty")
+            }
+
             val inputStream = ByteArrayInputStream(decodedData)
 
             val metadataDocument = org.bson.Document()
             metadata.forEach { (key, value) -> metadataDocument.append(key, value) }
             metadataDocument.append("filename", filename)
             metadataDocument.append("contentType", contentType)
+            metadataDocument.append("size", decodedData.size)
 
             val id = gridFsTemplate.store(
                 inputStream,
@@ -71,8 +96,13 @@ class GridFSService {
                 contentType,
                 metadataDocument
             )
-            return id.toString()
+
+            val result = id.toString()
+            println("Successfully stored file: $filename with ID: $result")
+            return result
         } catch (e: Exception) {
+            println("Failed to store file from base64 - Filename: $filename, Error: ${e.message}")
+            e.printStackTrace()
             throw RuntimeException("Failed to store file from base64", e)
         }
     }
@@ -81,7 +111,12 @@ class GridFSService {
      * Retrieves a file by its ID
      */
     fun getFile(id: String): GridFSFile? {
-        return gridFsOperations.findOne(Query(Criteria.where("_id").`is`(ObjectId(id))))
+        return try {
+            gridFsOperations.findOne(Query(Criteria.where("_id").`is`(ObjectId(id))))
+        } catch (e: Exception) {
+            println("Error retrieving file with ID: $id - ${e.message}")
+            null
+        }
     }
 
     /**
@@ -97,6 +132,24 @@ class GridFSService {
      * Deletes a file by its ID
      */
     fun deleteFile(id: String?) {
-        gridFsTemplate.delete(Query(Criteria.where("_id").`is`(ObjectId(id))))
+        try {
+            if (id.isNullOrBlank()) {
+                println("Warning: Attempting to delete file with null or empty ID")
+                return
+            }
+
+            val objectId = try {
+                ObjectId(id)
+            } catch (e: IllegalArgumentException) {
+                println("Warning: Invalid ObjectId format: $id")
+                return
+            }
+
+            gridFsTemplate.delete(Query(Criteria.where("_id").`is`(objectId)))
+            println("Successfully deleted file with ID: $id")
+        } catch (e: Exception) {
+            println("Error deleting file with ID: $id - ${e.message}")
+            // No lanzar excepción, solo logear
+        }
     }
 }

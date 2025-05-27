@@ -138,6 +138,7 @@ class ComunidadService {
             codigoUnion = comunidadCreateDTO.codigoUnion
         )
     }
+
     fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -192,40 +193,35 @@ class ComunidadService {
                     "type" to "profilePhoto",
                     "community" to urlParaFoto
                 )
-            ) ?: ""
+            ) ?: comunidadExistente.fotoPerfilId // Mantener la anterior si falla
         } else if (comunidadUpdateDTO.fotoPerfilId != null) {
             comunidadUpdateDTO.fotoPerfilId
         } else {
             comunidadExistente.fotoPerfilId
         }
 
-        // Procesar las fotos del carrusel si se proporcionan en Base64
+        // CORREGIDO: Procesar las fotos del carrusel AÑADIENDO en lugar de reemplazando
         val nuevasFotosCarruselIds = if (comunidadUpdateDTO.fotoCarruselBase64 != null && comunidadUpdateDTO.fotoCarruselBase64.isNotEmpty()) {
-            // Intentar eliminar las fotos de carrusel antiguas, si existen
-            try {
-                comunidadExistente.fotoCarruselIds?.forEach { fotoId ->
-                    if (!fotoId.isNullOrBlank()) {
-                        gridFSService.deleteFile(fotoId)
-                    }
-                }
-            } catch (e: Exception) {
-                println("Error al eliminar fotos de carrusel antiguas: ${e.message}")
-            }
+            // OBTENER las fotos existentes
+            val fotosExistentes = comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds ?: emptyList()
 
-            // Guardar las nuevas fotos de carrusel
+            // AÑADIR las nuevas fotos sin eliminar las anteriores
             val urlParaFotos = comunidadUpdateDTO.newUrl
-            comunidadUpdateDTO.fotoCarruselBase64.mapIndexed { index, base64 ->
+            val nuevasFotosIds = comunidadUpdateDTO.fotoCarruselBase64.mapIndexedNotNull { index, base64 ->
                 gridFSService.storeFileFromBase64(
                     base64,
-                    "community_carousel_${urlParaFotos}_${index}_${Date().time}",
+                    "community_carousel_${urlParaFotos}_${System.currentTimeMillis()}_${index}",
                     "image/jpeg",
                     mapOf(
                         "type" to "carouselPhoto",
                         "community" to urlParaFotos,
-                        "position" to index.toString()
+                        "position" to (fotosExistentes.size + index).toString()
                     )
-                ) ?: ""
+                )
             }
+
+            // COMBINAR fotos existentes + nuevas fotos
+            fotosExistentes + nuevasFotosIds
         } else {
             // Mantener las fotos de carrusel existentes
             comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds
@@ -239,7 +235,10 @@ class ComunidadService {
             intereses = comunidadUpdateDTO.intereses
             administradores = comunidadUpdateDTO.administradores
             fotoPerfilId = nuevaFotoPerfilId
-            fotoCarruselIds = nuevasFotosCarruselIds        }
+            fotoCarruselIds = nuevasFotosCarruselIds
+            privada = comunidadUpdateDTO.privada
+            coordenadas = comunidadUpdateDTO.coordenadas
+        }
 
         val comunidadActualizada = comunidadRepository.save(comunidadExistente)
 

@@ -149,42 +149,41 @@ class ActividadService {
         val nombreAntiguo = actividad.nombre
         val nombreNuevo = actividadUpdateDTO.nombre
 
-        val nuevasFotos =
-            if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
-                actividadUpdateDTO.fotosCarruselBase64.mapIndexed { index, base64 ->
-                    gridFSService.storeFileFromBase64(
-                        base64,
-                        "activity_carousel_${nombreNuevo}_${index}_${Date().time}",
-                        "image/jpeg",
-                        mapOf(
-                            "type" to "activityCarousel",
-                            "activity" to nombreNuevo,
-                            "position" to index.toString()
-                        )
+        // CORREGIDO: Manejo de fotos del carrusel AÑADIENDO en lugar de reemplazando
+        val nuevasFotosCarruselIds = if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
+            // OBTENER las fotos existentes
+            val fotosExistentes = actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds ?: emptyList()
+
+            // AÑADIR las nuevas fotos sin eliminar las anteriores
+            val nuevasFotosIds = actividadUpdateDTO.fotosCarruselBase64.mapIndexedNotNull { index, base64 ->
+                gridFSService.storeFileFromBase64(
+                    base64,
+                    "activity_carousel_${nombreNuevo}_${System.currentTimeMillis()}_${index}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "activityCarousel",
+                        "activity" to nombreNuevo,
+                        "position" to (fotosExistentes.size + index).toString()
                     )
-                }
-            } else actividadUpdateDTO.fotosCarruselIds ?: emptyList()
-
-        val viejasFotos = actividad.fotosCarruselIds
-        val fotosParaEliminar = viejasFotos.filter { !nuevasFotos.contains(it) }
-
-        try {
-            fotosParaEliminar.forEach { fileId ->
-                gridFSService.deleteFile(fileId)
+                )
             }
-        } catch (e: Exception) {
-            println("Error deleting old GridFS files: ${e.message}")
+
+            // COMBINAR fotos existentes + nuevas fotos
+            fotosExistentes + nuevasFotosIds
+        } else {
+            // Mantener las fotos existentes
+            actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds ?: emptyList()
         }
 
         // Actualizar los datos de la actividad
         actividad.apply {
             nombre = nombreNuevo
             descripcion = actividadUpdateDTO.descripcion
-            fotosCarruselIds = nuevasFotos
+            fotosCarruselIds = nuevasFotosCarruselIds
             fechaInicio = actividadUpdateDTO.fechaInicio
             fechaFinalizacion = actividadUpdateDTO.fechaFinalizacion
-            coordenadas = actividad.coordenadas
-            lugar = actividad.lugar
+            coordenadas = actividadUpdateDTO.coordenadas ?: this.coordenadas
+            lugar = actividadUpdateDTO.lugar ?: this.lugar
         }
 
         // Guardar la actividad actualizada
