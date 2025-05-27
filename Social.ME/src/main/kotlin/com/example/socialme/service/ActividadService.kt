@@ -152,29 +152,33 @@ class ActividadService {
         // CORREGIDO: Manejo de fotos del carrusel AÑADIENDO en lugar de reemplazando
         val nuevasFotosCarruselIds = if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
             // OBTENER las fotos existentes
-            val fotosExistentes = actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds ?: emptyList()
+            val fotosExistentes = actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds
 
             // AÑADIR las nuevas fotos sin eliminar las anteriores
-            val nuevasFotosIds = actividadUpdateDTO.fotosCarruselBase64.mapIndexedNotNull { index, base64 ->
-                gridFSService.storeFileFromBase64(
-                    base64,
-                    "activity_carousel_${nombreNuevo}_${System.currentTimeMillis()}_${index}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "activityCarousel",
-                        "activity" to nombreNuevo,
-                        "position" to (fotosExistentes.size + index).toString()
+            val nuevasFotosIds = actividadUpdateDTO.fotosCarruselBase64.mapNotNull { base64 ->
+                try {
+                    gridFSService.storeFileFromBase64(
+                        base64,
+                        "activity_carousel_${nombreNuevo}_${System.currentTimeMillis()}_${fotosExistentes.size}",
+                        "image/jpeg",
+                        mapOf(
+                            "type" to "activityCarousel",
+                            "activity" to nombreNuevo,
+                            "position" to fotosExistentes.size.toString()
+                        )
                     )
-                )
+                } catch (e: Exception) {
+                    println("Error storing activity carousel image: ${e.message}")
+                    null
+                }
             }
 
             // COMBINAR fotos existentes + nuevas fotos
             fotosExistentes + nuevasFotosIds
         } else {
             // Mantener las fotos existentes
-            actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds ?: emptyList()
+            actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds
         }
-
         // Actualizar los datos de la actividad
         actividad.apply {
             nombre = nombreNuevo
