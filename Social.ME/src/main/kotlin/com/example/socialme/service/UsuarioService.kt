@@ -96,64 +96,65 @@ class UsuarioService : UserDetailsService {
         // Verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
+        }else {
+
+            // Procesar la foto de perfil si se proporciona en Base64;
+            // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
+            val fotoPerfilId: String =
+                if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
+                    gridFSService.storeFileFromBase64(
+                        usuarioInsertadoDTO.fotoPerfilBase64,
+                        "profile_${usuarioInsertadoDTO.username}_${Date().time}",
+                        "image/jpeg",
+                        mapOf(
+                            "type" to "profilePhoto",
+                            "username" to usuarioInsertadoDTO.username
+                        )
+                    ) ?: ""
+                } else {
+                    usuarioInsertadoDTO.fotoPerfilId ?: ""
+                }
+
+            // Crear la entidad Usuario con todos los campos no nulos
+            val usuario = Usuario(
+                _id = null,
+                username = usuarioInsertadoDTO.username,
+                password = passwordEncoder.encode(usuarioInsertadoDTO.password),
+                roles = usuarioInsertadoDTO.rol.toString(),
+                nombre = usuarioInsertadoDTO.nombre,
+                apellidos = usuarioInsertadoDTO.apellidos,
+                descripcion = usuarioInsertadoDTO.descripcion,
+                email = usuarioInsertadoDTO.email,
+                intereses = usuarioInsertadoDTO.intereses,
+                fotoPerfilId = fotoPerfilId,
+                direccion = usuarioInsertadoDTO.direccion,
+                fechaUnion = Date.from(Instant.now()),
+                coordenadas = null,
+                premium = false,
+                privacidadActividades = "TODOS",
+                privacidadComunidades = "TODOS",
+                radarDistancia = "50.0"
+            )
+
+            // Insertar el usuario en la base de datos
+            usuarioRepository.insert(usuario)
+
+            // Retornar un DTO de usuario
+            return UsuarioDTO(
+                username = usuario.username,
+                email = usuario.email,
+                intereses = usuario.intereses,
+                descripcion = usuario.descripcion,
+                nombre = usuario.nombre,
+                apellido = usuario.apellidos,
+                direccion = usuario.direccion,
+                fotoPerfilId = fotoPerfilId,
+                premium = usuario.premium,
+                privacidadActividades = usuario.privacidadActividades,
+                privacidadComunidades = usuario.privacidadComunidades,
+                radarDistancia = usuario.radarDistancia,
+            )
         }
-
-        // Procesar la foto de perfil si se proporciona en Base64;
-        // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
-        val fotoPerfilId: String =
-            if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
-                gridFSService.storeFileFromBase64(
-                    usuarioInsertadoDTO.fotoPerfilBase64,
-                    "profile_${usuarioInsertadoDTO.username}_${Date().time}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "profilePhoto",
-                        "username" to usuarioInsertadoDTO.username
-                    )
-                ) ?: ""
-            } else {
-                usuarioInsertadoDTO.fotoPerfilId ?: ""
-            }
-
-        // Crear la entidad Usuario con todos los campos no nulos
-        val usuario = Usuario(
-            _id = null,
-            username = usuarioInsertadoDTO.username,
-            password = passwordEncoder.encode(usuarioInsertadoDTO.password),
-            roles = usuarioInsertadoDTO.rol.toString(),
-            nombre = usuarioInsertadoDTO.nombre,
-            apellidos = usuarioInsertadoDTO.apellidos,
-            descripcion = usuarioInsertadoDTO.descripcion,
-            email = usuarioInsertadoDTO.email,
-            intereses = usuarioInsertadoDTO.intereses,
-            fotoPerfilId = fotoPerfilId,
-            direccion = usuarioInsertadoDTO.direccion,
-            fechaUnion = Date.from(Instant.now()),
-            coordenadas = null,
-            premium =false,
-            privacidadActividades = "TODOS",
-            privacidadComunidades = "TODOS",
-            radarDistancia = "50.0"
-        )
-
-        // Insertar el usuario en la base de datos
-        usuarioRepository.insert(usuario)
-
-        // Retornar un DTO de usuario
-        return UsuarioDTO(
-            username = usuario.username,
-            email = usuario.email,
-            intereses = usuario.intereses,
-            descripcion = usuario.descripcion,
-            nombre = usuario.nombre,
-            apellido = usuario.apellidos,
-            direccion = usuario.direccion,
-            fotoPerfilId = fotoPerfilId,
-            premium = usuario.premium,
-            privacidadActividades = usuario.privacidadActividades,
-            privacidadComunidades = usuario.privacidadComunidades,
-            radarDistancia = usuario.radarDistancia,
-        )
     }
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
 
