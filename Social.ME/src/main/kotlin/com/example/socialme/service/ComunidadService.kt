@@ -34,6 +34,9 @@ class ComunidadService {
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
 
     @Autowired
+    private lateinit var participantesActividadRepository: ParticipantesActividadRepository
+
+    @Autowired
     private lateinit var chatService: ChatService
 
     @Autowired
@@ -477,6 +480,13 @@ class ComunidadService {
             codigoUnion = comunidad.codigoUnion
         )
 
+        // NUEVO: Obtener todas las actividades de la comunidad y eliminar participaciones
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(url).orElse(emptyList())
+        actividadesComunidad.forEach { actividadComunidad ->
+            // Eliminar todas las participaciones en cada actividad de la comunidad
+            participantesActividadRepository.deleteByIdActividad(actividadComunidad.idActividad ?: "")
+        }
+
         // Elimina imagenes de GridFS
         try {
             gridFSService.deleteFile(comunidad.fotoPerfilId)
@@ -513,6 +523,22 @@ class ComunidadService {
 
         if (comunidad.creador==participantesComunidadDTO.username) {
             throw BadRequestException("El creador no puede abandonar la comunidad")
+        }
+
+        // NUEVO: Eliminar participaciones en actividades privadas de esta comunidad
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(participantesComunidadDTO.comunidad).orElse(emptyList())
+        actividadesComunidad.forEach { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad).orElse(null)
+            // Si la actividad es privada, eliminar la participación del usuario
+            if (actividad != null && actividad.privada) {
+                val participacionActividad = participantesActividadRepository.findByUsernameAndIdActividad(
+                    participantesComunidadDTO.username,
+                    actividadComunidad.idActividad ?: ""
+                )
+                if (participacionActividad.isPresent) {
+                    participantesActividadRepository.delete(participacionActividad.get())
+                }
+            }
         }
 
         participantesComunidadRepository.delete(union)
@@ -727,6 +753,22 @@ class ComunidadService {
         // No permitir que el creador se elimine a sí mismo
         if (esCreador && usuarioAEliminar == usuarioSolicitante) {
             throw BadRequestException("El creador no puede abandonar la comunidad")
+        }
+
+        // NUEVO: Eliminar participaciones en actividades privadas de esta comunidad
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidadUrl).orElse(emptyList())
+        actividadesComunidad.forEach { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad).orElse(null)
+            // Si la actividad es privada, eliminar la participación del usuario
+            if (actividad != null && actividad.privada) {
+                val participacionActividad = participantesActividadRepository.findByUsernameAndIdActividad(
+                    usuarioAEliminar,
+                    actividadComunidad.idActividad ?: ""
+                )
+                if (participacionActividad.isPresent) {
+                    participantesActividadRepository.delete(participacionActividad.get())
+                }
+            }
         }
 
         // Eliminar al usuario de la comunidad

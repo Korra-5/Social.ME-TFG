@@ -128,6 +128,7 @@ class ActividadService {
             lugar = actividadInsertada.lugar,
         )
     }
+
     fun modificarActividad(actividadUpdateDTO: ActividadUpdateDTO): ActividadDTO {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -149,22 +150,21 @@ class ActividadService {
         val nombreAntiguo = actividad.nombre
         val nombreNuevo = actividadUpdateDTO.nombre
 
-        // CORREGIDO: Manejo de fotos del carrusel AÑADIENDO en lugar de reemplazando
         val nuevasFotosCarruselIds = if (actividadUpdateDTO.fotosCarruselBase64 != null && actividadUpdateDTO.fotosCarruselBase64.isNotEmpty()) {
             // OBTENER las fotos existentes
             val fotosExistentes = actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds
 
             // AÑADIR las nuevas fotos sin eliminar las anteriores
-            val nuevasFotosIds = actividadUpdateDTO.fotosCarruselBase64.mapNotNull { base64 ->
+            val nuevasFotosIds = actividadUpdateDTO.fotosCarruselBase64.mapIndexedNotNull { index, base64 ->
                 try {
                     gridFSService.storeFileFromBase64(
                         base64,
-                        "activity_carousel_${nombreNuevo}_${System.currentTimeMillis()}_${fotosExistentes.size}",
+                        "activity_carousel_${nombreNuevo}_${System.currentTimeMillis()}_${index}",
                         "image/jpeg",
                         mapOf(
                             "type" to "activityCarousel",
                             "activity" to nombreNuevo,
-                            "position" to fotosExistentes.size.toString()
+                            "position" to (fotosExistentes.size + index).toString()
                         )
                     )
                 } catch (e: Exception) {
@@ -179,6 +179,7 @@ class ActividadService {
             // Mantener las fotos existentes
             actividadUpdateDTO.fotosCarruselIds ?: actividad.fotosCarruselIds
         }
+
         // Actualizar los datos de la actividad
         actividad.apply {
             nombre = nombreNuevo
@@ -321,8 +322,16 @@ class ActividadService {
                     .findByUsernameAndIdActividad(username, actividadComunidad.idActividad ?:"")
                     .isPresent
 
-                // Solo añadir la actividad si el usuario NO está inscrito
-                if (!estaInscrito && actividad != null) {
+                // NUEVO: Verificar si es una actividad privada y el usuario participa en la comunidad
+                val puedeVerActividad = if (actividad != null && actividad.privada) {
+                    // Para actividades privadas, verificar si el usuario está en la comunidad
+                    participantesComunidadRepository.findByUsernameAndComunidad(username, actividad.comunidad).isPresent
+                } else {
+                    true // Actividades públicas siempre se pueden ver
+                }
+
+                // Solo añadir la actividad si el usuario NO está inscrito y puede verla
+                if (!estaInscrito && actividad != null && puedeVerActividad) {
                     actividadesNoInscritas.add(
                         ActividadDTO(
                             nombre = actividad.nombre,
@@ -385,6 +394,11 @@ class ActividadService {
             .map { it.idActividad }
             .toSet()
 
+        // NUEVO: Obtener las comunidades a las que el usuario pertenece
+        val comunidadesDelUsuario = participantesComunidadRepository.findByUsername(username)
+            .map { it.comunidad }
+            .toSet()
+
         // Crear un mapa que asocie cada actividad con su comunidad correspondiente
         // para no tener que buscar la comunidad múltiples veces
         val actividadesComunidades = todasLasActividades.associateWith { actividad ->
@@ -396,6 +410,14 @@ class ActividadService {
             .filter { actividad ->
                 // Filtrar aquellas a las que el usuario no esté unido ya
                 !actividadesDelUsuario.contains(actividad._id)
+            }
+            .filter { actividad ->
+                // NUEVO: Si la actividad es privada, verificar que el usuario esté en la comunidad
+                if (actividad.privada) {
+                    comunidadesDelUsuario.contains(actividad.comunidad)
+                } else {
+                    true // Actividades públicas siempre pasan el filtro
+                }
             }
             .filter { actividad ->
                 // Verificar la distancia
@@ -445,6 +467,18 @@ class ActividadService {
             throw NotFoundException("Usuario no encontrado")
         }
 
+        // NUEVO: Verificar si es una actividad privada y el usuario participa en la comunidad
+        if (actividad.privada) {
+            val participaEnComunidad = participantesComunidadRepository.findByUsernameAndComunidad(
+                participantesActividadDTO.username,
+                actividad.comunidad
+            ).isPresent
+
+            if (!participaEnComunidad) {
+                throw BadRequestException("No puedes unirte a esta actividad privada sin pertenecer a la comunidad")
+            }
+        }
+
         // Verificar si el usuario ya está participando en esta actividad
         if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
             throw BadRequestException("Ya estás participando en esta actividad")
@@ -463,12 +497,12 @@ class ActividadService {
 
         return participantesActividadDTO
     }
+
     fun salirActividad(participantesActividadDTO: ParticipantesActividadDTO):ParticipantesActividadDTO{
         val union = participantesActividadRepository.findByUsernameAndIdActividad(username = participantesActividadDTO.username, actividadId = participantesActividadDTO.actividadId).orElseThrow {
             throw NotFoundException("No te has unido a esta actividad")
         }
         participantesActividadRepository.delete(union)
-
 
         return participantesActividadDTO
     }
@@ -520,7 +554,6 @@ class ActividadService {
         return actividadesDTO
     }
 
-
     fun contarUsuariosEnUnaActividad(actividadId:String):Int{
         if (actividadRepository.findActividadBy_id(actividadId).isEmpty) {
             throw BadRequestException("Actividad no existe")
@@ -532,6 +565,7 @@ class ActividadService {
         }
         return usuarios
     }
+
     fun verificarCreadorAdministradorActividad(username: String, id:String):Boolean{
         val actividadComunidad=actividadesComunidadRepository.findActividadesComunidadByIdActividad(id).orElseThrow {
             NotFoundException("Actividad no existe")
@@ -542,7 +576,6 @@ class ActividadService {
         val comunidad=comunidadRepository.findComunidadByUrl(actividadComunidad.comunidad).orElseThrow {
             throw NotFoundException("Comunidad no encontrado")
         }
-
 
         return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
@@ -570,8 +603,8 @@ class ActividadService {
     fun verComunidadPorActividad(IdActividad:String):ComunidadDTO{
         val comunidad=comunidadRepository.findComunidadByUrl(
             actividadesComunidadRepository.findActividadesComunidadByIdActividad(IdActividad).orElseThrow{
-            throw NotFoundException("Esta actividad no existe")
-        }.comunidad
+                throw NotFoundException("Esta actividad no existe")
+            }.comunidad
         ).orElseThrow {
             NotFoundException("Comunidad no encontrado")
         }
