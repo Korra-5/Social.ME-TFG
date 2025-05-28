@@ -39,7 +39,6 @@ class SecurityConfig {
 
                 // ==================== ENDPOINTS PÚBLICOS ====================
                 auth.requestMatchers("/Usuario/login").permitAll()
-                auth.requestMatchers("/Usuario/register").permitAll()
                 auth.requestMatchers("/Usuario/iniciarRegistro").permitAll()
                 auth.requestMatchers("/Usuario/completarRegistro").permitAll()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
@@ -47,6 +46,8 @@ class SecurityConfig {
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
 
                 // ==================== USUARIO ====================
+                auth.requestMatchers("/Usuario/iniciarModificacionUsuario").authenticated()
+                auth.requestMatchers("/Usuario/completarModificacionUsuario").authenticated()
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
                 auth.requestMatchers("/Usuario/eliminarUsuario/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verUsuarioPorUsername/{username}").authenticated()

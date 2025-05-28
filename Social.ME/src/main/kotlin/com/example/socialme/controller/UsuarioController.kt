@@ -49,15 +49,6 @@ class UsuarioController {
         return ResponseEntity(usuario, HttpStatus.CREATED)
     }
 
-    @PostMapping("/register")
-    fun insert(
-        httpRequest: HttpServletRequest,
-        @RequestBody usuarioRegisterDTO: UsuarioRegisterDTO
-    ): ResponseEntity<UsuarioDTO> {
-        val user = usuarioService.insertUser(usuarioRegisterDTO)
-        return ResponseEntity(user, HttpStatus.CREATED)
-    }
-
     @PostMapping("/login")
     fun login(@RequestBody usuario: LoginUsuarioDTO): ResponseEntity<Any>? {
 
@@ -88,6 +79,25 @@ class UsuarioController {
         return ResponseEntity(usuarioService.eliminarUsuario(username), HttpStatus.OK)
     }
 
+    @PutMapping("/iniciarModificacionUsuario")
+    fun iniciarModificacionUsuario(
+        httpRequest: HttpServletRequest,
+        @RequestBody usuarioUpdateDTO: UsuarioUpdateDTO
+    ): ResponseEntity<Map<String, String>> {
+        val result = usuarioService.iniciarModificacionUsuario(usuarioUpdateDTO)
+        return ResponseEntity(result, HttpStatus.OK)
+    }
+
+    @PostMapping("/completarModificacionUsuario")
+    fun completarModificacionUsuario(
+        httpRequest: HttpServletRequest,
+        @RequestBody verificacionDTO: VerificacionDTO
+    ): ResponseEntity<UsuarioDTO> {
+        val usuario = usuarioService.verificarCodigoYModificarUsuario(verificacionDTO.email, verificacionDTO.codigo)
+        return ResponseEntity(usuario, HttpStatus.OK)
+    }
+
+    // Mantener endpoint para compatibilidad con modificaciones que no requieren verificación de email
     @PutMapping("/modificarUsuario")
     fun modificarUsuario(
         httpRequest: HttpServletRequest,
