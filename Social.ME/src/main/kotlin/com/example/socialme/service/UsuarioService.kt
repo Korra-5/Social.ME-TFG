@@ -60,14 +60,17 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
-    // Mapa para almacenar temporalmente los códigos de verificación
-    private val verificacionCodigos = mutableMapOf<String, String>()
+    // Mapa para almacenar temporalmente los códigos de verificación CON TIMESTAMP
+    private val verificacionCodigos = mutableMapOf<String, Pair<String, Long>>()
 
     // Mapa para almacenar temporalmente los datos de usuarios pendientes de verificación
     private val usuariosPendientesVerificacion = mutableMapOf<String, UsuarioRegisterDTO>()
 
     // Mapa para almacenar temporalmente los datos de modificaciones pendientes de verificación
     private val modificacionesPendientesVerificacion = mutableMapOf<String, UsuarioUpdateDTO>()
+
+    // Tiempo de expiración del código en milisegundos (15 minutos)
+    private val CODIGO_EXPIRACION_MS = 15 * 60 * 1000L
 
     override fun loadUserByUsername(username: String?): UserDetails {
         val usuario: Usuario = usuarioRepository.findFirstByUsername(username!!)
@@ -80,6 +83,7 @@ class UsuarioService : UserDetailsService {
             .build()
     }
 
+    // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -113,10 +117,12 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun verificarCodigoYCrearUsuario(email: String, codigo: String): UsuarioDTO {
 
-        // Verificar el código
-        val codigoAlmacenado = verificacionCodigos[email]
+        // Verificar el código - MANTENER LÓGICA ORIGINAL PARA REGISTRO
+        val codigoData = verificacionCodigos[email]
+        val codigoAlmacenado = codigoData?.first
         if (codigoAlmacenado != codigo) {
             throw BadRequestException("Código de verificación incorrecto")
         }
@@ -195,7 +201,11 @@ class UsuarioService : UserDetailsService {
         )
     }
 
+    // MEJORAR SOLO LA MODIFICACIÓN
     fun iniciarModificacionUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): Map<String, String> {
+        println("=== INICIO MODIFICACION USUARIO ===")
+        println("Current username: ${usuarioUpdateDTO.currentUsername}")
+        println("New email: ${usuarioUpdateDTO.email}")
 
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
@@ -219,23 +229,36 @@ class UsuarioService : UserDetailsService {
         // Verificar si el email ha cambiado
         val emailCambiado = usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email
 
+        println("Email actual: '${usuario.email}'")
+        println("Email nuevo: '${usuarioUpdateDTO.email}'")
+        println("Email cambió: $emailCambiado")
+
         if (emailCambiado) {
+            val nuevoEmail = usuarioUpdateDTO.email!!
+
             // Verificar que el nuevo email no esté en uso por otro usuario
-            if (usuarioRepository.existsByEmail(usuarioUpdateDTO.email!!)) {
-                throw BadRequestException("El email ${usuarioUpdateDTO.email} ya está registrado por otro usuario")
+            if (usuarioRepository.existsByEmail(nuevoEmail)) {
+                throw BadRequestException("El email $nuevoEmail ya está registrado por otro usuario")
             }
 
+            // LIMPIAR códigos anteriores para este email
+            verificacionCodigos.remove(nuevoEmail)
+            modificacionesPendientesVerificacion.remove(nuevoEmail)
+            limpiarCodigosExpirados()
+
             // Enviar código de verificación al nuevo email
-            if (!enviarCodigoVerificacion(usuarioUpdateDTO.email)) {
-                throw BadRequestException("No se pudo enviar el código de verificación al correo ${usuarioUpdateDTO.email}")
+            if (!enviarCodigoVerificacion(nuevoEmail)) {
+                throw BadRequestException("No se pudo enviar el código de verificación al correo $nuevoEmail")
             }
 
             // GUARDAR los datos de modificación temporalmente hasta que verifique el email
-            modificacionesPendientesVerificacion[usuarioUpdateDTO.email] = usuarioUpdateDTO
+            modificacionesPendientesVerificacion[nuevoEmail] = usuarioUpdateDTO
+
+            println("Código enviado y datos guardados para: $nuevoEmail")
 
             return mapOf(
-                "message" to "Código de verificación enviado al correo ${usuarioUpdateDTO.email}",
-                "email" to usuarioUpdateDTO.email,
+                "message" to "Código de verificación enviado al correo $nuevoEmail",
+                "email" to nuevoEmail,
                 "requiresVerification" to "true"
             )
         } else {
@@ -245,10 +268,33 @@ class UsuarioService : UserDetailsService {
     }
 
     fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO {
+        println("=== VERIFICACION CODIGO MODIFICACION ===")
+        println("Email: '$email', Código: '$codigo'")
+
+        // Limpiar códigos expirados
+        limpiarCodigosExpirados()
+
+        // Verificar que existe un código para este email
+        val codigoData = verificacionCodigos[email]
+        if (codigoData == null) {
+            println("No se encontró código para: $email")
+            println("Códigos disponibles: ${verificacionCodigos.keys}")
+            throw BadRequestException("No se encontró código de verificación para este email o el código ha expirado")
+        }
+
+        val (codigoAlmacenado, timestamp) = codigoData
+
+        // Verificar que el código no haya expirado
+        if (System.currentTimeMillis() - timestamp > CODIGO_EXPIRACION_MS) {
+            verificacionCodigos.remove(email)
+            modificacionesPendientesVerificacion.remove(email)
+            throw BadRequestException("El código de verificación ha expirado. Solicita uno nuevo.")
+        }
+
+        println("Código almacenado: '$codigoAlmacenado', Recibido: '$codigo'")
 
         // Verificar el código
-        val codigoAlmacenado = verificacionCodigos[email]
-        if (codigoAlmacenado != codigo) {
+        if (codigoAlmacenado.trim() != codigo.trim()) {
             throw BadRequestException("Código de verificación incorrecto")
         }
 
@@ -263,7 +309,22 @@ class UsuarioService : UserDetailsService {
         verificacionCodigos.remove(email)
         modificacionesPendientesVerificacion.remove(email)
 
+        println("Modificación completada exitosamente")
+
         return resultado
+    }
+
+    // FUNCIÓN AUXILIAR NUEVA
+    private fun limpiarCodigosExpirados() {
+        val ahora = System.currentTimeMillis()
+        val codigosExpirados = verificacionCodigos.filterValues { (_, timestamp) ->
+            ahora - timestamp > CODIGO_EXPIRACION_MS
+        }
+
+        codigosExpirados.keys.forEach { email ->
+            verificacionCodigos.remove(email)
+            modificacionesPendientesVerificacion.remove(email)
+        }
     }
 
     private fun aplicarModificacionUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): Map<String, String> {
@@ -529,7 +590,10 @@ class UsuarioService : UserDetailsService {
         }
     }
 
+    // MANTENER ENVÍO DE CÓDIGOS COMO ESTÁ PERO MEJORAR ALMACENAMIENTO
     private fun enviarCodigoVerificacion(email: String): Boolean {
+        println("Enviando código a: $email")
+
         // Configuración para el servidor de correo
         val props = Properties()
         props.put("mail.smtp.auth", "true")
@@ -557,9 +621,10 @@ class UsuarioService : UserDetailsService {
 
             // Generar un código aleatorio para verificación
             val codigoVerificacion = generarCodigoVerificacion()
+            println("Código generado: $codigoVerificacion")
 
-            // Almacenar el código para verificación posterior
-            verificacionCodigos[email] = codigoVerificacion
+            // Almacenar el código CON TIMESTAMP para verificación posterior
+            verificacionCodigos[email] = Pair(codigoVerificacion, System.currentTimeMillis())
 
             // Crear el contenido del mensaje
             val htmlContent = """
@@ -597,8 +662,9 @@ class UsuarioService : UserDetailsService {
     }
 
     fun verificarCodigo(email: String, codigo: String): Boolean {
-        val codigoAlmacenado = verificacionCodigos[email]
-        return codigoAlmacenado == codigo
+        limpiarCodigosExpirados()
+        val codigoData = verificacionCodigos[email]
+        return codigoData?.first == codigo
     }
 
     fun verificarGmail(gmail: String): Boolean {
@@ -606,6 +672,7 @@ class UsuarioService : UserDetailsService {
         return enviarCodigoVerificacion(gmail)
     }
 
+    // RESTO DE MÉTODOS IGUALES - NO TOCAR
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
@@ -1420,10 +1487,9 @@ class UsuarioService : UserDetailsService {
         }.radarDistancia
     }
 
-    fun verPrivacidadActividad(username:String):String{
-        return usuarioRepository.findFirstByUsername(username).orElseThrow {
-            NotFoundException("Este usuario no existe")
-        }.privacidadActividades
+    fun verPrivacidadActividad(username:String):String{        return usuarioRepository.findFirstByUsername(username).orElseThrow {
+        NotFoundException("Este usuario no existe")
+    }.privacidadActividades
     }
 
     fun verPrivacidadComunidad(username:String):String{
