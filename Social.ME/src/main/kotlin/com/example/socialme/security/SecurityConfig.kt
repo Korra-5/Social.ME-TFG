@@ -40,6 +40,8 @@ class SecurityConfig {
                 // ==================== ENDPOINTS PÚBLICOS ====================
                 auth.requestMatchers("/Usuario/login").permitAll()
                 auth.requestMatchers("/Usuario/register").permitAll()
+                auth.requestMatchers("/Usuario/iniciarRegistro").permitAll()
+                auth.requestMatchers("/Usuario/completarRegistro").permitAll()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
@@ -66,7 +68,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verPrivacidadActividad/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verPrivacidadComunidad/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verRadarDistancia/{username}").authenticated()
-
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
@@ -103,7 +104,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Actividad/verComunidadPorActividad/{idActividad}").authenticated()
 
-
                 // ==================== DENUNCIA ====================
                 auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
                 auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
@@ -136,18 +136,11 @@ class SecurityConfig {
         return BCryptPasswordEncoder()
     }
 
-    /**
-     * Método que inicializa un objeto de tipo AuthenticationManager
-     */
     @Bean
     fun authenticationManager(authenticationConfiguration: AuthenticationConfiguration) : AuthenticationManager {
         return authenticationConfiguration.authenticationManager
     }
 
-
-    /*
-    MÉTODO PARA CODIFICAR UN JWT
-     */
     @Bean
     fun jwtEncoder(): JwtEncoder {
         val jwk: JWK = RSAKey.Builder(rsaKeys.publicKey).privateKey(rsaKeys.privateKey).build()
@@ -155,9 +148,6 @@ class SecurityConfig {
         return NimbusJwtEncoder(jwks)
     }
 
-    /*
-    MÉTODO PARA DECODIFICAR UN JWT
-     */
     @Bean
     fun jwtDecoder(): JwtDecoder {
         return NimbusJwtDecoder.withPublicKey(rsaKeys.publicKey).build()

@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/Usuario")
 class UsuarioController {
 
-
     @Autowired
     private lateinit var authenticationManager: AuthenticationManager
 
@@ -35,6 +34,21 @@ class UsuarioController {
     @Autowired
     private lateinit var payPalService: PayPalService
 
+    @PostMapping("/iniciarRegistro")
+    fun iniciarRegistro(
+        httpRequest: HttpServletRequest,
+        @RequestBody usuarioRegisterDTO: UsuarioRegisterDTO
+    ): ResponseEntity<Map<String, String>> {
+        val result = usuarioService.iniciarRegistroUsuario(usuarioRegisterDTO)
+        return ResponseEntity(result, HttpStatus.OK)
+    }
+
+    @PostMapping("/completarRegistro")
+    fun completarRegistro(@RequestBody verificacionDTO: VerificacionDTO): ResponseEntity<UsuarioDTO> {
+        val usuario = usuarioService.verificarCodigoYCrearUsuario(verificacionDTO.email, verificacionDTO.codigo)
+        return ResponseEntity(usuario, HttpStatus.CREATED)
+    }
+
     @PostMapping("/register")
     fun insert(
         httpRequest: HttpServletRequest,
@@ -43,7 +57,6 @@ class UsuarioController {
         val user = usuarioService.insertUser(usuarioRegisterDTO)
         return ResponseEntity(user, HttpStatus.CREATED)
     }
-
 
     @PostMapping("/login")
     fun login(@RequestBody usuario: LoginUsuarioDTO): ResponseEntity<Any>? {

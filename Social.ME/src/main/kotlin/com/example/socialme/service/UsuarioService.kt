@@ -36,7 +36,6 @@ class UsuarioService : UserDetailsService {
     @Autowired
     private lateinit var actividadRepository: ActividadRepository
 
-
     @Autowired
     private lateinit var solicitudesAmistadRepository: SolicitudesAmistadRepository
 
@@ -64,6 +63,9 @@ class UsuarioService : UserDetailsService {
     // Mapa para almacenar temporalmente los códigos de verificación
     private val verificacionCodigos = mutableMapOf<String, String>()
 
+    // Mapa para almacenar temporalmente los datos de usuarios pendientes de verificación
+    private val usuariosPendientesVerificacion = mutableMapOf<String, UsuarioRegisterDTO>()
+
     override fun loadUserByUsername(username: String?): UserDetails {
         val usuario: Usuario = usuarioRepository.findFirstByUsername(username!!)
             .orElseThrow { NotFoundException("$username no existente") }
@@ -73,6 +75,121 @@ class UsuarioService : UserDetailsService {
             .password(usuario.password)
             .roles(usuario.roles)
             .build()
+    }
+
+    fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
+
+        // VALIDAR CONTENIDO INAPROPIADO
+        ContentValidator.validarContenidoInapropiado(
+            usuarioInsertadoDTO.username,
+            usuarioInsertadoDTO.nombre,
+            usuarioInsertadoDTO.apellidos,
+            usuarioInsertadoDTO.descripcion
+        )
+
+        if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
+            throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
+        }
+
+        // Verificar que el email no existe
+        if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
+        }
+
+        // Enviar código de verificación por email
+        if (!enviarCodigoVerificacion(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("No se pudo enviar el código de verificación al correo ${usuarioInsertadoDTO.email}")
+        }
+
+        // GUARDAR los datos del usuario temporalmente hasta que verifique el email
+        usuariosPendientesVerificacion[usuarioInsertadoDTO.email] = usuarioInsertadoDTO
+
+        return mapOf(
+            "message" to "Código de verificación enviado al correo ${usuarioInsertadoDTO.email}",
+            "email" to usuarioInsertadoDTO.email
+        )
+    }
+
+    fun verificarCodigoYCrearUsuario(email: String, codigo: String): UsuarioDTO {
+
+        // Verificar el código
+        val codigoAlmacenado = verificacionCodigos[email]
+        if (codigoAlmacenado != codigo) {
+            throw BadRequestException("Código de verificación incorrecto")
+        }
+
+        // Obtener los datos del usuario pendiente
+        val usuarioData = usuariosPendientesVerificacion[email]
+            ?: throw BadRequestException("No se encontraron datos de registro para este email")
+
+        // Verificar nuevamente que el username y email no existan (por si acaso)
+        if (usuarioRepository.existsByUsername(usuarioData.username)) {
+            throw BadRequestException("El nombre de usuario ${usuarioData.username} ya está en uso")
+        }
+
+        if (usuarioRepository.existsByEmail(usuarioData.email)) {
+            throw BadRequestException("El email ${usuarioData.email} ya está registrado")
+        }
+
+        // Procesar la foto de perfil si se proporciona en Base64
+        val fotoPerfilId: String =
+            if (usuarioData.fotoPerfilBase64 != null && usuarioData.fotoPerfilBase64.isNotBlank()) {
+                gridFSService.storeFileFromBase64(
+                    usuarioData.fotoPerfilBase64,
+                    "profile_${usuarioData.username}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usuarioData.username
+                    )
+                ) ?: ""
+            } else {
+                usuarioData.fotoPerfilId ?: ""
+            }
+
+        // CREAR el usuario SOLO después de verificar el email
+        val usuario = Usuario(
+            _id = null,
+            username = usuarioData.username,
+            password = passwordEncoder.encode(usuarioData.password),
+            roles = usuarioData.rol.toString(),
+            nombre = usuarioData.nombre,
+            apellidos = usuarioData.apellidos,
+            descripcion = usuarioData.descripcion,
+            email = usuarioData.email,
+            intereses = usuarioData.intereses,
+            fotoPerfilId = fotoPerfilId,
+            direccion = usuarioData.direccion,
+            fechaUnion = Date.from(Instant.now()),
+            coordenadas = null,
+            premium = false,
+            privacidadActividades = "TODOS",
+            privacidadComunidades = "TODOS",
+            radarDistancia = "50.0"
+        )
+
+        // Insertar el usuario en la base de datos
+        usuarioRepository.insert(usuario)
+
+        // LIMPIAR datos temporales
+        verificacionCodigos.remove(email)
+        usuariosPendientesVerificacion.remove(email)
+
+        // Retornar un DTO de usuario
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            descripcion = usuario.descripcion,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            direccion = usuario.direccion,
+            fotoPerfilId = fotoPerfilId,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+        )
     }
 
     fun insertUser(usuarioInsertadoDTO: UsuarioRegisterDTO): UsuarioDTO {
@@ -96,66 +213,129 @@ class UsuarioService : UserDetailsService {
         // Verificar el correo electrónico
         if (!verificarGmail(usuarioInsertadoDTO.email)) {
             throw BadRequestException("No se pudo verificar el correo electrónico ${usuarioInsertadoDTO.email}")
-        }else {
+        }
 
-            // Procesar la foto de perfil si se proporciona en Base64;
-            // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
-            val fotoPerfilId: String =
-                if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
-                    gridFSService.storeFileFromBase64(
-                        usuarioInsertadoDTO.fotoPerfilBase64,
-                        "profile_${usuarioInsertadoDTO.username}_${Date().time}",
-                        "image/jpeg",
-                        mapOf(
-                            "type" to "profilePhoto",
-                            "username" to usuarioInsertadoDTO.username
-                        )
-                    ) ?: ""
-                } else {
-                    usuarioInsertadoDTO.fotoPerfilId ?: ""
+        // Procesar la foto de perfil si se proporciona en Base64;
+        // En caso contrario, se utiliza el valor del DTO o, de no existir, una cadena vacía.
+        val fotoPerfilId: String =
+            if (usuarioInsertadoDTO.fotoPerfilBase64 != null && usuarioInsertadoDTO.fotoPerfilBase64.isNotBlank()) {
+                gridFSService.storeFileFromBase64(
+                    usuarioInsertadoDTO.fotoPerfilBase64,
+                    "profile_${usuarioInsertadoDTO.username}_${Date().time}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "profilePhoto",
+                        "username" to usuarioInsertadoDTO.username
+                    )
+                ) ?: ""
+            } else {
+                usuarioInsertadoDTO.fotoPerfilId ?: ""
+            }
+
+        // Crear la entidad Usuario con todos los campos no nulos
+        val usuario = Usuario(
+            _id = null,
+            username = usuarioInsertadoDTO.username,
+            password = passwordEncoder.encode(usuarioInsertadoDTO.password),
+            roles = usuarioInsertadoDTO.rol.toString(),
+            nombre = usuarioInsertadoDTO.nombre,
+            apellidos = usuarioInsertadoDTO.apellidos,
+            descripcion = usuarioInsertadoDTO.descripcion,
+            email = usuarioInsertadoDTO.email,
+            intereses = usuarioInsertadoDTO.intereses,
+            fotoPerfilId = fotoPerfilId,
+            direccion = usuarioInsertadoDTO.direccion,
+            fechaUnion = Date.from(Instant.now()),
+            coordenadas = null,
+            premium =false,
+            privacidadActividades = "TODOS",
+            privacidadComunidades = "TODOS",
+            radarDistancia = "50.0"
+        )
+
+        // Insertar el usuario en la base de datos
+        usuarioRepository.insert(usuario)
+
+        // Retornar un DTO de usuario
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            intereses = usuario.intereses,
+            descripcion = usuario.descripcion,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            direccion = usuario.direccion,
+            fotoPerfilId = fotoPerfilId,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+        )
+    }
+
+    private fun enviarCodigoVerificacion(email: String): Boolean {
+        // Configuración para el servidor de correo
+        val props = Properties()
+        props.put("mail.smtp.auth", "true")
+        props.put("mail.smtp.starttls.enable", "true")
+        props.put("mail.smtp.host", "smtp.gmail.com")
+        props.put("mail.smtp.port", "587")
+
+        // Credenciales de la cuenta de correo
+        val username = System.getenv("EMAIL_USERNAME") ?: ""
+        val password = System.getenv("EMAIL_PASSWORD") ?: ""
+
+        try {
+            // Crear sesión con autenticación
+            val session = Session.getInstance(props, object : Authenticator() {
+                override fun getPasswordAuthentication(): PasswordAuthentication {
+                    return PasswordAuthentication(username, password)
                 }
+            })
 
-            // Crear la entidad Usuario con todos los campos no nulos
-            val usuario = Usuario(
-                _id = null,
-                username = usuarioInsertadoDTO.username,
-                password = passwordEncoder.encode(usuarioInsertadoDTO.password),
-                roles = usuarioInsertadoDTO.rol.toString(),
-                nombre = usuarioInsertadoDTO.nombre,
-                apellidos = usuarioInsertadoDTO.apellidos,
-                descripcion = usuarioInsertadoDTO.descripcion,
-                email = usuarioInsertadoDTO.email,
-                intereses = usuarioInsertadoDTO.intereses,
-                fotoPerfilId = fotoPerfilId,
-                direccion = usuarioInsertadoDTO.direccion,
-                fechaUnion = Date.from(Instant.now()),
-                coordenadas = null,
-                premium = false,
-                privacidadActividades = "TODOS",
-                privacidadComunidades = "TODOS",
-                radarDistancia = "50.0"
-            )
+            // Crear el mensaje
+            val message = MimeMessage(session)
+            message.setFrom(InternetAddress(username))
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email))
+            message.subject = "Verificación de correo electrónico - SocialMe"
 
-            // Insertar el usuario en la base de datos
-            usuarioRepository.insert(usuario)
+            // Generar un código aleatorio para verificación
+            val codigoVerificacion = generarCodigoVerificacion()
 
-            // Retornar un DTO de usuario
-            return UsuarioDTO(
-                username = usuario.username,
-                email = usuario.email,
-                intereses = usuario.intereses,
-                descripcion = usuario.descripcion,
-                nombre = usuario.nombre,
-                apellido = usuario.apellidos,
-                direccion = usuario.direccion,
-                fotoPerfilId = fotoPerfilId,
-                premium = usuario.premium,
-                privacidadActividades = usuario.privacidadActividades,
-                privacidadComunidades = usuario.privacidadComunidades,
-                radarDistancia = usuario.radarDistancia,
-            )
+            // Almacenar el código para verificación posterior
+            verificacionCodigos[email] = codigoVerificacion
+
+            // Crear el contenido del mensaje
+            val htmlContent = """
+            <html>
+                <body>
+                    <h2>Verificación de correo electrónico - SocialMe</h2>
+                    <p>Gracias por registrarte o actualizar tu información. Para verificar tu dirección de correo electrónico, 
+                    por favor utiliza el siguiente código:</p>
+                    <h3 style="background-color: #f2f2f2; padding: 10px; text-align: center;">$codigoVerificacion</h3>
+                    <p>Si no has solicitado esta verificación, por favor ignora este mensaje.</p>
+                    <p>Este código expirará en 15 minutos.</p>
+                </body>
+            </html>
+        """.trimIndent()
+
+            // Establecer el contenido del mensaje como HTML
+            message.setContent(htmlContent, "text/html; charset=utf-8")
+
+            // Enviar el mensaje
+            Transport.send(message)
+
+            println("Correo de verificación enviado exitosamente a $email")
+
+            return true
+
+        } catch (e: MessagingException) {
+            e.printStackTrace()
+            println("Error al enviar el correo de verificación: ${e.message}")
+            return false
         }
     }
+
     fun modificarUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): UsuarioDTO {
 
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
@@ -433,7 +613,6 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
@@ -478,8 +657,6 @@ class UsuarioService : UserDetailsService {
         return userDTO
     }
 
-
-
     fun verUsuarioPorUsername(username: String):UsuarioDTO{
         val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username not found")
@@ -491,43 +668,6 @@ class UsuarioService : UserDetailsService {
             apellido = usuario.apellidos,
             intereses = usuario.intereses,
             fotoPerfilId = usuario.fotoPerfilId,
-            direccion = usuario.direccion,
-            descripcion = usuario.descripcion,
-            premium = usuario.premium,
-            privacidadActividades = usuario.privacidadActividades,
-            privacidadComunidades = usuario.privacidadComunidades,
-            radarDistancia = usuario.radarDistancia,
-        )
-    }
-
-
-    fun confirmarCambioEmail(confirmarCambioEmailDTO: ConfirmarCambioEmailDTO): UsuarioDTO {
-        // Verificar que el usuario existe
-        val usuario = usuarioRepository.findFirstByUsername(confirmarCambioEmailDTO.username).orElseThrow {
-            throw NotFoundException("Usuario ${confirmarCambioEmailDTO.username} no encontrado")
-        }
-
-        // Verificar el código
-        if (!verificarCodigo(confirmarCambioEmailDTO.nuevoEmail, confirmarCambioEmailDTO.codigo)) {
-            throw BadRequestException("Código de verificación incorrecto")
-        }
-
-        // Verificar que el nuevo email no esté en uso (por si acaso)
-        if (usuarioRepository.existsByEmail(confirmarCambioEmailDTO.nuevoEmail)) {
-            throw BadRequestException("El email ${confirmarCambioEmailDTO.nuevoEmail} ya está registrado por otro usuario")
-        }
-
-        // Actualizar el email
-        usuario.email = confirmarCambioEmailDTO.nuevoEmail
-        val usuarioActualizado = usuarioRepository.save(usuario)
-
-        return UsuarioDTO(
-            username = usuario.username,
-            email = usuario.email,
-            intereses = usuario.intereses,
-            nombre = usuario.nombre,
-            apellido = usuario.apellidos,
-            fotoPerfilId = usuario.fotoPerfilId ?: "",
             direccion = usuario.direccion,
             descripcion = usuario.descripcion,
             premium = usuario.premium,
@@ -904,7 +1044,6 @@ class UsuarioService : UserDetailsService {
         return listaUsuariosBloqueados
     }
 
-
     fun eliminarSolicitudesAmistad(usuario1: String, usuario2: String) {
         // Buscar solicitudes en ambas direcciones
         val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(usuario1, usuario2) +
@@ -929,7 +1068,6 @@ class UsuarioService : UserDetailsService {
         }
     }
 
-
     fun verSolicitudesAmistad(username: String): List<SolicitudAmistadDTO> {
         // Verificar que el usuario existe
         usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -950,7 +1088,6 @@ class UsuarioService : UserDetailsService {
             )
         }
     }
-
 
     fun verAmigos(username: String): List<UsuarioDTO> {
         // Verificar que el usuario existe
@@ -1070,7 +1207,6 @@ class UsuarioService : UserDetailsService {
             aceptada = nuevaSolicitud.aceptada
         )
     }
-
 
     fun aceptarSolicitud(id: String): Boolean {
         // Buscar la solicitud por ID
@@ -1297,7 +1433,7 @@ class UsuarioService : UserDetailsService {
             privacidadComunidades = usuariodto.privacidadComunidades,
             radarDistancia = usuariodto.radarDistancia,
 
-        )
+            )
     }
     fun cambiarPrivacidadComunidad(username: String, privacidad: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
