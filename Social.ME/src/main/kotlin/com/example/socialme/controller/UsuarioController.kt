@@ -97,7 +97,6 @@ class UsuarioController {
         return ResponseEntity(usuario, HttpStatus.OK)
     }
 
-    // Mantener endpoint para compatibilidad con modificaciones que no requieren verificación de email
     @PutMapping("/modificarUsuario")
     fun modificarUsuario(
         httpRequest: HttpServletRequest,

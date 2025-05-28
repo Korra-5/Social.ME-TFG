@@ -18,7 +18,6 @@ data class Comunidad(
     var creador: String,
     var administradores: List<String>?,
     val fechaCreacion: Date,
-    val comunidadGlobal: Boolean,
     var privada: Boolean,
     var coordenadas: Coordenadas?,
     val codigoUnion: String?

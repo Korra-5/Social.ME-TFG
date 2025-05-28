@@ -105,7 +105,6 @@ class ComunidadService {
                 administradores = null,
                 fechaCreacion = Date.from(Instant.now()),
                 url = formattedUrl,
-                comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
                 privada = comunidadCreateDTO.privada,
                 coordenadas = comunidadCreateDTO.coordenadas,
                 codigoUnion = if (comunidadCreateDTO.privada) {
@@ -128,7 +127,6 @@ class ComunidadService {
         return ComunidadDTO(
             url = formattedUrl,
             nombre = comunidadCreateDTO.nombre,
-            comunidadGlobal = comunidadCreateDTO.comunidadGlobal,
             creador = comunidadCreateDTO.creador,
             intereses = comunidadCreateDTO.intereses,
             fotoCarruselIds = null,
@@ -326,7 +324,6 @@ class ComunidadService {
         return ComunidadDTO(
             url = comunidadActualizada.url,
             nombre = comunidadActualizada.nombre,
-            comunidadGlobal = comunidadActualizada.comunidadGlobal,
             creador = comunidadActualizada.creador,
             intereses = comunidadActualizada.intereses,
             fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
@@ -353,7 +350,6 @@ class ComunidadService {
             fotoCarruselIds = comunidad.fotoCarruselIds,
             administradores = comunidad.administradores,
             fechaCreacion = comunidad.fechaCreacion,
-            comunidadGlobal = comunidad.comunidadGlobal,
             privada = comunidad.privada,
             url =comunidad.url,
             coordenadas = comunidad.coordenadas,
@@ -404,7 +400,6 @@ class ComunidadService {
                     creador = comunidad.creador,
                     administradores = comunidad.administradores,
                     fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
                     codigoUnion = comunidad.codigoUnion
@@ -467,7 +462,6 @@ class ComunidadService {
         val comunidadDto = ComunidadDTO(
             url = comunidad.url,
             nombre = comunidad.nombre,
-            comunidadGlobal = comunidad.comunidadGlobal,
             creador = comunidad.creador,
             intereses = comunidad.intereses,
             fotoCarruselIds = comunidad.fotoCarruselIds,
@@ -610,7 +604,6 @@ class ComunidadService {
                     creador = comunidad.creador,
                     administradores = comunidad.administradores,
                     fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
                     codigoUnion = comunidad.codigoUnion
@@ -693,7 +686,6 @@ class ComunidadService {
             ComunidadDTO(
                 url = comunidad.url,
                 nombre = comunidad.nombre,
-                comunidadGlobal = comunidad.comunidadGlobal,
                 creador = comunidad.creador,
                 intereses = comunidad.intereses,
                 fotoCarruselIds = comunidad.fotoCarruselIds,
@@ -824,7 +816,6 @@ class ComunidadService {
         return ComunidadDTO(
             url = comunidadActualizada.url,
             nombre = comunidadActualizada.nombre,
-            comunidadGlobal = comunidadActualizada.comunidadGlobal,
             creador = comunidadActualizada.creador,
             intereses = comunidadActualizada.intereses,
             fotoCarruselIds = comunidadActualizada.fotoCarruselIds,

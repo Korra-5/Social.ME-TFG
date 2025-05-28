@@ -618,7 +618,6 @@ class ActividadService {
             fotoCarruselIds = comunidad.fotoCarruselIds,
             administradores = comunidad.administradores,
             fechaCreacion = comunidad.fechaCreacion,
-            comunidadGlobal = comunidad.comunidadGlobal,
             privada = comunidad.privada,
             url =comunidad.url,
             coordenadas = comunidad.coordenadas,

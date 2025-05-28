@@ -1184,7 +1184,6 @@ class UsuarioService : UserDetailsService {
                         creador = comunidad.creador,
                         administradores = comunidad.administradores,
                         fechaCreacion = comunidad.fechaCreacion,
-                        comunidadGlobal = comunidad.comunidadGlobal,
                         privada = comunidad.privada,
                         coordenadas = comunidad.coordenadas,
                         codigoUnion = comunidad.codigoUnion
@@ -1228,7 +1227,6 @@ class UsuarioService : UserDetailsService {
                     creador = comunidad.creador,
                     administradores = comunidad.administradores,
                     fechaCreacion = comunidad.fechaCreacion,
-                    comunidadGlobal = comunidad.comunidadGlobal,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
                     codigoUnion = comunidad.codigoUnion
