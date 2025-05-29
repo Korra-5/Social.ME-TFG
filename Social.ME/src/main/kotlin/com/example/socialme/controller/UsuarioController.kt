@@ -105,6 +105,14 @@ class UsuarioController {
         return ResponseEntity(usuarioService.modificarUsuario(usuarioUpdateDTO), HttpStatus.OK)
     }
 
+    @PutMapping("/cambiarContrasena")
+    fun cambiarContrasena(
+        httpRequest: HttpServletRequest,
+        @RequestBody cambiarContrasenaDTO: CambiarContrasenaDTO
+        ): ResponseEntity<UsuarioDTO> {
+        return ResponseEntity(usuarioService.cambiarContrasena(cambiarContrasenaDTO), HttpStatus.OK)
+    }
+
     @GetMapping("/verUsuarioPorUsername/{username}")
     fun verUsuarioPorUsername(
         httpRequest: HttpServletRequest,

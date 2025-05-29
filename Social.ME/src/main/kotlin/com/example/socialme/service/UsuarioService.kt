@@ -1500,6 +1500,67 @@ class UsuarioService : UserDetailsService {
         }.privacidadComunidades
     }
 
+    fun cambiarContrasena(cambiarContrasenaDTO: CambiarContrasenaDTO): UsuarioDTO {
+        // Buscar el usuario por username
+        val usuario = usuarioRepository.findFirstByUsername(cambiarContrasenaDTO.username).orElseThrow {
+            NotFoundException("Usuario ${cambiarContrasenaDTO.username} no encontrado")
+        }
+
+        // Validar que la nueva contraseña no esté vacía
+        if (cambiarContrasenaDTO.passwordNueva.isBlank()) {
+            throw BadRequestException("La contraseña no puede estar vacía")
+        }
+
+        if (cambiarContrasenaDTO.passwordRepeat.isBlank()) {
+            throw BadRequestException("La contraseña no puede estar vacía")
+        }
+
+        if (cambiarContrasenaDTO.passwordActual.isBlank()) {
+            throw BadRequestException("La contraseña no puede estar vacía")
+        }
+
+        if (cambiarContrasenaDTO.passwordNueva!=cambiarContrasenaDTO.passwordRepeat){
+            throw BadRequestException("Las contraseñas no coinciden")
+        }
+
+        if (passwordEncoder.matches(cambiarContrasenaDTO.passwordActual, usuario.password)) {
+
+            // Validar longitud mínima de contraseña (opcional, ajusta según tus requisitos)
+            if (cambiarContrasenaDTO.passwordNueva.length < 6) {
+                throw BadRequestException("La contraseña debe tener al menos 6 caracteres")
+            }
+
+            // Verificar que la nueva contraseña no sea igual a la anterior
+            if (passwordEncoder.matches(cambiarContrasenaDTO.passwordNueva, usuario.password)) {
+                throw BadRequestException("La nueva contraseña debe ser diferente a la contraseña actual")
+            }
+
+            // Actualizar solo el campo password usando el encoder
+            usuario.password = passwordEncoder.encode(cambiarContrasenaDTO.passwordNueva)
+
+            // Guardar el usuario actualizado
+            val usuarioActualizado = usuarioRepository.save(usuario)
+
+            // Retornar el DTO del usuario
+            return UsuarioDTO(
+                username = usuarioActualizado.username,
+                email = usuarioActualizado.email,
+                intereses = usuarioActualizado.intereses,
+                nombre = usuarioActualizado.nombre,
+                apellido = usuarioActualizado.apellidos,
+                fotoPerfilId = usuarioActualizado.fotoPerfilId ?: "",
+                direccion = usuarioActualizado.direccion,
+                descripcion = usuarioActualizado.descripcion,
+                premium = usuarioActualizado.premium,
+                privacidadActividades = usuarioActualizado.privacidadActividades,
+                privacidadComunidades = usuarioActualizado.privacidadComunidades,
+                radarDistancia = usuarioActualizado.radarDistancia,
+            )
+        }else{
+            throw BadRequestException ("Esta contraseña no es valida")
+        }
+    }
+
     fun updatePremiumStatus(username: String, isPremium: Boolean): Boolean {
         return try {
             // Buscar usuario por username

@@ -39,6 +39,11 @@ dependencies {
 	// Para el soporte de SockJS
 	implementation ("org.webjars:sockjs-client:1.5.1")
 	implementation ("org.webjars:stomp-websocket:2.3.4")
+
+	// **AÑADIR ESTAS LÍNEAS PARA PAYPAL:**
+	implementation("com.paypal.sdk:checkout-sdk:1.0.1")
+	implementation("org.apache.httpcomponents:httpclient:4.5.14")
+	implementation("org.apache.httpcomponents:httpcore:4.4.16")
 }
 
 kotlin {
