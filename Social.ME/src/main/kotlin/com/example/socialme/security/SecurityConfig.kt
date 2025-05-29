@@ -69,6 +69,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verPrivacidadActividad/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verPrivacidadComunidad/{username}").authenticated()
                 auth.requestMatchers("/Usuario/verRadarDistancia/{username}").authenticated()
+                auth.requestMatchers("/Usuario/cambiarContrasena").authenticated()
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
