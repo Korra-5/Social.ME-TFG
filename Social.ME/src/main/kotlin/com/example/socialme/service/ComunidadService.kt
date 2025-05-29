@@ -48,6 +48,79 @@ class ComunidadService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+    // No permitir que ADMIN se una a comunidades
+    fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
+        comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+            .orElseThrow { BadRequestException("La comunidad no existe") }
+
+        val usuario = usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        // Los ADMIN no pueden unirse a comunidades
+        if (usuario.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden unirse a comunidades")
+        }
+
+        if (participantesComunidadRepository.findByUsernameAndComunidad(
+                participantesComunidadDTO.username,
+                participantesComunidadDTO.comunidad
+            ).isPresent
+        ) {
+            throw BadRequestException("El usuario ya está unido a esta comunidad")
+        }
+
+        val union = ParticipantesComunidad(
+            _id = null,
+            comunidad = participantesComunidadDTO.comunidad,
+            username = participantesComunidadDTO.username,
+            fechaUnion = Date.from(Instant.now())
+        )
+
+        participantesComunidadRepository.insert(union)
+
+        return participantesComunidadDTO
+    }
+
+    fun unirseComunidadPorCodigo(participantesComunidadDTO: ParticipantesComunidadDTO, codigo: String): ParticipantesComunidadDTO {
+        val comunidad = comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+            .orElseThrow { BadRequestException("La comunidad no existe") }
+
+        if (comunidad.codigoUnion == null) {
+            throw BadRequestException("La comunidad ${comunidad.url} es publica")
+        }
+
+        val usuario = usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        // Los ADMIN no pueden unirse a comunidades
+        if (usuario.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden unirse a comunidades")
+        }
+
+        if (participantesComunidadRepository.findByUsernameAndComunidad(
+                participantesComunidadDTO.username,
+                participantesComunidadDTO.comunidad
+            ).isPresent
+        ) {
+            throw BadRequestException("El usuario ya está unido a esta comunidad")
+        }
+
+        if (codigo == comunidad.codigoUnion) {
+            val union = ParticipantesComunidad(
+                _id = null,
+                comunidad = participantesComunidadDTO.comunidad,
+                username = participantesComunidadDTO.username,
+                fechaUnion = Date.from(Instant.now())
+            )
+
+            participantesComunidadRepository.insert(union)
+
+            return participantesComunidadDTO
+        } else {
+            throw BadRequestException("El codigo de union no es correcto")
+        }
+    }
+
     fun crearComunidad(comunidadCreateDTO: ComunidadCreateDTO): ComunidadDTO {
 
         // VALIDAR CONTENIDO INAPROPIADO
@@ -428,34 +501,6 @@ class ComunidadService {
         return distanciaCalculada <= distanciaKm
     }
 
-
-    fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
-        comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
-            .orElseThrow { BadRequestException("La comunidad no existe") }
-
-        usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
-
-        if (participantesComunidadRepository.findByUsernameAndComunidad(
-                participantesComunidadDTO.username,
-                participantesComunidadDTO.comunidad
-            ).isPresent
-        ) {
-            throw BadRequestException("El usuario ya está unido a esta comunidad")
-        }
-
-        val union = ParticipantesComunidad(
-            _id = null,
-            comunidad = participantesComunidadDTO.comunidad,
-            username = participantesComunidadDTO.username,
-            fechaUnion = Date.from(Instant.now())
-        )
-
-        participantesComunidadRepository.insert(union)
-
-        return participantesComunidadDTO
-    }
-
     fun eliminarComunidad(url: String): ComunidadDTO {
         val comunidad = comunidadRepository.findComunidadByUrl(url).orElseThrow { BadRequestException("Esta comunidad no existe") }
 
@@ -611,40 +656,6 @@ class ComunidadService {
             }
     }
 
-    fun unirseComunidadPorCodigo(participantesComunidadDTO: ParticipantesComunidadDTO,codigo:String):ParticipantesComunidadDTO{
-        val comunidad=comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
-            .orElseThrow { BadRequestException("La comunidad no existe") }
-
-        if (comunidad.codigoUnion==null){
-            throw BadRequestException("La comunidad ${comunidad.url} es publica")
-        }
-
-        usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
-            .orElseThrow { NotFoundException("Usuario no encontrado") }
-
-        if (participantesComunidadRepository.findByUsernameAndComunidad(
-                participantesComunidadDTO.username,
-                participantesComunidadDTO.comunidad
-            ).isPresent
-        ) {
-            throw BadRequestException("El usuario ya está unido a esta comunidad")
-        }
-
-        if (codigo == comunidad.codigoUnion) {
-            val union = ParticipantesComunidad(
-                _id = null,
-                comunidad = participantesComunidadDTO.comunidad,
-                username = participantesComunidadDTO.username,
-                fechaUnion = Date.from(Instant.now())
-            )
-
-            participantesComunidadRepository.insert(union)
-
-            return participantesComunidadDTO
-        }else{
-            throw BadRequestException("El codigo de union no es correcto")
-        }
-    }
 
     private fun generarCodigoUnico(): String {
         val caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"

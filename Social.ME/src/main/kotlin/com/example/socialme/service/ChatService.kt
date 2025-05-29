@@ -29,6 +29,41 @@ class ChatService {
     @Autowired
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
 
+    fun obtenerMensajesComunidad(comunidadUrl: String, usuarioSolicitante: String? = null): List<MensajeDTO> {
+        comunidadRepository.findComunidadByUrl(comunidadUrl)
+            .orElseThrow { NotFoundException("Comunidad no encontrada") }
+
+        // Verificar si el usuario es ADMIN
+        val esAdmin = if (usuarioSolicitante != null) {
+            val usuario = usuarioRepository.findFirstByUsername(usuarioSolicitante).orElse(null)
+            usuario?.roles == "ADMIN"
+        } else false
+
+        // Si no es ADMIN, verificar que sea miembro de la comunidad
+        if (!esAdmin && usuarioSolicitante != null) {
+            val esParticipante = participantesComunidadRepository.findByUsernameAndComunidad(
+                usuarioSolicitante, comunidadUrl
+            ).isPresent
+
+            if (!esParticipante) {
+                throw BadRequestException("El usuario no es miembro de esta comunidad")
+            }
+        }
+
+        val mensajes = mensajeRepository.findByComunidadUrlOrderByFechaEnvioAsc(comunidadUrl)
+
+        return mensajes.map { mensaje ->
+            MensajeDTO(
+                id = mensaje._id,
+                comunidadUrl = mensaje.comunidadUrl,
+                username = mensaje.username,
+                contenido = mensaje.contenido,
+                fechaEnvio = mensaje.fechaEnvio,
+                leido = mensaje.leido
+            )
+        }
+    }
+
     fun enviarMensaje(mensajeCreateDTO: MensajeCreateDTO): MensajeDTO {
         // Verificar que la comunidad existe
         val comunidad = comunidadRepository.findComunidadByUrl(mensajeCreateDTO.comunidadUrl)
@@ -76,26 +111,6 @@ class ChatService {
             fechaEnvio = mensajeGuardado.fechaEnvio,
             leido = mensajeGuardado.leido
         )
-    }
-
-    fun obtenerMensajesComunidad(comunidadUrl: String): List<MensajeDTO> {
-        // Verificar que la comunidad existe
-        comunidadRepository.findComunidadByUrl(comunidadUrl)
-            .orElseThrow { NotFoundException("Comunidad no encontrada") }
-
-        // Obtener todos los mensajes de la comunidad
-        val mensajes = mensajeRepository.findByComunidadUrlOrderByFechaEnvioAsc(comunidadUrl)
-
-        return mensajes.map { mensaje ->
-            MensajeDTO(
-                id = mensaje._id,
-                comunidadUrl = mensaje.comunidadUrl,
-                username = mensaje.username,
-                contenido = mensaje.contenido,
-                fechaEnvio = mensaje.fechaEnvio,
-                leido = mensaje.leido
-            )
-        }
     }
 
     // Método para eliminar mensajes cuando se elimina una comunidad

@@ -83,7 +83,169 @@ class UsuarioService : UserDetailsService {
             .roles(usuario.roles)
             .build()
     }
+    // Modificar para que no aparezcan usuarios ADMIN en búsquedas
+    fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
+        usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username no encontrado")
+        }
 
+        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(username)
+            .map { it.bloqueado }
+            .toSet()
+
+        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(username)
+            .map { it.bloqueador }
+            .toSet()
+
+        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
+
+        return usuarioRepository.findAll()
+            .filter { usuario ->
+                usuario.username != username &&
+                        !usuariosConBloqueo.contains(usuario.username) &&
+                        usuario.roles != "ADMIN" // No mostrar usuarios ADMIN
+            }
+            .sortedBy { usuario ->
+                "${usuario.nombre.lowercase()}${usuario.apellidos.lowercase()}"
+            }
+            .map { usuario ->
+                UsuarioDTO(
+                    username = usuario.username,
+                    email = usuario.email,
+                    intereses = usuario.intereses,
+                    nombre = usuario.nombre,
+                    apellido = usuario.apellidos,
+                    fotoPerfilId = usuario.fotoPerfilId,
+                    direccion = usuario.direccion,
+                    descripcion = usuario.descripcion,
+                    premium = usuario.premium,
+                    privacidadActividades = usuario.privacidadActividades,
+                    privacidadComunidades = usuario.privacidadComunidades,
+                    radarDistancia = usuario.radarDistancia,
+                    rol = usuario.roles
+                )
+            }
+    }
+
+    // No permitir enviar solicitudes de amistad a ADMIN
+    fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
+        val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
+            throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
+        }
+
+        val destinatario = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.destinatario).orElseThrow {
+            throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
+        }
+
+        // No permitir enviar solicitudes a ADMIN
+        if (destinatario.roles == "ADMIN") {
+            throw BadRequestException("No puedes enviar solicitudes de amistad a administradores")
+        }
+
+        if (existeBloqueo(solicitudAmistadDTO.remitente, solicitudAmistadDTO.destinatario)) {
+            throw BadRequestException("No puedes enviar solicitudes de amistad a usuarios bloqueados o que te han bloqueado")
+        }
+
+        val solicitudExistente = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
+            solicitudAmistadDTO.remitente,
+            solicitudAmistadDTO.destinatario
+        )
+
+        if (solicitudExistente.isNotEmpty()) {
+            throw BadRequestException("Ya existe una solicitud de amistad entre estos usuarios")
+        }
+
+        val nuevaSolicitud = SolicitudAmistad(
+            _id = UUID.randomUUID().toString(),
+            remitente = solicitudAmistadDTO.remitente,
+            destinatario = solicitudAmistadDTO.destinatario,
+            fechaEnviada = Date(),
+            aceptada = false
+        )
+
+        solicitudesAmistadRepository.save(nuevaSolicitud)
+
+        return SolicitudAmistadDTO(
+            _id = nuevaSolicitud._id,
+            remitente = nuevaSolicitud.remitente,
+            destinatario = nuevaSolicitud.destinatario,
+            fechaEnviada = nuevaSolicitud.fechaEnviada,
+            aceptada = nuevaSolicitud.aceptada
+        )
+    }
+
+    // No permitir bloquear a ADMIN
+    fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
+        val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
+            throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
+        }
+
+        val usuarioBloqueado = usuarioRepository.findFirstByUsername(bloqueado).orElseThrow {
+            throw NotFoundException("Usuario a bloquear $bloqueado no encontrado")
+        }
+
+        // No permitir bloquear a ADMIN
+        if (usuarioBloqueado.roles == "ADMIN") {
+            throw BadRequestException("No puedes bloquear a administradores")
+        }
+
+        if (bloqueador == bloqueado) {
+            throw BadRequestException("No puedes bloquearte a ti mismo")
+        }
+
+        if (bloqueoRepository.existsByBloqueadorAndBloqueado(bloqueador, bloqueado)) {
+            throw BadRequestException("Ya has bloqueado a este usuario")
+        }
+
+        val nuevoBloqueo = Bloqueo(
+            _id = UUID.randomUUID().toString(),
+            bloqueador = bloqueador,
+            bloqueado = bloqueado,
+            fechaBloqueo = Date()
+        )
+
+        val bloqueoGuardado = bloqueoRepository.save(nuevoBloqueo)
+
+        eliminarSolicitudesAmistad(bloqueador, bloqueado)
+        eliminarAmistad(bloqueador, bloqueado)
+
+        return BloqueoDTO(
+            _id = bloqueoGuardado._id,
+            bloqueador = bloqueoGuardado.bloqueador,
+            bloqueado = bloqueoGuardado.bloqueado,
+            fechaBloqueo = bloqueoGuardado.fechaBloqueo
+        )
+    }
+
+    // Permitir a ADMIN ver cualquier usuario sin restricciones
+    fun verUsuarioPorUsername(username: String, usuarioSolicitante: String? = null): UsuarioDTO {
+        val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
+            throw NotFoundException("Usuario $username not found")
+        }
+
+        // Si el solicitante es ADMIN, puede ver cualquier usuario
+        val solicitante = if (usuarioSolicitante != null) {
+            usuarioRepository.findFirstByUsername(usuarioSolicitante).orElse(null)
+        } else null
+
+        val esAdmin = solicitante?.roles == "ADMIN"
+
+        return UsuarioDTO(
+            username = usuario.username,
+            email = usuario.email,
+            nombre = usuario.nombre,
+            apellido = usuario.apellidos,
+            intereses = usuario.intereses,
+            fotoPerfilId = usuario.fotoPerfilId,
+            direccion = usuario.direccion,
+            descripcion = usuario.descripcion,
+            premium = usuario.premium,
+            privacidadActividades = usuario.privacidadActividades,
+            privacidadComunidades = usuario.privacidadComunidades,
+            radarDistancia = usuario.radarDistancia,
+            rol = usuario.roles
+        )
+    }
     // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
 
@@ -887,100 +1049,6 @@ class UsuarioService : UserDetailsService {
         return listaUsuarios
     }
 
-    fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
-        // Buscar el usuario actual para verificar que existe
-        usuarioRepository.findFirstByUsername(username).orElseThrow {
-            throw NotFoundException("Usuario $username no encontrado")
-        }
-
-        // Obtener usuarios que el usuario actual ha bloqueado
-        val usuariosBloqueados = bloqueoRepository.findAllByBloqueador(username)
-            .map { it.bloqueado }
-            .toSet()
-
-        // Obtener usuarios que han bloqueado al usuario actual
-        val usuariosQueBloquearon = bloqueoRepository.findAllByBloqueado(username)
-            .map { it.bloqueador }
-            .toSet()
-
-        // Combinar ambos conjuntos para tener todos los usuarios con los que hay bloqueo
-        val usuariosConBloqueo = usuariosBloqueados + usuariosQueBloquearon
-
-        return usuarioRepository.findAll()
-            .filter { usuario ->
-                // Excluir al usuario actual
-                usuario.username != username &&
-                        // Excluir a los usuarios con los que hay bloqueo
-                        !usuariosConBloqueo.contains(usuario.username)
-            }
-            .sortedBy { usuario ->
-                // Ordenar por nombre, luego por apellido para casos con mismo nombre
-                "${usuario.nombre.lowercase()}${usuario.apellidos.lowercase()}"
-            }
-            .map { usuario ->
-                UsuarioDTO(
-                    username = usuario.username,
-                    email = usuario.email,
-                    intereses = usuario.intereses,
-                    nombre = usuario.nombre,
-                    apellido = usuario.apellidos,
-                    fotoPerfilId = usuario.fotoPerfilId,
-                    direccion = usuario.direccion,
-                    descripcion = usuario.descripcion,
-                    premium = usuario.premium,
-                    privacidadActividades = usuario.privacidadActividades,
-                    privacidadComunidades = usuario.privacidadComunidades,
-                    radarDistancia = usuario.radarDistancia,
-                    rol = usuario.roles
-                    )
-            }
-    }
-
-    fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
-        // Verificar que ambos usuarios existen
-        val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
-            throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
-        }
-
-        val usuarioBloqueado = usuarioRepository.findFirstByUsername(bloqueado).orElseThrow {
-            throw NotFoundException("Usuario a bloquear $bloqueado no encontrado")
-        }
-
-        // Verificar que no se está intentando bloquear a uno mismo
-        if (bloqueador == bloqueado) {
-            throw BadRequestException("No puedes bloquearte a ti mismo")
-        }
-
-        // Verificar si ya existe un bloqueo
-        if (bloqueoRepository.existsByBloqueadorAndBloqueado(bloqueador, bloqueado)) {
-            throw BadRequestException("Ya has bloqueado a este usuario")
-        }
-
-        // Crear el nuevo bloqueo
-        val nuevoBloqueo = Bloqueo(
-            _id = UUID.randomUUID().toString(),
-            bloqueador = bloqueador,
-            bloqueado = bloqueado,
-            fechaBloqueo = Date()
-        )
-
-        // Guardar el bloqueo en la base de datos
-        val bloqueoGuardado = bloqueoRepository.save(nuevoBloqueo)
-
-        // Eliminar cualquier solicitud de amistad pendiente entre estos usuarios
-        eliminarSolicitudesAmistad(bloqueador, bloqueado)
-
-        // Eliminar amistad existente si la hay
-        eliminarAmistad(bloqueador, bloqueado)
-
-        // Retornar DTO
-        return BloqueoDTO(
-            _id = bloqueoGuardado._id,
-            bloqueador = bloqueoGuardado.bloqueador,
-            bloqueado = bloqueoGuardado.bloqueado,
-            fechaBloqueo = bloqueoGuardado.fechaBloqueo
-        )
-    }
 
     fun desbloquearUsuario(bloqueador: String, bloqueado: String): Boolean {
         // Buscar el bloqueo existente
@@ -1158,53 +1226,6 @@ class UsuarioService : UserDetailsService {
 
         // Devolver la lista de DTOs de amigos
         return listaAmigos
-    }
-
-    fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
-        // Verificar que ambos usuarios existen
-        val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
-            throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
-        }
-
-        val destinatario = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.destinatario).orElseThrow {
-            throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
-        }
-
-        // Verificar que no existe un bloqueo entre los usuarios
-        if (existeBloqueo(solicitudAmistadDTO.remitente, solicitudAmistadDTO.destinatario)) {
-            throw BadRequestException("No puedes enviar solicitudes de amistad a usuarios bloqueados o que te han bloqueado")
-        }
-
-        // Verificar que no exista ya una solicitud pendiente entre estos usuarios
-        val solicitudExistente = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
-            solicitudAmistadDTO.remitente,
-            solicitudAmistadDTO.destinatario
-        )
-
-        if (solicitudExistente.isNotEmpty()) {
-            throw BadRequestException("Ya existe una solicitud de amistad entre estos usuarios")
-        }
-
-        // Crear la nueva solicitud de amistad con estado no aceptado
-        val nuevaSolicitud = SolicitudAmistad(
-            _id = UUID.randomUUID().toString(),
-            remitente = solicitudAmistadDTO.remitente,
-            destinatario = solicitudAmistadDTO.destinatario,
-            fechaEnviada = Date(),
-            aceptada = false
-        )
-
-        // Guardar la solicitud en la base de datos
-        solicitudesAmistadRepository.save(nuevaSolicitud)
-
-        // Retornar DTO
-        return SolicitudAmistadDTO(
-            _id = nuevaSolicitud._id,
-            remitente = nuevaSolicitud.remitente,
-            destinatario = nuevaSolicitud.destinatario,
-            fechaEnviada = nuevaSolicitud.fechaEnviada,
-            aceptada = nuevaSolicitud.aceptada
-        )
     }
 
     fun aceptarSolicitud(id: String): Boolean {

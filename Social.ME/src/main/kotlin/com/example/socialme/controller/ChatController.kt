@@ -28,9 +28,10 @@ class ChatController {
     @GetMapping("/obtenerMensajes/{comunidadUrl}")
     fun obtenerMensajesComunidad(
         httpRequest: HttpServletRequest,
-        @PathVariable comunidadUrl: String
+        @PathVariable("comunidadUrl") comunidadUrl: String,
+        @RequestParam(required = false) usuarioSolicitante: String?
     ): ResponseEntity<List<MensajeDTO>> {
-        val mensajes = chatService.obtenerMensajesComunidad(comunidadUrl)
-        return ResponseEntity(mensajes, HttpStatus.OK)
+        val mensajes = chatService.obtenerMensajesComunidad(comunidadUrl, usuarioSolicitante)
+        return ResponseEntity.ok(mensajes)
     }
 }

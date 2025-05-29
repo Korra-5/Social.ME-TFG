@@ -40,6 +40,46 @@ class ActividadService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+    // No permitir que ADMIN se una a actividades
+    fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO): ParticipantesActividadDTO {
+        val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
+            .orElseThrow { BadRequestException("Esta actividad no existe") }
+
+        val usuario = usuarioRepository.findFirstByUsername(participantesActividadDTO.username)
+            .orElseThrow { NotFoundException("Usuario no encontrado") }
+
+        // Los ADMIN no pueden unirse a actividades
+        if (usuario.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden unirse a actividades")
+        }
+
+        if (actividad.privada) {
+            val participaEnComunidad = participantesComunidadRepository.findByUsernameAndComunidad(
+                participantesActividadDTO.username,
+                actividad.comunidad
+            ).isPresent
+
+            if (!participaEnComunidad) {
+                throw BadRequestException("No puedes unirte a esta actividad privada sin pertenecer a la comunidad")
+            }
+        }
+
+        if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
+            throw BadRequestException("Ya estás participando en esta actividad")
+        }
+
+        val participante = ParticipantesActividad(
+            _id = null,
+            username = participantesActividadDTO.username,
+            idActividad = participantesActividadDTO.actividadId,
+            fechaUnion = Date.from(Instant.now()),
+            nombreActividad = participantesActividadDTO.nombreActividad
+        )
+
+        participantesActividadRepository.insert(participante)
+
+        return participantesActividadDTO
+    }
 
     fun crearActividad(actividadCreateDTO: ActividadCreateDTO): ActividadDTO {
 
@@ -456,46 +496,6 @@ class ActividadService {
 
         // Verificamos si la distancia calculada es menor o igual que la distancia especificada
         return distanciaCalculada <= distanciaKm
-    }
-
-    fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO) : ParticipantesActividadDTO {
-        val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
-            .orElseThrow { BadRequestException("Esta actividad no existe") }
-
-        // Verificar que el usuario existe
-        if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
-            throw NotFoundException("Usuario no encontrado")
-        }
-
-        // NUEVO: Verificar si es una actividad privada y el usuario participa en la comunidad
-        if (actividad.privada) {
-            val participaEnComunidad = participantesComunidadRepository.findByUsernameAndComunidad(
-                participantesActividadDTO.username,
-                actividad.comunidad
-            ).isPresent
-
-            if (!participaEnComunidad) {
-                throw BadRequestException("No puedes unirte a esta actividad privada sin pertenecer a la comunidad")
-            }
-        }
-
-        // Verificar si el usuario ya está participando en esta actividad
-        if (participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent) {
-            throw BadRequestException("Ya estás participando en esta actividad")
-        }
-
-        // Si no existe la participación, se crea
-        val participante = ParticipantesActividad(
-            _id = null,
-            username = participantesActividadDTO.username,
-            idActividad = participantesActividadDTO.actividadId,
-            fechaUnion = Date.from(Instant.now()),
-            nombreActividad = participantesActividadDTO.nombreActividad
-        )
-
-        participantesActividadRepository.insert(participante)
-
-        return participantesActividadDTO
     }
 
     fun salirActividad(participantesActividadDTO: ParticipantesActividadDTO):ParticipantesActividadDTO{
