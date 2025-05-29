@@ -199,6 +199,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
+            rol = usuario.roles
         )
     }
 
@@ -568,7 +569,8 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
-        )
+            rol = usuario.roles
+            )
     }
 
     // Función para usar cuando no hay cambio de email (compatibilidad hacia atrás)
@@ -712,6 +714,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
+            rol = usuario.roles
         )
 
         usuarioRepository.delete(usuario)
@@ -735,7 +738,8 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
-        )
+            rol = usuario.roles
+            )
     }
 
     fun actualizarPremium(username: String): UsuarioDTO {
@@ -759,6 +763,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
+            rol = usuario.radarDistancia,
         )
     }
 
@@ -813,6 +818,7 @@ class UsuarioService : UserDetailsService {
                         privacidadActividades = usuario.privacidadActividades,
                         privacidadComunidades = usuario.privacidadComunidades,
                         radarDistancia = usuario.radarDistancia,
+                        rol=usuario.radarDistancia,
                     )
                 )
             }
@@ -871,6 +877,7 @@ class UsuarioService : UserDetailsService {
                         privacidadActividades = usuario.privacidadActividades,
                         privacidadComunidades = usuario.privacidadComunidades,
                         radarDistancia = usuario.radarDistancia,
+                        rol = usuario.roles
                     )
                 )
             }
@@ -924,7 +931,8 @@ class UsuarioService : UserDetailsService {
                     privacidadActividades = usuario.privacidadActividades,
                     privacidadComunidades = usuario.privacidadComunidades,
                     radarDistancia = usuario.radarDistancia,
-                )
+                    rol = usuario.roles
+                    )
             }
     }
 
@@ -1025,6 +1033,7 @@ class UsuarioService : UserDetailsService {
                     privacidadActividades = usuarioBloqueado.privacidadActividades,
                     privacidadComunidades = usuarioBloqueado.privacidadComunidades,
                     radarDistancia = usuarioBloqueado.radarDistancia,
+                    rol = usuarioBloqueado.roles
                 )
             )
         }
@@ -1142,6 +1151,7 @@ class UsuarioService : UserDetailsService {
                     privacidadActividades = amigo.privacidadActividades,
                     privacidadComunidades = amigo.privacidadComunidades,
                     radarDistancia = amigo.radarDistancia,
+                    rol = amigo.roles
                 )
             )
         }
@@ -1309,6 +1319,16 @@ class UsuarioService : UserDetailsService {
         return amistad1 != null || amistad2 != null
     }
 
+    fun usuarioEsAdmin(username: String):Boolean{
+        if (usuarioRepository.findFirstByUsername(username).orElseThrow{
+            throw NotFoundException("Este usuario no existe")
+            }.roles=="ADMIN"){
+            return true
+        }else{
+            return false
+        }
+    }
+
     fun verActividadesPorUsername(username: String, usuarioSolicitante: String): List<ActividadDTO> {
         // Verificar que el usuario objetivo existe
         val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
@@ -1419,7 +1439,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuariodto.privacidadActividades,
             privacidadComunidades = usuariodto.privacidadComunidades,
             radarDistancia = usuariodto.radarDistancia,
-
+            rol = usuariodto.roles
             )
     }
     fun cambiarPrivacidadComunidad(username: String, privacidad: String): UsuarioDTO {
@@ -1449,6 +1469,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
+            rol = usuario.roles
         )
     }
 
@@ -1479,6 +1500,7 @@ class UsuarioService : UserDetailsService {
             privacidadActividades = usuario.privacidadActividades,
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
+            rol = usuario.roles
         )
     }
 
@@ -1555,6 +1577,7 @@ class UsuarioService : UserDetailsService {
                 privacidadActividades = usuarioActualizado.privacidadActividades,
                 privacidadComunidades = usuarioActualizado.privacidadComunidades,
                 radarDistancia = usuarioActualizado.radarDistancia,
+                rol = usuarioActualizado.roles
             )
         }else{
             throw BadRequestException ("Esta contraseña no es valida")

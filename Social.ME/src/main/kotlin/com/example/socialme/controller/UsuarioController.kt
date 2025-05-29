@@ -121,6 +121,14 @@ class UsuarioController {
         return ResponseEntity(usuarioService.verUsuarioPorUsername(username), HttpStatus.OK)
     }
 
+    @GetMapping("/usuarioEsAdmin/{username}")
+    fun usuarioEsAdmin(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String
+    ):ResponseEntity<Boolean> {
+        return ResponseEntity(usuarioService.usuarioEsAdmin(username), HttpStatus.OK)
+    }
+
     @GetMapping("/verUsuariosPorComunidad/{comunidad}")
     fun verUsuariosPorComunidad(
         httpRequest: HttpServletRequest,

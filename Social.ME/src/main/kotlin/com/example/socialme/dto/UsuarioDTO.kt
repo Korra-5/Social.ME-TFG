@@ -10,6 +10,7 @@ data class UsuarioDTO(
     val email: String,
     val intereses: List<String>,
     val nombre: String,
+    val rol: String,
     val apellido: String,
     val fotoPerfilId: String?,
     val direccion: Direccion?,

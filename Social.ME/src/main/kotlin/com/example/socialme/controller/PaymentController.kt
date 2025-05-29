@@ -1,7 +1,5 @@
 package com.example.socialme.controller
 
-import com.example.socialme.model.PaymentVerificationRequest
-import com.example.socialme.service.PayPalService
 import com.example.socialme.service.UsuarioService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
@@ -12,57 +10,50 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/payment")
 @CrossOrigin(origins = ["*"])
 class PaymentController(
-    @Autowired private val payPalService: PayPalService,
     @Autowired private val usuarioService: UsuarioService
 ) {
-
     private val logger = LoggerFactory.getLogger(PaymentController::class.java)
 
-    @PostMapping("/verify-premium")
-    fun verifyAndUpgradePremium(
+    @PostMapping("/simulate-purchase")
+    fun simulatePurchase(
         @RequestHeader("Authorization") token: String,
-        @RequestBody request: PaymentVerificationRequest
+        @RequestBody request: SimulatePurchaseRequest
     ): ResponseEntity<Map<String, Any>> {
 
-        logger.info("=== Verificando pago premium ===")
+        logger.info("=== SIMULANDO COMPRA PREMIUM ===")
         logger.info("Username: ${request.username}")
-        logger.info("Payment ID: ${request.paymentId}")
+        logger.info("Amount: €${request.amount}")
 
         return try {
-            // Verificar el pago con PayPal
-            logger.info("Verificando pago con PayPal...")
-            val isPaymentValid = payPalService.verifyPayment(request.paymentId)
+            // Simular un delay como si fuera PayPal
+            Thread.sleep(2000)
 
-            if (isPaymentValid) {
-                logger.info("✅ Pago verificado exitosamente")
+            // Generar un ID de orden simulado
+            val mockOrderId = "MOCK_ORDER_${System.currentTimeMillis()}"
+            logger.info("✅ Orden simulada creada: $mockOrderId")
 
-                // Actualizar usuario a premium
-                val updated = usuarioService.updatePremiumStatus(request.username, true)
+            // Actualizar usuario a premium
+            val updated = usuarioService.updatePremiumStatus(request.username, true)
 
-                if (updated) {
-                    logger.info("✅ Usuario actualizado a premium: ${request.username}")
-                    ResponseEntity.ok(mapOf(
-                        "success" to true,
-                        "message" to "Premium activado exitosamente",
-                        "paymentId" to request.paymentId
-                    ))
-                } else {
-                    logger.error("❌ Error actualizando usuario a premium")
-                    ResponseEntity.status(500).body(mapOf(
-                        "success" to false,
-                        "message" to "Error actualizando usuario"
-                    ))
-                }
+            if (updated) {
+                logger.info("✅ Usuario actualizado a premium: ${request.username}")
+                ResponseEntity.ok(mapOf(
+                    "success" to true,
+                    "message" to "¡Premium activado exitosamente! (Simulación)",
+                    "orderId" to mockOrderId,
+                    "simulation" to true,
+                    "amount" to request.amount
+                ))
             } else {
-                logger.warn("❌ Pago no válido: ${request.paymentId}")
-                ResponseEntity.badRequest().body(mapOf(
+                logger.error("❌ Error actualizando usuario a premium")
+                ResponseEntity.status(500).body(mapOf(
                     "success" to false,
-                    "message" to "Pago no válido o no completado"
+                    "message" to "Error actualizando usuario en la base de datos"
                 ))
             }
 
         } catch (e: Exception) {
-            logger.error("❌ Error verificando pago", e)
+            logger.error("❌ Error en simulación", e)
             ResponseEntity.status(500).body(mapOf(
                 "success" to false,
                 "message" to "Error del servidor: ${e.message}"
@@ -70,27 +61,17 @@ class PaymentController(
         }
     }
 
-    @GetMapping("/test-paypal")
-    fun testPayPalConnection(): ResponseEntity<Map<String, Any>> {
-        return try {
-            val token = payPalService.getAccessToken()
-
-            if (token != null) {
-                ResponseEntity.ok(mapOf(
-                    "success" to true,
-                    "message" to "Conexión con PayPal exitosa"
-                ))
-            } else {
-                ResponseEntity.status(500).body(mapOf(
-                    "success" to false,
-                    "message" to "No se pudo obtener token de PayPal"
-                ))
-            }
-        } catch (e: Exception) {
-            ResponseEntity.status(500).body(mapOf(
-                "success" to false,
-                "message" to "Error: ${e.message}"
-            ))
-        }
+    @GetMapping("/test")
+    fun testEndpoint(): ResponseEntity<Map<String, Any>> {
+        return ResponseEntity.ok(mapOf(
+            "success" to true,
+            "message" to "Endpoint funcionando correctamente",
+            "timestamp" to System.currentTimeMillis()
+        ))
     }
 }
+
+data class SimulatePurchaseRequest(
+    val username: String,
+    val amount: String
+)
