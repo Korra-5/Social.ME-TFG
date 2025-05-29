@@ -127,7 +127,6 @@ class UsuarioService : UserDetailsService {
             }
     }
 
-    // No permitir enviar solicitudes de amistad a ADMIN
     fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
         val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
             throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
@@ -135,6 +134,11 @@ class UsuarioService : UserDetailsService {
 
         val destinatario = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.destinatario).orElseThrow {
             throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
+        }
+
+        // No permitir que usuarios ADMIN envíen solicitudes de amistad
+        if (remitente.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden enviar solicitudes de amistad")
         }
 
         // No permitir enviar solicitudes a ADMIN
@@ -174,7 +178,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    // No permitir bloquear a ADMIN
     fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
         val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
             throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
