@@ -252,7 +252,6 @@ class UsuarioService : UserDetailsService {
     // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
 
-        // VALIDAR CONTENIDO INAPROPIADO
         ContentValidator.validarContenidoInapropiado(
             usuarioInsertadoDTO.username,
             usuarioInsertadoDTO.nombre,
@@ -1626,5 +1625,45 @@ class UsuarioService : UserDetailsService {
             println("Error: ${e.message}")
             false
         }
+    }
+
+    fun cancelarSolicitudAmistad(id: String): Boolean {
+        // Buscar la solicitud por ID
+        val solicitud = solicitudesAmistadRepository.findById(id).orElseThrow {
+            throw NotFoundException("Solicitud de amistad con ID $id no encontrada")
+        }
+
+        // Verificar que la solicitud no haya sido aceptada ya
+        if (solicitud.aceptada) {
+            throw BadRequestException("No se puede cancelar una solicitud que ya ha sido aceptada")
+        }
+
+        // Eliminar la solicitud
+        solicitudesAmistadRepository.delete(solicitud)
+
+        return true
+    }
+
+    fun rechazarSolicitudAmistad(id: String): Boolean {
+        // Buscar la solicitud por ID
+        val solicitud = solicitudesAmistadRepository.findById(id).orElseThrow {
+            throw NotFoundException("Solicitud de amistad con ID $id no encontrada")
+        }
+
+        // Verificar que la solicitud no haya sido aceptada ya
+        if (solicitud.aceptada) {
+            throw BadRequestException("Esta solicitud ya ha sido aceptada")
+        }
+
+        // Eliminar la solicitud (rechazar es equivalente a eliminar)
+        solicitudesAmistadRepository.delete(solicitud)
+
+        return true
+    }
+
+    // Método auxiliar para verificar si existe una solicitud pendiente entre dos usuarios
+    fun verificarSolicitudPendiente(remitente: String, destinatario: String): Boolean {
+        val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(remitente, destinatario)
+        return solicitudes.any { !it.aceptada }
     }
 }

@@ -129,6 +129,32 @@ class UsuarioController {
         return ResponseEntity(usuarioService.usuarioEsAdmin(username), HttpStatus.OK)
     }
 
+
+    @DeleteMapping("/cancelarSolicitudAmistad/{id}")
+    fun cancelarSolicitudAmistad(
+        httpRequest: HttpServletRequest,
+        @PathVariable id: String
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(usuarioService.cancelarSolicitudAmistad(id), HttpStatus.OK)
+    }
+
+    @DeleteMapping("/rechazarSolicitud/{id}")
+    fun rechazarSolicitud(
+        httpRequest: HttpServletRequest,
+        @PathVariable id: String
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(usuarioService.rechazarSolicitudAmistad(id), HttpStatus.OK)
+    }
+
+    @GetMapping("/verificarSolicitudPendiente/{remitente}/{destinatario}")
+    fun verificarSolicitudPendiente(
+        httpRequest: HttpServletRequest,
+        @PathVariable remitente: String,
+        @PathVariable destinatario: String
+    ): ResponseEntity<Boolean> {
+        return ResponseEntity(usuarioService.verificarSolicitudPendiente(remitente, destinatario), HttpStatus.OK)
+    }
+
     @GetMapping("/verUsuariosPorComunidad/{comunidad}")
     fun verUsuariosPorComunidad(
         httpRequest: HttpServletRequest,
