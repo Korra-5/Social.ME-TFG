@@ -251,7 +251,6 @@ class UsuarioService : UserDetailsService {
             rol = usuario.roles
         )
     }
-    // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
 
         ContentValidator.validarContenidoInapropiado(
@@ -275,7 +274,8 @@ class UsuarioService : UserDetailsService {
             throw BadRequestException("No se pudo enviar el código de verificación al correo ${usuarioInsertadoDTO.email}")
         }
 
-        // GUARDAR los datos del usuario temporalmente hasta que verifique el email
+        usuarioInsertadoDTO.username=normalizarTexto(usuarioInsertadoDTO.username.toLowerCase())
+
         usuariosPendientesVerificacion[usuarioInsertadoDTO.email] = usuarioInsertadoDTO
 
         return mapOf(
@@ -284,7 +284,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    // MANTENER REGISTRO COMO ESTÁ (FUNCIONA)
     fun verificarCodigoYCrearUsuario(email: String, codigo: String): UsuarioDTO {
 
         // Verificar el código - MANTENER LÓGICA ORIGINAL PARA REGISTRO
@@ -371,9 +370,6 @@ class UsuarioService : UserDetailsService {
 
     // MEJORAR SOLO LA MODIFICACIÓN
     fun iniciarModificacionUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): Map<String, String> {
-        println("=== INICIO MODIFICACION USUARIO ===")
-        println("Current username: ${usuarioUpdateDTO.currentUsername}")
-        println("New email: ${usuarioUpdateDTO.email}")
 
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
@@ -389,7 +385,7 @@ class UsuarioService : UserDetailsService {
 
         // Si se está cambiando el username, validar que el nuevo no exista ya
         if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
-            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername)) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername.toString())) {
                 throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
             }
         }
@@ -409,7 +405,6 @@ class UsuarioService : UserDetailsService {
                 throw BadRequestException("El email $nuevoEmail ya está registrado por otro usuario")
             }
 
-            // LIMPIAR códigos anteriores para este email
             verificacionCodigos.remove(nuevoEmail)
             modificacionesPendientesVerificacion.remove(nuevoEmail)
             limpiarCodigosExpirados()
@@ -419,10 +414,9 @@ class UsuarioService : UserDetailsService {
                 throw BadRequestException("No se pudo enviar el código de verificación al correo $nuevoEmail")
             }
 
-            // GUARDAR los datos de modificación temporalmente hasta que verifique el email
-            modificacionesPendientesVerificacion[nuevoEmail] = usuarioUpdateDTO
+            usuarioUpdateDTO.newUsername = normalizarTexto(usuarioUpdateDTO.newUsername?.toLowerCase() ?:usuarioUpdateDTO.currentUsername.toLowerCase())
 
-            println("Código enviado y datos guardados para: $nuevoEmail")
+            modificacionesPendientesVerificacion[nuevoEmail] = usuarioUpdateDTO
 
             return mapOf(
                 "message" to "Código de verificación enviado al correo $nuevoEmail",
@@ -1759,5 +1753,17 @@ class UsuarioService : UserDetailsService {
                 lugar = actividad.lugar
             )
         }.sortedBy { it.fechaInicio }
+    }
+
+    fun normalizarTexto(texto: String): String {
+        return texto
+            .replace("á", "a").replace("Á", "A")
+            .replace("é", "e").replace("É", "E")
+            .replace("í", "i").replace("Í", "I")
+            .replace("ó", "o").replace("Ó", "O")
+            .replace("ú", "u").replace("Ú", "U")
+            .replace("ü", "u").replace("Ü", "U")
+            .replace("ñ", "n").replace("Ñ", "N")
+            .replace("ç", "c").replace("Ç", "C")
     }
 }

@@ -16,6 +16,9 @@ import java.util.*
 class ComunidadService {
 
     @Autowired
+    private lateinit var usuarioService: UsuarioService
+
+    @Autowired
     private lateinit var mensajeRepository: MensajeRepository
 
     @Autowired
@@ -177,7 +180,7 @@ class ComunidadService {
                 fotoCarruselIds = null,
                 administradores = null,
                 fechaCreacion = Date.from(Instant.now()),
-                url = formattedUrl,
+                url = usuarioService.normalizarTexto(formattedUrl),
                 privada = comunidadCreateDTO.privada,
                 coordenadas = comunidadCreateDTO.coordenadas,
                 codigoUnion = if (comunidadCreateDTO.privada) {
@@ -303,7 +306,7 @@ class ComunidadService {
 
         // Actualizar la información de la comunidad
         comunidadExistente.apply {
-            url = comunidadUpdateDTO.newUrl
+            url = usuarioService.normalizarTexto(comunidadUpdateDTO.newUrl)
             nombre = comunidadUpdateDTO.nombre
             descripcion = comunidadUpdateDTO.descripcion
             intereses = comunidadUpdateDTO.intereses

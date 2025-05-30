@@ -4,7 +4,7 @@ import com.example.socialme.model.Direccion
 
 data class UsuarioUpdateDTO(
     val currentUsername: String,
-    val newUsername: String?,
+    var newUsername: String?,
     val email: String,
     val nombre: String,
     val apellido: String,

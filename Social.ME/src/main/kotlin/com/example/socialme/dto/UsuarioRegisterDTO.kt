@@ -3,7 +3,7 @@ package com.example.socialme.dto
 import com.example.socialme.model.Direccion
 
 data class UsuarioRegisterDTO(
-    val username: String,
+    var username: String,
     val email: String,
     val password: String,
     val passwordRepeat: String,
