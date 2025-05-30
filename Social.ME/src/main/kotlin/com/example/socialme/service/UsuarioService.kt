@@ -177,7 +177,6 @@ class UsuarioService : UserDetailsService {
             aceptada = nuevaSolicitud.aceptada
         )
     }
-
     fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
         val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
             throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
@@ -187,7 +186,10 @@ class UsuarioService : UserDetailsService {
             throw NotFoundException("Usuario a bloquear $bloqueado no encontrado")
         }
 
-        // No permitir bloquear a ADMIN
+        if (usuarioBloqueador.roles == "ADMIN") {
+            throw BadRequestException("Los administradores no pueden bloquear usuarios")
+        }
+
         if (usuarioBloqueado.roles == "ADMIN") {
             throw BadRequestException("No puedes bloquear a administradores")
         }
