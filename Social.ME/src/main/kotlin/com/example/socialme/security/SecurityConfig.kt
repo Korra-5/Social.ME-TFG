@@ -74,7 +74,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verRadarDistancia/{username}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarContrasena").authenticated()
                 auth.requestMatchers("/Usuario/usuarioEsAdmin/{username}").authenticated()
-                auth.requestMatchers("/Usuario/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Usuario/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Usuario/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}").authenticated()
 
@@ -94,6 +93,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
+                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated() // ← AGREGAR ESTA LÍNEA
 
                 // ==================== ACTIVIDAD ====================
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
