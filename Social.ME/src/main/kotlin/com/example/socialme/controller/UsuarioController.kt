@@ -64,8 +64,6 @@ class UsuarioController {
             throw UnauthorizedException("Credenciales incorrectas")
         }
 
-        // SI PASAMOS LA AUTENTICACIÓN, SIGNIFICA QUE ESTAMOS BIEN AUTENTICADOS
-        // PASAMOS A GENERAR EL TOKEN
         val token = tokenService.generarToken(authentication)
         usuarioService.modificarCoordenadasUsuario(usuario.coordenadas, usuario.username)
         return ResponseEntity(mapOf("token" to token), HttpStatus.CREATED)
@@ -109,7 +107,7 @@ class UsuarioController {
     fun cambiarContrasena(
         httpRequest: HttpServletRequest,
         @RequestBody cambiarContrasenaDTO: CambiarContrasenaDTO
-        ): ResponseEntity<UsuarioDTO> {
+    ): ResponseEntity<UsuarioDTO> {
         return ResponseEntity(usuarioService.cambiarContrasena(cambiarContrasenaDTO), HttpStatus.OK)
     }
 
@@ -128,7 +126,6 @@ class UsuarioController {
     ):ResponseEntity<Boolean> {
         return ResponseEntity(usuarioService.usuarioEsAdmin(username), HttpStatus.OK)
     }
-
 
     @DeleteMapping("/cancelarSolicitudAmistad/{id}")
     fun cancelarSolicitudAmistad(
@@ -153,6 +150,15 @@ class UsuarioController {
         @PathVariable destinatario: String
     ): ResponseEntity<Boolean> {
         return ResponseEntity(usuarioService.verificarSolicitudPendiente(remitente, destinatario), HttpStatus.OK)
+    }
+
+    @GetMapping("/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}")
+    fun verActividadPorUsernameFechaSuperior(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @PathVariable usuarioSolicitante: String
+    ) : ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(usuarioService.verActividadesPorUsernameFechaSuperior(username, usuarioSolicitante), HttpStatus.OK)
     }
 
     @GetMapping("/verUsuariosPorComunidad/{comunidad}")
@@ -340,11 +346,9 @@ class UsuarioController {
         httpRequest: HttpServletRequest,
         @RequestBody paymentData: PaymentVerificationRequest
     ): ResponseEntity<Map<String, Any>> {
-        // Verificar el pago con PayPal
         val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
 
         return if (isValidPayment) {
-            // Actualizar usuario a premium
             val usuario = usuarioService.actualizarPremium(paymentData.username)
             ResponseEntity.ok(
                 mapOf(
@@ -363,4 +367,21 @@ class UsuarioController {
         }
     }
 
+    @GetMapping("/verComunidadPorUsuario/{username}/{usuarioSolicitante}")
+    fun verComunidadPorUsuario(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @PathVariable usuarioSolicitante: String
+    ): ResponseEntity<List<ComunidadDTO>> {
+        return ResponseEntity(usuarioService.verComunidadPorUsuario(username, usuarioSolicitante), HttpStatus.OK)
+    }
+
+    @GetMapping("/verActividadPorUsername/{username}/{usuarioSolicitante}")
+    fun verActividadPorUsername(
+        httpRequest: HttpServletRequest,
+        @PathVariable username: String,
+        @PathVariable usuarioSolicitante: String
+    ): ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
+    }
 }

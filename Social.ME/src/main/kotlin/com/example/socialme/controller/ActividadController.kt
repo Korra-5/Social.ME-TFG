@@ -40,7 +40,6 @@ class ActividadController {
         httpRequest: HttpServletRequest,
         @PathVariable id: String
     ) : ResponseEntity<ActividadDTO> {
-
         return ResponseEntity(actividadService.eliminarActividad(id), HttpStatus.OK)
     }
 
@@ -49,7 +48,6 @@ class ActividadController {
         httpRequest: HttpServletRequest,
         @RequestBody participantesActividadDTO: ParticipantesActividadDTO
     ) : ResponseEntity<ParticipantesActividadDTO> {
-
         return ResponseEntity(actividadService.salirActividad(participantesActividadDTO), HttpStatus.OK)
     }
 
@@ -85,7 +83,6 @@ class ActividadController {
     ) : ResponseEntity<List<ActividadDTO>> {
         return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
     }
-
 
     @GetMapping("/verActividadesPublicasEnZonaFechaSuperior/{username}")
     fun verActividadesPublicasEnZonaFechaSuperior(

@@ -1668,4 +1668,96 @@ class UsuarioService : UserDetailsService {
         val solicitudes = solicitudesAmistadRepository.findByRemitenteAndDestinatario(remitente, destinatario)
         return solicitudes.any { !it.aceptada }
     }
+
+
+    fun verActividadesPorUsernameFechaSuperior(username: String, usuarioSolicitante: String): List<ActividadDTO> {
+        val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { NotFoundException("Usuario $username no encontrado") }
+
+        usuarioRepository.findFirstByUsername(usuarioSolicitante)
+            .orElseThrow { NotFoundException("Usuario solicitante $usuarioSolicitante no encontrado") }
+
+        if (existeBloqueo(username, usuarioSolicitante)) {
+            throw BadRequestException("No puedes ver las actividades de este usuario")
+        }
+
+        if (username == usuarioSolicitante) {
+            val participantes = participantesActividadRepository.findByUsername(username)
+            val actividadesIds = participantes.map { it.idActividad }
+            val actividadesEncontradas = mutableListOf<Actividad>()
+            val fechaActual = Date()
+
+            actividadesIds.forEach { idActividad ->
+                val actividad = actividadRepository.findActividadBy_id(idActividad)
+                if (actividad.isPresent && actividad.get().fechaInicio.after(fechaActual)) {
+                    actividadesEncontradas.add(actividad.get())
+                }
+            }
+
+            return actividadesEncontradas.map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    _id = actividad._id,
+                    coordenadas = actividad.coordenadas,
+                    lugar = actividad.lugar
+                )
+            }.sortedBy { it.fechaInicio }
+        }
+
+        when (usuarioObjetivo.privacidadActividades.uppercase()) {
+            "NADIE" -> return emptyList()
+            "AMIGOS" -> {
+                val sonAmigos = verificarAmistad(username, usuarioSolicitante)
+                if (!sonAmigos) {
+                    return emptyList()
+                }
+            }
+            "TODOS" -> {
+            }
+        }
+
+        val participantes = participantesActividadRepository.findByUsername(username)
+        val actividadesIds = participantes.map { it.idActividad }
+        val actividadesEncontradas = mutableListOf<Actividad>()
+        val fechaActual = Date()
+
+        actividadesIds.forEach { idActividad ->
+            val actividad = actividadRepository.findActividadBy_id(idActividad)
+            if (actividad.isPresent) {
+                val act = actividad.get()
+                if (act.fechaInicio.after(fechaActual)) {
+                    val puedeVerActividad = if (act.privada) {
+                        participantesComunidadRepository.findByUsernameAndComunidad(usuarioSolicitante, act.comunidad).isPresent
+                    } else {
+                        true
+                    }
+
+                    if (puedeVerActividad) {
+                        actividadesEncontradas.add(act)
+                    }
+                }
+            }
+        }
+
+        return actividadesEncontradas.map { actividad ->
+            ActividadDTO(
+                nombre = actividad.nombre,
+                descripcion = actividad.descripcion,
+                privada = actividad.privada,
+                creador = actividad.creador,
+                fotosCarruselIds = actividad.fotosCarruselIds,
+                fechaFinalizacion = actividad.fechaFinalizacion,
+                fechaInicio = actividad.fechaInicio,
+                _id = actividad._id,
+                coordenadas = actividad.coordenadas,
+                lugar = actividad.lugar
+            )
+        }.sortedBy { it.fechaInicio }
+    }
 }
