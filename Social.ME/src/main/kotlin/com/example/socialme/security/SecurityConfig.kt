@@ -60,6 +60,9 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verAmigos/{username}").authenticated()
                 auth.requestMatchers("/Usuario/enviarSolicitudAmistad").authenticated()
                 auth.requestMatchers("/Usuario/aceptarSolicitud/{id}").authenticated()
+                auth.requestMatchers("/Usuario/cancelarSolicitudAmistad/{id}").authenticated()
+                auth.requestMatchers("/Usuario/rechazarSolicitud/{id}").authenticated()
+                auth.requestMatchers("/Usuario/verificarSolicitudPendiente/{remitente}/{destinatario}").authenticated()
                 auth.requestMatchers("/Usuario/bloquearUsuario").authenticated()
                 auth.requestMatchers("/Usuario/desbloquearUsuario").authenticated()
                 auth.requestMatchers("/Usuario/verUsuariosBloqueados/{username}").authenticated()
@@ -71,7 +74,9 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/verRadarDistancia/{username}").authenticated()
                 auth.requestMatchers("/Usuario/cambiarContrasena").authenticated()
                 auth.requestMatchers("/Usuario/usuarioEsAdmin/{username}").authenticated()
-
+                auth.requestMatchers("/Usuario/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
+                auth.requestMatchers("/Usuario/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
+                auth.requestMatchers("/Usuario/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
@@ -89,7 +94,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== ACTIVIDAD ====================
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
@@ -110,6 +114,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorUsername/{username}/{usuarioSolicitante}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Actividad/verComunidadPorActividad/{idActividad}").authenticated()
 
                 // ==================== DENUNCIA ====================
