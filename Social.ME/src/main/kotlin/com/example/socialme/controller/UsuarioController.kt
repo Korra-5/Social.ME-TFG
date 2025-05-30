@@ -152,15 +152,6 @@ class UsuarioController {
         return ResponseEntity(usuarioService.verificarSolicitudPendiente(remitente, destinatario), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}")
-    fun verActividadPorUsernameFechaSuperior(
-        httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        @PathVariable usuarioSolicitante: String
-    ) : ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(usuarioService.verActividadesPorUsernameFechaSuperior(username, usuarioSolicitante), HttpStatus.OK)
-    }
-
     @GetMapping("/verUsuariosPorComunidad/{comunidad}")
     fun verUsuariosPorComunidad(
         httpRequest: HttpServletRequest,
@@ -365,15 +356,6 @@ class UsuarioController {
                 )
             )
         }
-    }
-
-    @GetMapping("/verComunidadPorUsuario/{username}/{usuarioSolicitante}")
-    fun verComunidadPorUsuario(
-        httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        @PathVariable usuarioSolicitante: String
-    ): ResponseEntity<List<ComunidadDTO>> {
-        return ResponseEntity(usuarioService.verComunidadPorUsuario(username, usuarioSolicitante), HttpStatus.OK)
     }
 
     @GetMapping("/verActividadPorUsername/{username}/{usuarioSolicitante}")

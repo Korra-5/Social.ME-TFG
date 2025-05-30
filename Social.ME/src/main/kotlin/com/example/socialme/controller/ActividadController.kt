@@ -75,13 +75,13 @@ class ActividadController {
         return ResponseEntity(actividadService.verActividadPorId(id), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadPorUsername/{username}/{usuarioSolicitante}")
-    fun verActividadPorUsername(
+    @GetMapping("/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}")
+    fun verActividadPorUsernameFechaSuperior(
         httpRequest: HttpServletRequest,
         @PathVariable username: String,
         @PathVariable usuarioSolicitante: String
     ) : ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(usuarioService.verActividadesPorUsername(username, usuarioSolicitante), HttpStatus.OK)
+        return ResponseEntity(usuarioService.verActividadesPorUsernameFechaSuperior(username, usuarioSolicitante), HttpStatus.OK)
     }
 
     @GetMapping("/verActividadesPublicasEnZonaFechaSuperior/{username}")
