@@ -20,7 +20,7 @@ class PayPalService {
     private lateinit var mode: String
 
     private fun getAPIContext(): APIContext {
-        return APIContext(clientId, clientSecret, mode)
+        return APIContext("clientId", clientSecret, mode)
     }
 
     // Método para simular un pago exitoso (para desarrollo/testing)
