@@ -44,6 +44,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
+                auth.requestMatchers("/api/paypal/health-check").permitAll() // Health check público
 
                 // ==================== USUARIO ====================
                 auth.requestMatchers("/Usuario/iniciarModificacionUsuario").authenticated()
@@ -75,6 +76,12 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/cambiarContrasena").authenticated()
                 auth.requestMatchers("/Usuario/usuarioEsAdmin/{username}").authenticated()
 
+                // ==================== PAYPAL ====================
+                auth.requestMatchers("/api/paypal/create-payment").authenticated()
+                auth.requestMatchers("/api/paypal/verify-payment").authenticated()
+                auth.requestMatchers("/api/paypal/payment-status/{paymentId}").authenticated()
+                auth.requestMatchers("/api/paypal/simulate-premium-purchase").authenticated()
+
                 // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
                 auth.requestMatchers("/Comunidad/unirseComunidad").authenticated()
@@ -91,7 +98,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
-                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated() // ← AGREGAR ESTA LÍNEA
+                auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
 
                 // ==================== ACTIVIDAD ====================
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
