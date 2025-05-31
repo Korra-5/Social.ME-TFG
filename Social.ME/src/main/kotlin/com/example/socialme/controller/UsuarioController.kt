@@ -4,7 +4,6 @@ import com.example.socialme.dto.*
 import com.example.socialme.error.exception.UnauthorizedException
 import com.example.socialme.model.PaymentVerificationRequest
 import com.example.socialme.model.VerificacionDTO
-import com.example.socialme.service.PayPalService
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService
 import jakarta.servlet.http.HttpServletRequest
@@ -30,9 +29,6 @@ class UsuarioController {
 
     @Autowired
     private lateinit var usuarioService: UsuarioService
-
-    @Autowired
-    private lateinit var payPalService: PayPalService
 
     @PostMapping("/iniciarRegistro")
     fun iniciarRegistro(
@@ -330,32 +326,6 @@ class UsuarioController {
             usuarioService.verRadarDistancia(username),
             HttpStatus.OK
         )
-    }
-
-    @PostMapping("/verificarPremium")
-    fun verificarPremium(
-        httpRequest: HttpServletRequest,
-        @RequestBody paymentData: PaymentVerificationRequest
-    ): ResponseEntity<Map<String, Any>> {
-        val isValidPayment = payPalService.verifyPayment(paymentData.paymentId)
-
-        return if (isValidPayment) {
-            val usuario = usuarioService.actualizarPremium(paymentData.username)
-            ResponseEntity.ok(
-                mapOf(
-                    "success" to true,
-                    "message" to "Premium activado correctamente",
-                    "usuario" to usuario
-                )
-            )
-        } else {
-            ResponseEntity.badRequest().body(
-                mapOf(
-                    "success" to false,
-                    "message" to "El pago no pudo ser verificado"
-                )
-            )
-        }
     }
 
     @GetMapping("/verActividadPorUsername/{username}/{usuarioSolicitante}")

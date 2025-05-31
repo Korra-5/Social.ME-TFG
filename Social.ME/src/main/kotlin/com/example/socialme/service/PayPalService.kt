@@ -1,187 +1,95 @@
 package com.example.socialme.service
 
-import com.example.socialme.config.PayPalConfig
-import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.http.*
+import com.paypal.api.payments.*
+import com.paypal.base.rest.APIContext
+import com.paypal.base.rest.PayPalRESTException
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
-import org.springframework.web.client.RestTemplate
 import java.util.*
 
 @Service
-class PayPalService(
-    @Autowired private val payPalConfig: PayPalConfig
-) {
-    private val restTemplate = RestTemplate()
-    private val logger = LoggerFactory.getLogger(PayPalService::class.java)
+class PayPalService {
 
-    fun getAccessToken(): String? {
-        val url = "${payPalConfig.baseUrl}/v1/oauth2/token"
+    @Value("\${paypal.client-id}")
+    private lateinit var clientId: String
 
-        val headers = HttpHeaders()
-        val auth = "${payPalConfig.clientId}:${payPalConfig.clientSecret}"
-        val encodedAuth = Base64.getEncoder().encodeToString(auth.toByteArray())
-        headers.set("Authorization", "Basic $encodedAuth")
-        headers.contentType = MediaType.APPLICATION_FORM_URLENCODED
+    @Value("\${paypal.client-secret}")
+    private lateinit var clientSecret: String
 
-        val body = "grant_type=client_credentials"
-        val entity = HttpEntity(body, headers)
+    @Value("\${paypal.environment}")
+    private lateinit var mode: String
 
-        return try {
-            logger.info("Obteniendo token de PayPal...")
-            val response = restTemplate.postForEntity(url, entity, Map::class.java)
-            val responseBody = response.body as? Map<String, Any>
-            val token = responseBody?.get("access_token") as? String
-            logger.info("✅ Token obtenido exitosamente")
-            token
-        } catch (e: Exception) {
-            logger.error("❌ Error obteniendo token de PayPal", e)
-            null
-        }
+    private fun getAPIContext(): APIContext {
+        return APIContext(clientId, clientSecret, mode)
     }
 
-    // Crear orden de PayPal
-    fun createOrder(amount: String): Map<String, Any>? {
-        val token = getAccessToken() ?: return null
-        val url = "${payPalConfig.baseUrl}/v2/checkout/orders"
+    // Método para simular un pago exitoso (para desarrollo/testing)
+    fun simulateSuccessfulPayment(
+        total: Double,
+        currency: String,
+        description: String
+    ): Map<String, Any> {
+        // Simulamos una respuesta exitosa de PayPal
+        val simulatedPaymentId = "PAY-" + UUID.randomUUID().toString().substring(0, 17)
+        val simulatedPayerId = "PAYER-" + UUID.randomUUID().toString().substring(0, 13)
 
-        val headers = HttpHeaders()
-        headers.set("Authorization", "Bearer $token")
-        headers.contentType = MediaType.APPLICATION_JSON
-
-        val orderData = mapOf(
-            "intent" to "CAPTURE",
-            "purchase_units" to listOf(
-                mapOf(
-                    "amount" to mapOf(
-                        "currency_code" to "EUR",
-                        "value" to amount
-                    ),
-                    "description" to "SocialMe Premium Subscription"
-                )
-            ),
-            "application_context" to mapOf(
-                "return_url" to "https://socialme.app/success",
-                "cancel_url" to "https://socialme.app/cancel"
-            )
+        return mapOf(
+            "success" to true,
+            "paymentId" to simulatedPaymentId,
+            "payerId" to simulatedPayerId,
+            "amount" to total,
+            "currency" to currency,
+            "description" to description,
+            "status" to "approved",
+            "createTime" to Date().toString(),
+            "message" to "Pago simulado exitosamente - Modo sandbox"
         )
-
-        val entity = HttpEntity(orderData, headers)
-
-        return try {
-            logger.info("Creando orden de PayPal por €$amount")
-            val response = restTemplate.postForEntity(url, entity, Map::class.java)
-            val responseBody = response.body as? Map<String, Any>
-            logger.info("✅ Orden creada: ${responseBody?.get("id")}")
-            responseBody
-        } catch (e: Exception) {
-            logger.error("❌ Error creando orden", e)
-            null
-        }
     }
 
-    // Simular aprobación de pago (normalmente se hace en PayPal web)
-    fun simulatePaymentApproval(orderId: String): Boolean {
-        logger.info("🎭 Simulando aprobación de pago para orden: $orderId")
+    @Throws(PayPalRESTException::class)
+    fun createPayment(
+        total: Double,
+        currency: String,
+        method: String,
+        intent: String,
+        description: String,
+        cancelUrl: String,
+        successUrl: String
+    ): Payment {
+        val amount = Amount()
+        amount.currency = currency
+        amount.total = String.format(Locale.forLanguageTag("en"), "%.2f", total)
 
-        // En un entorno real, este paso se hace en la web de PayPal
-        // Para la simulación, simplemente devolvemos true
-        logger.info("✅ Pago simulado como aprobado")
-        return true
+        val transaction = Transaction()
+        transaction.description = description
+        transaction.amount = amount
+
+        val transactions = listOf(transaction)
+
+        val payer = Payer()
+        payer.paymentMethod = method
+
+        val payment = Payment()
+        payment.intent = intent
+        payment.payer = payer
+        payment.transactions = transactions
+
+        val redirectUrls = RedirectUrls()
+        redirectUrls.cancelUrl = cancelUrl
+        redirectUrls.returnUrl = successUrl
+        payment.redirectUrls = redirectUrls
+
+        return payment.create(getAPIContext())
     }
 
-    // Capturar pago
-    fun capturePayment(orderId: String): Boolean {
-        val token = getAccessToken() ?: return false
-        val url = "${payPalConfig.baseUrl}/v2/checkout/orders/$orderId/capture"
+    @Throws(PayPalRESTException::class)
+    fun executePayment(paymentId: String, payerId: String): Payment {
+        val payment = Payment()
+        payment.id = paymentId
 
-        val headers = HttpHeaders()
-        headers.set("Authorization", "Bearer $token")
-        headers.contentType = MediaType.APPLICATION_JSON
+        val paymentExecution = PaymentExecution()
+        paymentExecution.payerId = payerId
 
-        val entity = HttpEntity("{}", headers)
-
-        return try {
-            logger.info("Capturando pago para orden: $orderId")
-            val response = restTemplate.postForEntity(url, entity, Map::class.java)
-            val responseBody = response.body as? Map<String, Any>
-            val status = responseBody?.get("status") as? String
-
-            val success = status == "COMPLETED"
-            if (success) {
-                logger.info("✅ Pago capturado exitosamente")
-            } else {
-                logger.warn("⚠️ Pago no completado. Status: $status")
-            }
-            success
-        } catch (e: Exception) {
-            logger.error("❌ Error capturando pago", e)
-            false
-        }
+        return payment.execute(getAPIContext(), paymentExecution)
     }
-
-    // Verificar estado de la orden
-    fun verifyPayment(orderId: String): Boolean {
-        val token = getAccessToken() ?: return false
-        val url = "${payPalConfig.baseUrl}/v2/checkout/orders/$orderId"
-
-        val headers = HttpHeaders()
-        headers.set("Authorization", "Bearer $token")
-        headers.contentType = MediaType.APPLICATION_JSON
-
-        val entity = HttpEntity<String>(headers)
-
-        return try {
-            logger.info("Verificando estado de orden: $orderId")
-            val response = restTemplate.exchange(url, HttpMethod.GET, entity, Map::class.java)
-            val payment = response.body as? Map<String, Any>
-            val status = payment?.get("status") as? String
-
-            logger.info("Estado de la orden: $status")
-            status == "COMPLETED" || status == "APPROVED"
-        } catch (e: Exception) {
-            logger.error("❌ Error verificando pago", e)
-            false
-        }
-    }
-
-    // Flujo completo de simulación
-    fun simulateCompletePurchase(amount: String): PayPalPurchaseResult {
-        try {
-            logger.info("=== INICIANDO SIMULACIÓN DE COMPRA PAYPAL ===")
-
-            // 1. Crear orden
-            val orderResponse = createOrder(amount)
-            if (orderResponse == null) {
-                return PayPalPurchaseResult.Error("Error creando orden")
-            }
-
-            val orderId = orderResponse["id"] as? String
-            if (orderId == null) {
-                return PayPalPurchaseResult.Error("No se pudo obtener ID de orden")
-            }
-
-            // 2. Simular aprobación
-            if (!simulatePaymentApproval(orderId)) {
-                return PayPalPurchaseResult.Error("Error en aprobación simulada")
-            }
-
-            // 3. Capturar pago
-            if (!capturePayment(orderId)) {
-                return PayPalPurchaseResult.Error("Error capturando pago")
-            }
-
-            logger.info("✅ SIMULACIÓN COMPLETADA EXITOSAMENTE")
-            return PayPalPurchaseResult.Success(orderId)
-
-        } catch (e: Exception) {
-            logger.error("❌ Error en simulación completa", e)
-            return PayPalPurchaseResult.Error("Error: ${e.message}")
-        }
-    }
-}
-
-sealed class PayPalPurchaseResult {
-    data class Success(val orderId: String) : PayPalPurchaseResult()
-    data class Error(val message: String) : PayPalPurchaseResult()
 }

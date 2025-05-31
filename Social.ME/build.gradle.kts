@@ -33,15 +33,18 @@ dependencies {
 	implementation("org.mongodb:mongodb-driver-kotlin-sync:5.3.0")
 	implementation("org.springframework.boot:spring-boot-starter-webflux")
 	implementation("com.sun.mail:javax.mail:1.6.2")
+
 	// WebSocket
-	implementation ("org.springframework.boot:spring-boot-starter-websocket")
+	implementation("org.springframework.boot:spring-boot-starter-websocket")
+	implementation("org.webjars:sockjs-client:1.5.1")
+	implementation("org.webjars:stomp-websocket:2.3.4")
 
-	// Para el soporte de SockJS
-	implementation ("org.webjars:sockjs-client:1.5.1")
-	implementation ("org.webjars:stomp-websocket:2.3.4")
+	// PayPal SDK y dependencias relacionadas
+	implementation("com.paypal.sdk:rest-api-sdk:1.14.0")
+	implementation("org.springframework.boot:spring-boot-starter-validation")
+	implementation("com.fasterxml.jackson.core:jackson-databind")
 
-	// **AÑADIR ESTAS LÍNEAS PARA PAYPAL:**
-	implementation("com.paypal.sdk:checkout-sdk:1.0.1")
+	// Dependencias HTTP para PayPal (opcionales pero recomendadas)
 	implementation("org.apache.httpcomponents:httpclient:4.5.14")
 	implementation("org.apache.httpcomponents:httpcore:4.4.16")
 }
