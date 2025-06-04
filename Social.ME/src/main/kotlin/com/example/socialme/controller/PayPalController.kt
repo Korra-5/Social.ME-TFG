@@ -1,6 +1,5 @@
 package com.example.socialme.controller
 
-import com.example.socialme.dto.*
 import com.example.socialme.model.PaymentRequestDTO
 import com.example.socialme.model.PaymentResponseDTO
 import com.example.socialme.model.PaymentVerificationDTO
@@ -29,27 +28,18 @@ class PayPalController {
         @Valid @RequestBody paymentRequest: PaymentRequestDTO
     ): ResponseEntity<PaymentResponseDTO> {
         return try {
-            // USAR PAYPAL REAL
-            val payment = payPalService.createPayment(
+            // Para desarrollo, usamos simulación
+            val result = payPalService.simulateSuccessfulPayment(
                 total = paymentRequest.amount,
                 currency = paymentRequest.currency,
-                method = "paypal",
-                intent = "sale",
-                description = paymentRequest.description,
-                cancelUrl = "https://social-me-tfg.onrender.com/api/paypal/cancel",
-                successUrl = "https://social-me-tfg.onrender.com/api/paypal/success"
+                description = paymentRequest.description
             )
-
-            // Buscar la URL de aprobación
-            val approvalUrl = payment.links?.find {
-                it.rel.equals("approval_url", ignoreCase = true)
-            }?.href
 
             val response = PaymentResponseDTO(
                 success = true,
-                paymentId = payment.id,
-                approvalUrl = approvalUrl,
-                message = "Pago creado exitosamente. Redirige al usuario a PayPal.",
+                paymentId = result["paymentId"] as String,
+                approvalUrl = "https://sandbox.paypal.com/cgi-bin/webscr?cmd=_express-checkout&token=SIMULATED",
+                message = "Pago creado exitosamente (simulado)",
                 amount = paymentRequest.amount,
                 currency = paymentRequest.currency
             )
@@ -64,57 +54,54 @@ class PayPalController {
         }
     }
 
-    @PostMapping("/execute-payment")
-    fun executePayment(
+    @PostMapping("/verify-payment")
+    fun verifyPayment(
         httpRequest: HttpServletRequest,
         @Valid @RequestBody verificationRequest: PaymentVerificationDTO
     ): ResponseEntity<PaymentResponseDTO> {
         return try {
-            // EJECUTAR PAGO REAL EN PAYPAL
-            val executedPayment = payPalService.executePayment(
-                paymentId = verificationRequest.paymentId,
-                payerId = verificationRequest.payerId
-            )
+            // Simulamos la verificación del pago
+            if (verificationRequest.paymentId.startsWith("PAY-") &&
+                verificationRequest.payerId.startsWith("PAYER-")) {
 
-            if (executedPayment.state == "approved") {
-                // Actualizar usuario a premium
+                // Actualizamos el usuario a premium
                 usuarioService.actualizarPremium(verificationRequest.username)
 
                 val response = PaymentResponseDTO(
                     success = true,
-                    paymentId = executedPayment.id,
-                    message = "¡Pago completado exitosamente! Ya eres Premium."
+                    paymentId = verificationRequest.paymentId,
+                    message = "Pago verificado exitosamente. ¡Ya eres Premium!"
                 )
                 ResponseEntity.ok(response)
             } else {
                 val response = PaymentResponseDTO(
                     success = false,
-                    message = "El pago no fue aprobado por PayPal"
+                    message = "Payment ID o Payer ID inválido"
                 )
                 ResponseEntity.badRequest().body(response)
             }
         } catch (e: Exception) {
             val errorResponse = PaymentResponseDTO(
                 success = false,
-                message = "Error al ejecutar el pago: ${e.message}"
+                message = "Error al verificar el pago: ${e.message}"
             )
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse)
         }
     }
 
-    // Mantener también la simulación para testing
     @PostMapping("/simulate-premium-purchase")
     fun simulatePremiumPurchase(
         httpRequest: HttpServletRequest,
         @RequestParam username: String
     ): ResponseEntity<PaymentResponseDTO> {
         return try {
+            // Directamente actualizamos el usuario a premium (para testing rápido)
             usuarioService.actualizarPremium(username)
 
             val response = PaymentResponseDTO(
                 success = true,
                 paymentId = "SIMULATED-PAY-" + System.currentTimeMillis(),
-                message = "Premium activado exitosamente (simulación)",
+                message = "Premium activado exitosamente (simulación directa)",
                 amount = 1.99,
                 currency = "EUR"
             )
@@ -137,35 +124,5 @@ class PayPalController {
             "mode" to "sandbox",
             "timestamp" to java.util.Date().toString()
         ))
-    }
-
-    // Endpoints para manejar retorno de PayPal
-    @GetMapping("/success")
-    fun paymentSuccess(
-        @RequestParam("paymentId") paymentId: String,
-        @RequestParam("PayerID") payerId: String
-    ): ResponseEntity<String> {
-        return ResponseEntity.ok("""
-            <html>
-                <body>
-                    <h2>Pago exitoso</h2>
-                    <p>Payment ID: $paymentId</p>
-                    <p>Payer ID: $payerId</p>
-                    <p>Puedes cerrar esta ventana.</p>
-                </body>
-            </html>
-        """.trimIndent())
-    }
-
-    @GetMapping("/cancel")
-    fun paymentCancel(): ResponseEntity<String> {
-        return ResponseEntity.ok("""
-            <html>
-                <body>
-                    <h2>Pago cancelado</h2>
-                    <p>El pago fue cancelado por el usuario.</p>
-                </body>
-            </html>
-        """.trimIndent())
     }
 }

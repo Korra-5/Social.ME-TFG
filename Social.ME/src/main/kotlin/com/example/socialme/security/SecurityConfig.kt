@@ -44,11 +44,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
                 auth.requestMatchers("/ws/**").permitAll() // WebSockets
-
-                // PayPal endpoints públicos
-                auth.requestMatchers("/api/paypal/health-check").permitAll()
-                auth.requestMatchers("/api/paypal/success").permitAll()
-                auth.requestMatchers("/api/paypal/cancel").permitAll()
+                auth.requestMatchers("/api/paypal/health-check").permitAll() // Health check público
 
                 // ==================== USUARIO ====================
                 auth.requestMatchers("/Usuario/iniciarModificacionUsuario").authenticated()
@@ -83,7 +79,6 @@ class SecurityConfig {
                 // ==================== PAYPAL ====================
                 auth.requestMatchers("/api/paypal/create-payment").authenticated()
                 auth.requestMatchers("/api/paypal/verify-payment").authenticated()
-                auth.requestMatchers("/api/paypal/execute-payment").authenticated()
                 auth.requestMatchers("/api/paypal/payment-status/{paymentId}").authenticated()
                 auth.requestMatchers("/api/paypal/simulate-premium-purchase").authenticated()
 
