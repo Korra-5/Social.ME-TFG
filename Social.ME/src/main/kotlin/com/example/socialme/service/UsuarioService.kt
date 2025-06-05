@@ -83,6 +83,113 @@ class UsuarioService : UserDetailsService {
             .roles(usuario.roles)
             .build()
     }
+
+    private fun validarIntereses(intereses: List<String>) {
+        intereses.forEach { interes ->
+            val interesLimpio = interes.trim()
+            if (interesLimpio.length > 25) {
+                throw BadRequestException("Los intereses no pueden exceder los 25 caracteres: '$interesLimpio'")
+            }
+            if (interesLimpio.contains(" ")) {
+                throw BadRequestException("Los intereses no pueden contener espacios: '$interesLimpio'")
+            }
+            if (interesLimpio.contains(",")) {
+                throw BadRequestException("Los intereses no pueden contener comas: '$interesLimpio'")
+            }
+        }
+    }
+
+    fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
+        ContentValidator.validarContenidoInapropiado(
+            usuarioInsertadoDTO.username,
+            usuarioInsertadoDTO.nombre,
+            usuarioInsertadoDTO.apellidos,
+            usuarioInsertadoDTO.descripcion
+        )
+
+        validarIntereses(usuarioInsertadoDTO.intereses)
+
+        if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
+            throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
+        }
+
+        if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
+        }
+
+        if (!enviarCodigoVerificacion(usuarioInsertadoDTO.email)) {
+            throw BadRequestException("No se pudo enviar el código de verificación al correo ${usuarioInsertadoDTO.email}")
+        }
+
+        usuarioInsertadoDTO.username = normalizarTexto(usuarioInsertadoDTO.username.toLowerCase())
+
+        usuariosPendientesVerificacion[usuarioInsertadoDTO.email] = usuarioInsertadoDTO
+
+        return mapOf(
+            "message" to "Código de verificación enviado al correo ${usuarioInsertadoDTO.email}",
+            "email" to usuarioInsertadoDTO.email
+        )
+    }
+
+    fun iniciarModificacionUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): Map<String, String> {
+        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
+            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
+        }
+
+        ContentValidator.validarContenidoInapropiado(
+            usuarioUpdateDTO.newUsername ?: "",
+            usuarioUpdateDTO.nombre ?: "",
+            usuarioUpdateDTO.apellido ?: "",
+            usuarioUpdateDTO.descripcion ?: ""
+        )
+
+        if (usuarioUpdateDTO.intereses != null) {
+            validarIntereses(usuarioUpdateDTO.intereses)
+        }
+
+        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
+            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername.toString())) {
+                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
+            }
+        }
+
+        val emailCambiado = usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email
+
+        println("Email actual: '${usuario.email}'")
+        println("Email nuevo: '${usuarioUpdateDTO.email}'")
+        println("Email cambió: $emailCambiado")
+
+        if (emailCambiado) {
+            val nuevoEmail = usuarioUpdateDTO.email!!
+
+            if (usuarioRepository.existsByEmail(nuevoEmail)) {
+                throw BadRequestException("El email $nuevoEmail ya está registrado por otro usuario")
+            }
+
+            verificacionCodigos.remove(nuevoEmail)
+            modificacionesPendientesVerificacion.remove(nuevoEmail)
+            limpiarCodigosExpirados()
+
+            if (!enviarCodigoVerificacion(nuevoEmail)) {
+                throw BadRequestException("No se pudo enviar el código de verificación al correo $nuevoEmail")
+            }
+
+            usuarioUpdateDTO.newUsername = normalizarTexto(
+                usuarioUpdateDTO.newUsername?.toLowerCase() ?: usuarioUpdateDTO.currentUsername.toLowerCase()
+            )
+
+            modificacionesPendientesVerificacion[nuevoEmail] = usuarioUpdateDTO
+
+            return mapOf(
+                "message" to "Código de verificación enviado al correo $nuevoEmail",
+                "email" to nuevoEmail,
+                "requiresVerification" to "true"
+            )
+        } else {
+            return aplicarModificacionUsuario(usuarioUpdateDTO)
+        }
+    }
+
     // Modificar para que no aparezcan usuarios ADMIN en búsquedas
     fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
         usuarioRepository.findFirstByUsername(username).orElseThrow {
@@ -177,6 +284,7 @@ class UsuarioService : UserDetailsService {
             aceptada = nuevaSolicitud.aceptada
         )
     }
+
     fun bloquearUsuario(bloqueador: String, bloqueado: String): BloqueoDTO {
         val usuarioBloqueador = usuarioRepository.findFirstByUsername(bloqueador).orElseThrow {
             throw NotFoundException("Usuario bloqueador $bloqueador no encontrado")
@@ -222,7 +330,6 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    // Permitir a ADMIN ver cualquier usuario sin restricciones
     fun verUsuarioPorUsername(username: String, usuarioSolicitante: String? = null): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             throw NotFoundException("Usuario $username not found")
@@ -249,38 +356,6 @@ class UsuarioService : UserDetailsService {
             privacidadComunidades = usuario.privacidadComunidades,
             radarDistancia = usuario.radarDistancia,
             rol = usuario.roles
-        )
-    }
-    fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
-
-        ContentValidator.validarContenidoInapropiado(
-            usuarioInsertadoDTO.username,
-            usuarioInsertadoDTO.nombre,
-            usuarioInsertadoDTO.apellidos,
-            usuarioInsertadoDTO.descripcion
-        )
-
-        if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
-            throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
-        }
-
-        // Verificar que el email no existe
-        if (usuarioRepository.existsByEmail(usuarioInsertadoDTO.email)) {
-            throw BadRequestException("El email ${usuarioInsertadoDTO.email} ya está registrado")
-        }
-
-        // Enviar código de verificación por email
-        if (!enviarCodigoVerificacion(usuarioInsertadoDTO.email)) {
-            throw BadRequestException("No se pudo enviar el código de verificación al correo ${usuarioInsertadoDTO.email}")
-        }
-
-        usuarioInsertadoDTO.username=normalizarTexto(usuarioInsertadoDTO.username.toLowerCase())
-
-        usuariosPendientesVerificacion[usuarioInsertadoDTO.email] = usuarioInsertadoDTO
-
-        return mapOf(
-            "message" to "Código de verificación enviado al correo ${usuarioInsertadoDTO.email}",
-            "email" to usuarioInsertadoDTO.email
         )
     }
 
@@ -368,68 +443,8 @@ class UsuarioService : UserDetailsService {
         )
     }
 
-    // MEJORAR SOLO LA MODIFICACIÓN
-    fun iniciarModificacionUsuario(usuarioUpdateDTO: UsuarioUpdateDTO): Map<String, String> {
 
-        val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
-            throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
-        }
-
-        // VALIDAR CONTENIDO INAPROPIADO
-        ContentValidator.validarContenidoInapropiado(
-            usuarioUpdateDTO.newUsername ?: "",
-            usuarioUpdateDTO.nombre ?: "",
-            usuarioUpdateDTO.apellido ?: "",
-            usuarioUpdateDTO.descripcion ?: ""
-        )
-
-        // Si se está cambiando el username, validar que el nuevo no exista ya
-        if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
-            if (usuarioRepository.existsByUsername(usuarioUpdateDTO.newUsername.toString())) {
-                throw BadRequestException("El nombre de usuario ${usuarioUpdateDTO.newUsername} ya está en uso, prueba con otro nombre")
-            }
-        }
-
-        // Verificar si el email ha cambiado
-        val emailCambiado = usuarioUpdateDTO.email != null && usuarioUpdateDTO.email != usuario.email
-
-        println("Email actual: '${usuario.email}'")
-        println("Email nuevo: '${usuarioUpdateDTO.email}'")
-        println("Email cambió: $emailCambiado")
-
-        if (emailCambiado) {
-            val nuevoEmail = usuarioUpdateDTO.email!!
-
-            // Verificar que el nuevo email no esté en uso por otro usuario
-            if (usuarioRepository.existsByEmail(nuevoEmail)) {
-                throw BadRequestException("El email $nuevoEmail ya está registrado por otro usuario")
-            }
-
-            verificacionCodigos.remove(nuevoEmail)
-            modificacionesPendientesVerificacion.remove(nuevoEmail)
-            limpiarCodigosExpirados()
-
-            // Enviar código de verificación al nuevo email
-            if (!enviarCodigoVerificacion(nuevoEmail)) {
-                throw BadRequestException("No se pudo enviar el código de verificación al correo $nuevoEmail")
-            }
-
-            usuarioUpdateDTO.newUsername = normalizarTexto(usuarioUpdateDTO.newUsername?.toLowerCase() ?:usuarioUpdateDTO.currentUsername.toLowerCase())
-
-            modificacionesPendientesVerificacion[nuevoEmail] = usuarioUpdateDTO
-
-            return mapOf(
-                "message" to "Código de verificación enviado al correo $nuevoEmail",
-                "email" to nuevoEmail,
-                "requiresVerification" to "true"
-            )
-        } else {
-            // Si no cambió el email, aplicar cambios directamente
-            return aplicarModificacionUsuario(usuarioUpdateDTO)
-        }
-    }
-
-    fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO {
+fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO {
         println("=== VERIFICACION CODIGO MODIFICACION ===")
         println("Email: '$email', Código: '$codigo'")
 

@@ -51,7 +51,287 @@ class ComunidadService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
-    // No permitir que ADMIN se una a comunidades
+
+    private fun validarIntereses(intereses: List<String>) {
+        intereses.forEach { interes ->
+            val interesLimpio = interes.trim()
+            if (interesLimpio.length > 25) {
+                throw BadRequestException("Los intereses no pueden exceder los 25 caracteres: '$interesLimpio'")
+            }
+            if (interesLimpio.contains(" ")) {
+                throw BadRequestException("Los intereses no pueden contener espacios: '$interesLimpio'")
+            }
+            if (interesLimpio.contains(",")) {
+                throw BadRequestException("Los intereses no pueden contener comas: '$interesLimpio'")
+            }
+        }
+    }
+
+    fun crearComunidad(comunidadCreateDTO: ComunidadCreateDTO): ComunidadDTO {
+        ContentValidator.validarContenidoInapropiado(
+            comunidadCreateDTO.nombre,
+            comunidadCreateDTO.descripcion,
+            comunidadCreateDTO.url
+        )
+
+        validarIntereses(comunidadCreateDTO.intereses)
+
+        if (comunidadRepository.findComunidadByUrl(comunidadCreateDTO.url).isPresent) {
+            throw BadRequestException("Comunidad existente")
+        }
+
+        val formattedUrl = comunidadCreateDTO.url.trim().split(Regex("\\s+")).joinToString("-").toLowerCase()
+
+        if (comunidadCreateDTO.nombre.length > 40) {
+            throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
+        }
+        if (comunidadCreateDTO.descripcion.length > 5000) {
+            throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
+        }
+
+        validateAndReplaceSpaces(listOf(formattedUrl))
+
+        if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        val comunidadesCreadas = comunidadRepository.countByCreador(comunidadCreateDTO.creador)
+        if (comunidadesCreadas >= 3) {
+            throw ForbiddenException("Has alcanzado el límite máximo de 3 comunidades creadas")
+        }
+
+        val fotoPerfilId = if (comunidadCreateDTO.fotoPerfilBase64 != null) {
+            gridFSService.storeFileFromBase64(
+                comunidadCreateDTO.fotoPerfilBase64,
+                "community_profile_${formattedUrl}_${Date().time}",
+                "image/jpeg",
+                mapOf("type" to "profilePhoto", "community" to formattedUrl)
+            )
+        } else comunidadCreateDTO.fotoPerfilId ?: throw BadRequestException("Se requiere una foto de perfil")
+
+        val comunidad: Comunidad =
+            Comunidad(
+                _id = null,
+                nombre = comunidadCreateDTO.nombre,
+                descripcion = comunidadCreateDTO.descripcion,
+                creador = comunidadCreateDTO.creador,
+                intereses = comunidadCreateDTO.intereses,
+                fotoPerfilId = fotoPerfilId,
+                fotoCarruselIds = null,
+                administradores = null,
+                fechaCreacion = Date.from(Instant.now()),
+                url = usuarioService.normalizarTexto(formattedUrl),
+                privada = comunidadCreateDTO.privada,
+                coordenadas = comunidadCreateDTO.coordenadas,
+                codigoUnion = if (comunidadCreateDTO.privada) {
+                    generarCodigoUnico()
+                }else{
+                    null
+                }
+            )
+
+        val participantesComunidad = ParticipantesComunidad(
+            comunidad = comunidad.url,
+            username = comunidad.creador,
+            fechaUnion = Date.from(Instant.now()),
+            _id = null
+        )
+
+        comunidadRepository.insert(comunidad)
+        participantesComunidadRepository.insert(participantesComunidad)
+
+        return ComunidadDTO(
+            url = formattedUrl,
+            nombre = comunidadCreateDTO.nombre,
+            creador = comunidadCreateDTO.creador,
+            intereses = comunidadCreateDTO.intereses,
+            fotoCarruselIds = null,
+            fotoPerfilId = fotoPerfilId,
+            descripcion = comunidadCreateDTO.descripcion,
+            fechaCreacion = Date.from(Instant.now()),
+            administradores = null,
+            privada = comunidadCreateDTO.privada,
+            coordenadas = comunidadCreateDTO.coordenadas,
+            codigoUnion = comunidadCreateDTO.codigoUnion
+        )
+    }
+
+    fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
+        ContentValidator.validarContenidoInapropiado(
+            comunidadUpdateDTO.nombre,
+            comunidadUpdateDTO.descripcion,
+            comunidadUpdateDTO.newUrl
+        )
+
+        validarIntereses(comunidadUpdateDTO.intereses)
+
+        val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {
+            throw NotFoundException("Comunidad con URL ${comunidadUpdateDTO.currentURL} no encontrada")
+        }
+
+        if (comunidadUpdateDTO.newUrl != comunidadUpdateDTO.currentURL) {
+            comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.newUrl).ifPresent {
+                throw BadRequestException("Ya existe una comunidad con la URL ${comunidadUpdateDTO.newUrl}, prueba con otra URL")
+            }
+        }
+
+        comunidadUpdateDTO.administradores?.forEach { admin ->
+            if (!usuarioRepository.existsByUsername(admin)) {
+                throw NotFoundException("Administrador con username '$admin' no encontrado")
+            }
+        }
+
+        val urlAntigua = comunidadExistente.url
+        val nombreAntiguo = comunidadExistente.nombre
+        val nombreNuevo = comunidadUpdateDTO.nombre
+
+        val nuevaFotoPerfilId = if (!comunidadUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
+            try {
+                if (!comunidadExistente.fotoPerfilId.isNullOrBlank()) {
+                    gridFSService.deleteFile(comunidadExistente.fotoPerfilId)
+                }
+            } catch (e: Exception) {
+                println("Error al eliminar la foto de perfil antigua: ${e.message}")
+            }
+
+            val urlParaFoto = comunidadUpdateDTO.newUrl
+            gridFSService.storeFileFromBase64(
+                comunidadUpdateDTO.fotoPerfilBase64,
+                "community_profile_${urlParaFoto}_${Date().time}",
+                "image/jpeg",
+                mapOf(
+                    "type" to "profilePhoto",
+                    "community" to urlParaFoto
+                )
+            ) ?: comunidadExistente.fotoPerfilId
+        } else if (comunidadUpdateDTO.fotoPerfilId != null) {
+            comunidadUpdateDTO.fotoPerfilId
+        } else {
+            comunidadExistente.fotoPerfilId
+        }
+
+        val nuevasFotosCarruselIds = if (comunidadUpdateDTO.fotoCarruselBase64 != null && comunidadUpdateDTO.fotoCarruselBase64.isNotEmpty()) {
+            val fotosExistentes = comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds ?: emptyList()
+
+            val urlParaFotos = comunidadUpdateDTO.newUrl
+            val nuevasFotosIds = comunidadUpdateDTO.fotoCarruselBase64.mapIndexedNotNull { index, base64 ->
+                gridFSService.storeFileFromBase64(
+                    base64,
+                    "community_carousel_${urlParaFotos}_${System.currentTimeMillis()}_${index}",
+                    "image/jpeg",
+                    mapOf(
+                        "type" to "carouselPhoto",
+                        "community" to urlParaFotos,
+                        "position" to (fotosExistentes.size + index).toString()
+                    )
+                )
+            }
+
+            fotosExistentes + nuevasFotosIds
+        } else {
+            comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds
+        }
+
+        comunidadExistente.apply {
+            url = usuarioService.normalizarTexto(comunidadUpdateDTO.newUrl)
+            nombre = comunidadUpdateDTO.nombre
+            descripcion = comunidadUpdateDTO.descripcion
+            intereses = comunidadUpdateDTO.intereses
+            administradores = comunidadUpdateDTO.administradores
+            fotoPerfilId = nuevaFotoPerfilId
+            fotoCarruselIds = nuevasFotosCarruselIds
+            privada = comunidadUpdateDTO.privada
+            coordenadas = comunidadUpdateDTO.coordenadas
+        }
+
+        val comunidadActualizada = comunidadRepository.save(comunidadExistente)
+
+        if (urlAntigua != comunidadActualizada.url) {
+            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElse(emptyList())
+            actividades.forEach { actividad ->
+                actividad.comunidad = comunidadActualizada.url
+                actividadesComunidadRepository.save(actividad)
+            }
+
+            val participantes = participantesComunidadRepository.findByComunidad(urlAntigua)
+            participantes.forEach { participante ->
+                participante.comunidad = comunidadActualizada.url
+                participantesComunidadRepository.save(participante)
+            }
+
+            val mensajes = mensajeRepository.findByComunidadUrlOrderByFechaEnvioAsc(urlAntigua)
+            mensajes.forEach { mensaje ->
+                val mensajeActualizado = Mensaje(
+                    _id = mensaje._id,
+                    comunidadUrl = comunidadActualizada.url,
+                    username = mensaje.username,
+                    contenido = mensaje.contenido,
+                    fechaEnvio = mensaje.fechaEnvio,
+                    leido = mensaje.leido
+                )
+                mensajeRepository.save(mensajeActualizado)
+            }
+
+            val actividadesDeComunidad = actividadRepository.findAll().filter { it.comunidad == urlAntigua }
+            actividadesDeComunidad.forEach { actividad ->
+                actividad.comunidad = comunidadActualizada.url
+                actividadRepository.save(actividad)
+            }
+        }
+
+        if (nombreAntiguo != nombreNuevo) {
+            val denunciasComoItem = denunciaRepository.findAll().filter {
+                it.tipoItemDenunciado == "comunidad" && it.nombreItemDenunciado == nombreAntiguo
+            }
+            denunciasComoItem.forEach { denuncia ->
+                val denunciaActualizada = Denuncia(
+                    _id = denuncia._id,
+                    motivo = denuncia.motivo,
+                    cuerpo = denuncia.cuerpo,
+                    nombreItemDenunciado = nombreNuevo,
+                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
+                    usuarioDenunciante = denuncia.usuarioDenunciante,
+                    fechaCreacion = denuncia.fechaCreacion,
+                    solucionado = denuncia.solucionado
+                )
+                denunciaRepository.save(denunciaActualizada)
+            }
+
+            val notificacionesComunidad = notificacionRepository.findAll().filter {
+                it.entidadNombre == nombreAntiguo
+            }
+            notificacionesComunidad.forEach { notificacion ->
+                val notificacionActualizada = Notificacion(
+                    _id = notificacion._id,
+                    tipo = notificacion.tipo,
+                    titulo = notificacion.titulo,
+                    mensaje = notificacion.mensaje,
+                    usuarioDestino = notificacion.usuarioDestino,
+                    entidadId = notificacion.entidadId,
+                    entidadNombre = nombreNuevo,
+                    fechaCreacion = notificacion.fechaCreacion,
+                    leida = notificacion.leida
+                )
+                notificacionRepository.save(notificacionActualizada)
+            }
+        }
+
+        return ComunidadDTO(
+            url = comunidadActualizada.url,
+            nombre = comunidadActualizada.nombre,
+            creador = comunidadActualizada.creador,
+            intereses = comunidadActualizada.intereses,
+            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
+            fotoPerfilId = comunidadActualizada.fotoPerfilId,
+            descripcion = comunidadActualizada.descripcion,
+            fechaCreacion = comunidadActualizada.fechaCreacion,
+            administradores = comunidadActualizada.administradores,
+            privada = comunidadActualizada.privada,
+            coordenadas = comunidadActualizada.coordenadas,
+            codigoUnion = comunidadActualizada.codigoUnion
+        )
+    }
+
     fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
         comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
             .orElseThrow { BadRequestException("La comunidad no existe") }
@@ -122,295 +402,6 @@ class ComunidadService {
         } else {
             throw BadRequestException("El codigo de union no es correcto")
         }
-    }
-
-    fun crearComunidad(comunidadCreateDTO: ComunidadCreateDTO): ComunidadDTO {
-
-        // VALIDAR CONTENIDO INAPROPIADO
-        ContentValidator.validarContenidoInapropiado(
-            comunidadCreateDTO.nombre,
-            comunidadCreateDTO.descripcion,
-            comunidadCreateDTO.url
-        )
-
-        if (comunidadRepository.findComunidadByUrl(comunidadCreateDTO.url).isPresent) {
-            throw BadRequestException("Comunidad existente")
-        }
-
-        //Sustituye por guiones los espacios para que las url sean más accesibles (también las paso a minusculas)
-        val formattedUrl = comunidadCreateDTO.url.trim().split(Regex("\\s+")).joinToString("-").toLowerCase()
-
-        if (comunidadCreateDTO.nombre.length > 40) {
-            throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
-        }
-        if (comunidadCreateDTO.descripcion.length > 5000) {
-            throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
-        }
-
-        //Verifica que los intereses no tengan espacios ni superen los 25 caracteres
-        validateAndReplaceSpaces(listOf(formattedUrl))
-
-        if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
-            throw NotFoundException("Usuario no encontrado")
-        }
-
-        val comunidadesCreadas = comunidadRepository.countByCreador(comunidadCreateDTO.creador)
-        if (comunidadesCreadas >= 3) {
-            throw ForbiddenException("Has alcanzado el límite máximo de 3 comunidades creadas")
-        }
-
-        // Formatea la foto de perfil a Gridfs
-        val fotoPerfilId = if (comunidadCreateDTO.fotoPerfilBase64 != null) {
-            gridFSService.storeFileFromBase64(
-                comunidadCreateDTO.fotoPerfilBase64,
-                "community_profile_${formattedUrl}_${Date().time}",
-                "image/jpeg",
-                mapOf("type" to "profilePhoto", "community" to formattedUrl)
-            )
-        } else comunidadCreateDTO.fotoPerfilId ?: throw BadRequestException("Se requiere una foto de perfil")
-
-        val comunidad: Comunidad =
-            Comunidad(
-                _id = null,
-                nombre = comunidadCreateDTO.nombre,
-                descripcion = comunidadCreateDTO.descripcion,
-                creador = comunidadCreateDTO.creador,
-                intereses = comunidadCreateDTO.intereses,
-                fotoPerfilId = fotoPerfilId,
-                fotoCarruselIds = null,
-                administradores = null,
-                fechaCreacion = Date.from(Instant.now()),
-                url = usuarioService.normalizarTexto(formattedUrl),
-                privada = comunidadCreateDTO.privada,
-                coordenadas = comunidadCreateDTO.coordenadas,
-                codigoUnion = if (comunidadCreateDTO.privada) {
-                    generarCodigoUnico()
-                }else{
-                    null
-                }
-            )
-
-        val participantesComunidad = ParticipantesComunidad(
-            comunidad = comunidad.url,
-            username = comunidad.creador,
-            fechaUnion = Date.from(Instant.now()),
-            _id = null
-        )
-
-        comunidadRepository.insert(comunidad)
-        participantesComunidadRepository.insert(participantesComunidad)
-
-        return ComunidadDTO(
-            url = formattedUrl,
-            nombre = comunidadCreateDTO.nombre,
-            creador = comunidadCreateDTO.creador,
-            intereses = comunidadCreateDTO.intereses,
-            fotoCarruselIds = null,
-            fotoPerfilId = fotoPerfilId,
-            descripcion = comunidadCreateDTO.descripcion,
-            fechaCreacion = Date.from(Instant.now()),
-            administradores = null,
-            privada = comunidadCreateDTO.privada,
-            coordenadas = comunidadCreateDTO.coordenadas,
-            codigoUnion = comunidadCreateDTO.codigoUnion
-        )
-    }
-
-    fun modificarComunidad(comunidadUpdateDTO: ComunidadUpdateDTO): ComunidadDTO {
-
-        // VALIDAR CONTENIDO INAPROPIADO
-        ContentValidator.validarContenidoInapropiado(
-            comunidadUpdateDTO.nombre,
-            comunidadUpdateDTO.descripcion,
-            comunidadUpdateDTO.newUrl
-        )
-
-        // Buscar la comunidad existente usando currentURL
-        val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {
-            throw NotFoundException("Comunidad con URL ${comunidadUpdateDTO.currentURL} no encontrada")
-        }
-
-        // Si se está cambiando la URL, validar que la nueva no exista ya
-        if (comunidadUpdateDTO.newUrl != comunidadUpdateDTO.currentURL) {
-            comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.newUrl).ifPresent {
-                throw BadRequestException("Ya existe una comunidad con la URL ${comunidadUpdateDTO.newUrl}, prueba con otra URL")
-            }
-        }
-
-        // Verificar que los administradores existan
-        comunidadUpdateDTO.administradores?.forEach { admin ->
-            if (!usuarioRepository.existsByUsername(admin)) {
-                throw NotFoundException("Administrador con username '$admin' no encontrado")
-            }
-        }
-
-        // Guardar la antigua URL y nombre para actualizar referencias
-        val urlAntigua = comunidadExistente.url
-        val nombreAntiguo = comunidadExistente.nombre
-        val nombreNuevo = comunidadUpdateDTO.nombre
-
-        // Procesar la foto de perfil si se proporciona en Base64
-        val nuevaFotoPerfilId = if (!comunidadUpdateDTO.fotoPerfilBase64.isNullOrBlank()) {
-            // Intentar eliminar la foto de perfil antigua, si existe
-            try {
-                if (!comunidadExistente.fotoPerfilId.isNullOrBlank()) {
-                    gridFSService.deleteFile(comunidadExistente.fotoPerfilId)
-                }
-            } catch (e: Exception) {
-                println("Error al eliminar la foto de perfil antigua: ${e.message}")
-            }
-
-            // Guardar la nueva foto de perfil
-            val urlParaFoto = comunidadUpdateDTO.newUrl
-            gridFSService.storeFileFromBase64(
-                comunidadUpdateDTO.fotoPerfilBase64,
-                "community_profile_${urlParaFoto}_${Date().time}",
-                "image/jpeg",
-                mapOf(
-                    "type" to "profilePhoto",
-                    "community" to urlParaFoto
-                )
-            ) ?: comunidadExistente.fotoPerfilId // Mantener la anterior si falla
-        } else if (comunidadUpdateDTO.fotoPerfilId != null) {
-            comunidadUpdateDTO.fotoPerfilId
-        } else {
-            comunidadExistente.fotoPerfilId
-        }
-
-        // CORREGIDO: Procesar las fotos del carrusel AÑADIENDO en lugar de reemplazando
-        val nuevasFotosCarruselIds = if (comunidadUpdateDTO.fotoCarruselBase64 != null && comunidadUpdateDTO.fotoCarruselBase64.isNotEmpty()) {
-            // OBTENER las fotos existentes
-            val fotosExistentes = comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds ?: emptyList()
-
-            // AÑADIR las nuevas fotos sin eliminar las anteriores
-            val urlParaFotos = comunidadUpdateDTO.newUrl
-            val nuevasFotosIds = comunidadUpdateDTO.fotoCarruselBase64.mapIndexedNotNull { index, base64 ->
-                gridFSService.storeFileFromBase64(
-                    base64,
-                    "community_carousel_${urlParaFotos}_${System.currentTimeMillis()}_${index}",
-                    "image/jpeg",
-                    mapOf(
-                        "type" to "carouselPhoto",
-                        "community" to urlParaFotos,
-                        "position" to (fotosExistentes.size + index).toString()
-                    )
-                )
-            }
-
-            // COMBINAR fotos existentes + nuevas fotos
-            fotosExistentes + nuevasFotosIds
-        } else {
-            // Mantener las fotos de carrusel existentes
-            comunidadUpdateDTO.fotoCarruselIds ?: comunidadExistente.fotoCarruselIds
-        }
-
-        // Actualizar la información de la comunidad
-        comunidadExistente.apply {
-            url = usuarioService.normalizarTexto(comunidadUpdateDTO.newUrl)
-            nombre = comunidadUpdateDTO.nombre
-            descripcion = comunidadUpdateDTO.descripcion
-            intereses = comunidadUpdateDTO.intereses
-            administradores = comunidadUpdateDTO.administradores
-            fotoPerfilId = nuevaFotoPerfilId
-            fotoCarruselIds = nuevasFotosCarruselIds
-            privada = comunidadUpdateDTO.privada
-            coordenadas = comunidadUpdateDTO.coordenadas
-        }
-
-        val comunidadActualizada = comunidadRepository.save(comunidadExistente)
-
-        // Si se ha cambiado la URL, actualizar referencias en otras colecciones
-        if (urlAntigua != comunidadActualizada.url) {
-            // Actualizar referencias en ActividadesComunidad
-            val actividades = actividadesComunidadRepository.findByComunidad(urlAntigua).orElse(emptyList())
-            actividades.forEach { actividad ->
-                actividad.comunidad = comunidadActualizada.url
-                actividadesComunidadRepository.save(actividad)
-            }
-
-            // Actualizar referencias en ParticipantesComunidad
-            val participantes = participantesComunidadRepository.findByComunidad(urlAntigua)
-            participantes.forEach { participante ->
-                participante.comunidad = comunidadActualizada.url
-                participantesComunidadRepository.save(participante)
-            }
-
-            // Actualizar referencias en Mensajes
-            val mensajes = mensajeRepository.findByComunidadUrlOrderByFechaEnvioAsc(urlAntigua)
-            mensajes.forEach { mensaje ->
-                val mensajeActualizado = Mensaje(
-                    _id = mensaje._id,
-                    comunidadUrl = comunidadActualizada.url,
-                    username = mensaje.username,
-                    contenido = mensaje.contenido,
-                    fechaEnvio = mensaje.fechaEnvio,
-                    leido = mensaje.leido
-                )
-                mensajeRepository.save(mensajeActualizado)
-            }
-
-            // Actualizar referencias en Actividades (campo comunidad)
-            val actividadesDeComunidad = actividadRepository.findAll().filter { it.comunidad == urlAntigua }
-            actividadesDeComunidad.forEach { actividad ->
-                actividad.comunidad = comunidadActualizada.url
-                actividadRepository.save(actividad)
-            }
-        }
-
-        // Si se cambió el nombre, actualizar referencias en denuncias
-        if (nombreAntiguo != nombreNuevo) {
-            val denunciasComoItem = denunciaRepository.findAll().filter {
-                it.tipoItemDenunciado == "comunidad" && it.nombreItemDenunciado == nombreAntiguo
-            }
-            denunciasComoItem.forEach { denuncia ->
-                val denunciaActualizada = Denuncia(
-                    _id = denuncia._id,
-                    motivo = denuncia.motivo,
-                    cuerpo = denuncia.cuerpo,
-                    nombreItemDenunciado = nombreNuevo,
-                    tipoItemDenunciado = denuncia.tipoItemDenunciado,
-                    usuarioDenunciante = denuncia.usuarioDenunciante,
-                    fechaCreacion = denuncia.fechaCreacion,
-                    solucionado = denuncia.solucionado
-                )
-                denunciaRepository.save(denunciaActualizada)
-            }
-
-            // Actualizar notificaciones que referencien esta comunidad
-            val notificacionesComunidad = notificacionRepository.findAll().filter {
-                it.entidadNombre == nombreAntiguo
-            }
-            notificacionesComunidad.forEach { notificacion ->
-                val notificacionActualizada = Notificacion(
-                    _id = notificacion._id,
-                    tipo = notificacion.tipo,
-                    titulo = notificacion.titulo,
-                    mensaje = notificacion.mensaje,
-                    usuarioDestino = notificacion.usuarioDestino,
-                    entidadId = notificacion.entidadId,
-                    entidadNombre = nombreNuevo,
-                    fechaCreacion = notificacion.fechaCreacion,
-                    leida = notificacion.leida
-                )
-                notificacionRepository.save(notificacionActualizada)
-            }
-        }
-
-        // Retornar el DTO actualizado
-        return ComunidadDTO(
-            url = comunidadActualizada.url,
-            nombre = comunidadActualizada.nombre,
-            creador = comunidadActualizada.creador,
-            intereses = comunidadActualizada.intereses,
-            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
-            fotoPerfilId = comunidadActualizada.fotoPerfilId,
-            descripcion = comunidadActualizada.descripcion,
-            fechaCreacion = comunidadActualizada.fechaCreacion,
-            administradores = comunidadActualizada.administradores,
-            privada = comunidadActualizada.privada,
-            coordenadas = comunidadActualizada.coordenadas,
-            codigoUnion = comunidadActualizada.codigoUnion
-        )
     }
 
     fun verComunidadPorUrl(url: String) : ComunidadDTO {
