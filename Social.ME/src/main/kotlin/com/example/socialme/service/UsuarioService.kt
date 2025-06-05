@@ -88,7 +88,7 @@ class UsuarioService : UserDetailsService {
         intereses.forEach { interes ->
             val interesLimpio = interes.trim()
             if (interesLimpio.length > 25) {
-                throw BadRequestException("Los intereses no pueden exceder los 25 caracteres: '$interesLimpio'")
+                throw BadRequestException("Los intereses no pueden exceder los 25 caracteres: '$interesLimpio' tus intereses son de ${interesLimpio.length}")
             }
             if (interesLimpio.contains(" ")) {
                 throw BadRequestException("Los intereses no pueden contener espacios: '$interesLimpio'")
@@ -361,7 +361,7 @@ class UsuarioService : UserDetailsService {
 
     fun verificarCodigoYCrearUsuario(email: String, codigo: String): UsuarioDTO {
 
-        // Verificar el código - MANTENER LÓGICA ORIGINAL PARA REGISTRO
+        // Verificar el código
         val codigoData = verificacionCodigos[email]
         val codigoAlmacenado = codigoData?.first
         if (codigoAlmacenado != codigo) {
