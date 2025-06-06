@@ -88,7 +88,7 @@ class ComunidadService {
         if (comunidadCreateDTO.descripcion.length > 5000) {
             throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
         }
-        
+
         if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
             throw NotFoundException("Usuario no encontrado")
         }
