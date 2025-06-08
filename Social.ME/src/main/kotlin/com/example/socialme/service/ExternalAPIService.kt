@@ -47,13 +47,4 @@ class ExternalAPIService (private val webClient: WebClient.Builder) {
         return false
     }
 
-    fun verificarDireccion(direccion: Direccion): Boolean {
-        // Verificar que la provincia existe
-        if (!verificarProvinciaExiste(direccion.provincia)) {
-            return false
-        }
-
-        // Verificar que el municipio existe en esa provincia
-        return verificarMunicipioExiste(direccion.municipio, direccion.provincia)
-    }
 }

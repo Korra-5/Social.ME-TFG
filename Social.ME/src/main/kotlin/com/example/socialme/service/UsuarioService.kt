@@ -53,9 +53,6 @@ class UsuarioService : UserDetailsService {
     private lateinit var passwordEncoder: PasswordEncoder
 
     @Autowired
-    private lateinit var externalApiService: ExternalAPIService
-
-    @Autowired
     private lateinit var participantesActividadRepository: ParticipantesActividadRepository
 
     @Autowired
@@ -111,10 +108,16 @@ class UsuarioService : UserDetailsService {
 
         validarIntereses(usuarioInsertadoDTO.intereses)
 
-        if (usuarioInsertadoDTO.direccion != null) {
-            if (!externalAPIService.verificarDireccion(usuarioInsertadoDTO.direccion)) {
-                throw BadRequestException("La provincia '${usuarioInsertadoDTO.direccion.provincia}' o el municipio '${usuarioInsertadoDTO.direccion.municipio}' no son válidos")
-            }
+        // Validar provincia
+        if (!externalAPIService.verificarProvinciaExiste(usuarioInsertadoDTO.direccion?.provincia ?: "")) {
+            throw BadRequestException("La provincia '${usuarioInsertadoDTO.direccion?.provincia}' no es válida")
+        }
+
+        // Validar municipio
+        if (!externalAPIService.verificarMunicipioExiste(usuarioInsertadoDTO.direccion?.municipio ?: "",
+                usuarioInsertadoDTO.direccion?.provincia ?: ""
+            )) {
+            throw BadRequestException("El municipio '${usuarioInsertadoDTO.direccion?.municipio}' no existe en la provincia '${usuarioInsertadoDTO.direccion?.provincia}'")
         }
 
         if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
@@ -151,14 +154,21 @@ class UsuarioService : UserDetailsService {
             usuarioUpdateDTO.descripcion ?: ""
         )
 
-        if (usuarioUpdateDTO.intereses != null) {
-            validarIntereses(usuarioUpdateDTO.intereses)
+        validarIntereses(usuarioUpdateDTO.intereses)
+
+        // Validar provincia si se está modificando
+        if (!externalAPIService.verificarProvinciaExiste(usuarioUpdateDTO.direccion.provincia)) {
+            throw BadRequestException("La provincia '${usuarioUpdateDTO.direccion.provincia}' no es válida")
         }
 
-        if (usuarioUpdateDTO.direccion != null) {
-            if (!externalAPIService.verificarDireccion(usuarioUpdateDTO.direccion)) {
-                throw BadRequestException("La provincia '${usuarioUpdateDTO.direccion.provincia}' o el municipio '${usuarioUpdateDTO.direccion.municipio}' no son válidos")
+        // Validar municipio si se está modificando
+        val provinciaAValidar = usuarioUpdateDTO.direccion.provincia ?: usuario.direccion?.provincia
+        if (provinciaAValidar != null) {
+            if (!externalAPIService.verificarMunicipioExiste(usuarioUpdateDTO.direccion.municipio, provinciaAValidar)) {
+                throw BadRequestException("El municipio '${usuarioUpdateDTO.direccion.municipio}' no existe en la provincia '$provinciaAValidar'")
             }
+        } else {
+            throw BadRequestException("Se debe proporcionar una provincia válida para validar el municipio")
         }
 
         if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
@@ -203,7 +213,6 @@ class UsuarioService : UserDetailsService {
             return aplicarModificacionUsuario(usuarioUpdateDTO)
         }
     }
-
     // Modificar para que no aparezcan usuarios ADMIN en búsquedas
     fun verTodosLosUsuarios(username: String): List<UsuarioDTO> {
         usuarioRepository.findFirstByUsername(username).orElseThrow {
