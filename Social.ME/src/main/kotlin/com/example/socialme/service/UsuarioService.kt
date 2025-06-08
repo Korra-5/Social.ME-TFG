@@ -23,6 +23,9 @@ import kotlin.math.log
 class UsuarioService : UserDetailsService {
 
     @Autowired
+    private lateinit var externalAPIService: ExternalAPIService
+
+    @Autowired
     private lateinit var mensajeRepository: MensajeRepository
 
     @Autowired
@@ -98,7 +101,6 @@ class UsuarioService : UserDetailsService {
             }
         }
     }
-
     fun iniciarRegistroUsuario(usuarioInsertadoDTO: UsuarioRegisterDTO): Map<String, String> {
         ContentValidator.validarContenidoInapropiado(
             usuarioInsertadoDTO.username,
@@ -108,6 +110,12 @@ class UsuarioService : UserDetailsService {
         )
 
         validarIntereses(usuarioInsertadoDTO.intereses)
+
+        if (usuarioInsertadoDTO.direccion != null) {
+            if (!externalAPIService.verificarDireccion(usuarioInsertadoDTO.direccion)) {
+                throw BadRequestException("La provincia '${usuarioInsertadoDTO.direccion.provincia}' o el municipio '${usuarioInsertadoDTO.direccion.municipio}' no son válidos")
+            }
+        }
 
         if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
             throw BadRequestException("El nombre de usuario ${usuarioInsertadoDTO.username} ya está en uso")
@@ -145,6 +153,12 @@ class UsuarioService : UserDetailsService {
 
         if (usuarioUpdateDTO.intereses != null) {
             validarIntereses(usuarioUpdateDTO.intereses)
+        }
+
+        if (usuarioUpdateDTO.direccion != null) {
+            if (!externalAPIService.verificarDireccion(usuarioUpdateDTO.direccion)) {
+                throw BadRequestException("La provincia '${usuarioUpdateDTO.direccion.provincia}' o el municipio '${usuarioUpdateDTO.direccion.municipio}' no son válidos")
+            }
         }
 
         if (usuarioUpdateDTO.newUsername != null && usuarioUpdateDTO.newUsername != usuarioUpdateDTO.currentUsername) {
