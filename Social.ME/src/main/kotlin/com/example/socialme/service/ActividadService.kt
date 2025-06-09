@@ -90,11 +90,15 @@ class ActividadService {
             actividadCreateDTO.descripcion
         )
 
-        if (actividadCreateDTO.nombre.length > 25) {
-            throw BadRequestException("El nombre de la actividad no puede superar los 25 caracteres")
+        if (actividadCreateDTO.nombre.length > 40) {
+            throw BadRequestException("El nombre de la actividad no puede superar los 40 caracteres")
         }
-        if (actividadCreateDTO.descripcion.length > 2000) {
-            throw BadRequestException("La descrpicion no puede superar los 2000 caracteres")
+        if (actividadCreateDTO.descripcion.length > 600) {
+            throw BadRequestException("La descrpicion no puede superar los 600 caracteres")
+        }
+
+        if (actividadCreateDTO.lugar.length > 600) {
+            throw BadRequestException("El lugar no puede superar los 40 caracteres")
         }
 
         if (actividadCreateDTO.fechaInicio.after(actividadCreateDTO.fechaFinalizacion)) {
