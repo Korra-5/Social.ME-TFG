@@ -86,8 +86,8 @@ class ComunidadService {
             throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
         }
 
-        if (comunidadCreateDTO.url.length > 40) {
-            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
+        if (comunidadCreateDTO.url.length > 100) {
+            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 100 caracteres")
         }
 
 
@@ -173,8 +173,8 @@ class ComunidadService {
             throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
         }
 
-        if (comunidadUpdateDTO.newUrl.length > 40) {
-            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
+        if (comunidadUpdateDTO.newUrl.length > 100) {
+            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 100 caracteres")
         }
 
         if (comunidadUpdateDTO.descripcion.length > 1000) {
