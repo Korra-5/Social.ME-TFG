@@ -89,12 +89,12 @@ class ComunidadService {
             throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
         }
 
-        if (!usuarioRepository.existsByUsername(comunidadCreateDTO.creador)) {
-            throw NotFoundException("Usuario no encontrado")
+        val creador=usuarioRepository.findFirstByUsername(comunidadCreateDTO.creador).orElseThrow {
+            throw NotFoundException("Usuario creador no existe")
         }
 
         val comunidadesCreadas = comunidadRepository.countByCreador(comunidadCreateDTO.creador)
-        if (comunidadesCreadas >= 3) {
+        if (comunidadesCreadas >= 3 && !creador.premium) {
             throw ForbiddenException("Has alcanzado el límite máximo de 3 comunidades creadas")
         }
 
