@@ -256,7 +256,6 @@ class UsuarioService : UserDetailsService {
                 )
             }
     }
-
     fun enviarSolicitudAmistad(solicitudAmistadDTO: SolicitudAmistadDTO): SolicitudAmistadDTO {
         val remitente = usuarioRepository.findFirstByUsername(solicitudAmistadDTO.remitente).orElseThrow {
             throw NotFoundException("Usuario remitente ${solicitudAmistadDTO.remitente} no encontrado")
@@ -266,12 +265,10 @@ class UsuarioService : UserDetailsService {
             throw NotFoundException("Usuario destinatario ${solicitudAmistadDTO.destinatario} no encontrado")
         }
 
-        // No permitir que usuarios ADMIN envíen solicitudes de amistad
         if (remitente.roles == "ADMIN") {
             throw BadRequestException("Los administradores no pueden enviar solicitudes de amistad")
         }
 
-        // No permitir enviar solicitudes a ADMIN
         if (destinatario.roles == "ADMIN") {
             throw BadRequestException("No puedes enviar solicitudes de amistad a administradores")
         }
@@ -280,13 +277,18 @@ class UsuarioService : UserDetailsService {
             throw BadRequestException("No puedes enviar solicitudes de amistad a usuarios bloqueados o que te han bloqueado")
         }
 
-        val solicitudExistente = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
+        val solicitudRemitente = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
             solicitudAmistadDTO.remitente,
             solicitudAmistadDTO.destinatario
         )
 
-        if (solicitudExistente.isNotEmpty()) {
-            throw BadRequestException("Ya existe una solicitud de amistad entre estos usuarios")
+        val solicitudDestinatario = solicitudesAmistadRepository.findByRemitenteAndDestinatario(
+            solicitudAmistadDTO.destinatario,
+            solicitudAmistadDTO.remitente
+        )
+
+        if (solicitudRemitente.isNotEmpty() || solicitudDestinatario.isNotEmpty()) {
+            throw BadRequestException("Ya existe una solicitud de amistad pendiente con este usuario")
         }
 
         val nuevaSolicitud = SolicitudAmistad(

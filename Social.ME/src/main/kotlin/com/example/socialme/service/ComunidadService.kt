@@ -192,8 +192,17 @@ class ComunidadService {
         }
 
         comunidadUpdateDTO.administradores?.forEach { admin ->
+
             if (!usuarioRepository.existsByUsername(admin)) {
                 throw NotFoundException("Administrador con username '$admin' no encontrado")
+            }
+
+            if (admin == comunidadExistente.creador) {
+                throw BadRequestException("El creador de la comunidad no puede ser añadido como administrador")
+            }
+
+            if (!participantesComunidadRepository.findByUsernameAndComunidad(admin, comunidadExistente.url).isPresent) {
+                throw BadRequestException("El usuario debe estar unido a la comunidad para ser administrador")
             }
         }
 
