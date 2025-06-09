@@ -538,7 +538,7 @@ class ComunidadService {
             codigoUnion = comunidad.codigoUnion
         )
 
-        // NUEVO: Obtener todas las actividades de la comunidad y eliminar participaciones
+        // Obtener todas las actividades de la comunidad y eliminar participaciones
         val actividadesComunidad = actividadesComunidadRepository.findByComunidad(url).orElse(emptyList())
         actividadesComunidad.forEach { actividadComunidad ->
             // Eliminar todas las participaciones en cada actividad de la comunidad
@@ -556,13 +556,10 @@ class ComunidadService {
             println("Error deleting GridFS files: ${e.message}")
         }
 
-        // Eliminar primero todos los participantes de la comunidad
         participantesComunidadRepository.deleteByComunidad(comunidad.url)
 
-        // Luego eliminar las actividades asociadas a la comunidad
         actividadesComunidadRepository.deleteByComunidad(comunidad.url)
 
-        // Finalmente eliminar la comunidad
         comunidadRepository.delete(comunidad)
 
         chatService.eliminarMensajesComunidad(url)
@@ -583,11 +580,17 @@ class ComunidadService {
             throw BadRequestException("El creador no puede abandonar la comunidad")
         }
 
-        // NUEVO: Eliminar participaciones en actividades privadas de esta comunidad
+        if (comunidad.administradores?.contains(participantesComunidadDTO.username) == true) {
+            val nuevosAdministradores = comunidad.administradores!!.toMutableList()
+            nuevosAdministradores.remove(participantesComunidadDTO.username)
+            comunidad.administradores = nuevosAdministradores
+            comunidadRepository.save(comunidad)
+        }
+
         val actividadesComunidad = actividadesComunidadRepository.findByComunidad(participantesComunidadDTO.comunidad).orElse(emptyList())
         actividadesComunidad.forEach { actividadComunidad ->
             val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad).orElse(null)
-            // Si la actividad es privada, eliminar la participación del usuario
+
             if (actividad != null && actividad.privada) {
                 val participacionActividad = participantesActividadRepository.findByUsernameAndIdActividad(
                     participantesComunidadDTO.username,

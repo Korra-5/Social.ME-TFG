@@ -97,7 +97,7 @@ class ActividadService {
             throw BadRequestException("La descrpicion no puede superar los 600 caracteres")
         }
 
-        if (actividadCreateDTO.lugar.length > 600) {
+        if (actividadCreateDTO.lugar.length > 40) {
             throw BadRequestException("El lugar no puede superar los 40 caracteres")
         }
 
