@@ -187,6 +187,18 @@ class ActividadService {
             throw BadRequestException("La fecha de inicio debe ser anterior a la fecha de finalización")
         }
 
+
+        if (actividadUpdateDTO.nombre.length > 40) {
+            throw BadRequestException("El nombre de la actividad no puede superar los 40 caracteres")
+        }
+        if (actividadUpdateDTO.descripcion.length > 600) {
+            throw BadRequestException("La descrpicion no puede superar los 600 caracteres")
+        }
+
+        if (actividadUpdateDTO.lugar.length > 40) {
+            throw BadRequestException("El lugar no puede superar los 40 caracteres")
+        }
+
         val nombreAntiguo = actividad.nombre
         val nombreNuevo = actividadUpdateDTO.nombre
 
