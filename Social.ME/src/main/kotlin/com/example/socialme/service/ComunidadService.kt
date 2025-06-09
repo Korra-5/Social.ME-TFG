@@ -85,6 +85,16 @@ class ComunidadService {
         if (comunidadCreateDTO.nombre.length > 40) {
             throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
         }
+
+        if (comunidadCreateDTO.url.length > 40) {
+            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
+        }
+
+        if (comunidadCreateDTO.descripcion.length > 500) {
+            throw BadRequestException("Esta descripcion es demasiado larga, pruebe con uno inferior a 500 caracteres")
+        }
+
+
         if (comunidadCreateDTO.descripcion.length > 5000) {
             throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
         }
@@ -162,6 +172,18 @@ class ComunidadService {
         )
 
         validarIntereses(comunidadUpdateDTO.intereses)
+
+        if (comunidadUpdateDTO.nombre.length > 40) {
+            throw BadRequestException("Este nombre es demasiado largo, pruebe con uno inferior a 40 caracteres")
+        }
+
+        if (comunidadUpdateDTO.newUrl.length > 40) {
+            throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
+        }
+
+        if (comunidadUpdateDTO.descripcion.length > 500) {
+            throw BadRequestException("Esta descripcion es demasiado larga, pruebe con uno inferior a 500 caracteres")
+        }
 
         val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {
             throw NotFoundException("Comunidad con URL ${comunidadUpdateDTO.currentURL} no encontrada")
