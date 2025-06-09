@@ -126,14 +126,14 @@ class UsuarioService : UserDetailsService {
 
         // Validar provincia
         if (!externalAPIService.verificarProvinciaExiste(usuarioInsertadoDTO.direccion?.provincia ?: "")) {
-            throw BadRequestException("La provincia '${usuarioInsertadoDTO.direccion?.provincia}' no es válida")
+            throw BadRequestException("La provincia no es válida")
         }
 
         // Validar municipio
         if (!externalAPIService.verificarMunicipioExiste(usuarioInsertadoDTO.direccion?.municipio ?: "",
                 usuarioInsertadoDTO.direccion?.provincia ?: ""
             )) {
-            throw BadRequestException("El municipio '${usuarioInsertadoDTO.direccion?.municipio}' no existe en la provincia '${usuarioInsertadoDTO.direccion?.provincia}'")
+            throw BadRequestException("El municipio especificado no existe en la provincia indicada")
         }
 
         if (usuarioRepository.existsByUsername(usuarioInsertadoDTO.username)) {
