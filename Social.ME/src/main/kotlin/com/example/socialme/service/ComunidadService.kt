@@ -90,13 +90,9 @@ class ComunidadService {
             throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
         }
 
-        if (comunidadCreateDTO.descripcion.length > 500) {
-            throw BadRequestException("Esta descripcion es demasiado larga, pruebe con uno inferior a 500 caracteres")
-        }
 
-
-        if (comunidadCreateDTO.descripcion.length > 5000) {
-            throw BadRequestException("Lo sentimos, la descripción no puede superar los 5000 caracteres")
+        if (comunidadCreateDTO.descripcion.length > 1000) {
+            throw BadRequestException("Lo sentimos, la descripción no puede superar los 1000 caracteres")
         }
 
         val creador=usuarioRepository.findFirstByUsername(comunidadCreateDTO.creador).orElseThrow {
@@ -181,8 +177,8 @@ class ComunidadService {
             throw BadRequestException("Esta url es demasiado larga, pruebe con uno inferior a 40 caracteres")
         }
 
-        if (comunidadUpdateDTO.descripcion.length > 500) {
-            throw BadRequestException("Esta descripcion es demasiado larga, pruebe con uno inferior a 500 caracteres")
+        if (comunidadUpdateDTO.descripcion.length > 1000) {
+            throw BadRequestException("Lo sentimos, la descripción no puede superar los 1000 caracteres")
         }
 
         val comunidadExistente = comunidadRepository.findComunidadByUrl(comunidadUpdateDTO.currentURL).orElseThrow {
