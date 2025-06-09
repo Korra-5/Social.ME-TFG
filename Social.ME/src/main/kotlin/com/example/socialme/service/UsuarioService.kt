@@ -108,6 +108,22 @@ class UsuarioService : UserDetailsService {
 
         validarIntereses(usuarioInsertadoDTO.intereses)
 
+        if (usuarioInsertadoDTO.descripcion.length > 600) {
+            throw BadRequestException("La descripcion de un usuario no puede ser superior a 600 caracteres")
+        }
+
+        if (usuarioInsertadoDTO.nombre.length > 30) {
+            throw BadRequestException("El nombre de un usuario no puede ser superior a 30 caracteres")
+        }
+
+        if (usuarioInsertadoDTO.apellidos.length > 60) {
+            throw BadRequestException("Los apellidos de un usuario no pueden ser superiores a 60 caracteres")
+        }
+
+        if (usuarioInsertadoDTO.username.length > 30) {
+            throw BadRequestException("El username de un usuario no puede ser superior a 30 caracteres")
+        }
+
         // Validar provincia
         if (!externalAPIService.verificarProvinciaExiste(usuarioInsertadoDTO.direccion?.provincia ?: "")) {
             throw BadRequestException("La provincia '${usuarioInsertadoDTO.direccion?.provincia}' no es válida")
@@ -146,6 +162,23 @@ class UsuarioService : UserDetailsService {
         val usuario = usuarioRepository.findFirstByUsername(usuarioUpdateDTO.currentUsername).orElseThrow {
             throw NotFoundException("Usuario ${usuarioUpdateDTO.currentUsername} no encontrado")
         }
+
+        if (usuarioUpdateDTO.descripcion.length > 600) {
+            throw BadRequestException("La descripcion de un usuario no puede ser superior a 600 caracteres")
+        }
+
+        if (usuarioUpdateDTO.nombre.length > 30) {
+            throw BadRequestException("El nombre de un usuario no puede ser superior a 30 caracteres")
+        }
+
+        if (usuarioUpdateDTO.apellido.length > 60) {
+            throw BadRequestException("Los apellidos de un usuario no pueden ser superiores a 60 caracteres")
+        }
+
+        if ((usuarioUpdateDTO.newUsername?.length ?: usuarioUpdateDTO.currentUsername.length) > 30) {
+            throw BadRequestException("El username de un usuario no puede ser superior a 30 caracteres")
+        }
+
 
         ContentValidator.validarContenidoInapropiado(
             usuarioUpdateDTO.newUsername ?: "",
