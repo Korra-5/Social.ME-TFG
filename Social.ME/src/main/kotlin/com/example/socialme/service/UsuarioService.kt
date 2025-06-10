@@ -1324,16 +1324,21 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
 
         return true
     }
+
     fun verComunidadPorUsuario(username: String, usuarioSolicitante: String): List<ComunidadDTO> {
-        // Verificar que el usuario objetivo existe
         val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
             .orElseThrow { NotFoundException("Usuario $username no encontrado") }
 
-        // Verificar que el usuario solicitante existe
         usuarioRepository.findFirstByUsername(usuarioSolicitante)
             .orElseThrow { NotFoundException("Usuario solicitante $usuarioSolicitante no encontrado") }
 
-        // Si es el propio usuario, mostrar todas sus comunidades
+        val existeBloqueo = bloqueoRepository.existsByBloqueadorAndBloqueado(username, usuarioSolicitante) ||
+                bloqueoRepository.existsByBloqueadorAndBloqueado(usuarioSolicitante, username)
+
+        if (existeBloqueo && username != usuarioSolicitante) {
+            return emptyList()
+        }
+
         if (username == usuarioSolicitante) {
             val participaciones = participantesComunidadRepository.findByUsername(username)
             if (participaciones.isEmpty()) {
@@ -1362,22 +1367,18 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
             }
         }
 
-        // Si no es el propio usuario, verificar configuración de privacidad
         when (usuarioObjetivo.privacidadComunidades.uppercase()) {
             "NADIE" -> return emptyList()
             "AMIGOS" -> {
-                // Verificar si son amigos
                 val sonAmigos = verificarAmistad(username, usuarioSolicitante)
                 if (!sonAmigos) {
                     return emptyList()
                 }
             }
             "TODOS" -> {
-                // Permitir ver las comunidades
             }
         }
 
-        // Si llega aquí, puede ver las comunidades
         val participaciones = participantesComunidadRepository.findByUsername(username)
         if (participaciones.isEmpty()) {
             return emptyList()
@@ -1405,32 +1406,20 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
         }
     }
 
-    fun verificarAmistad(usuario1: String, usuario2: String): Boolean {
-        val amistad1 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario1, usuario2, true)
-        val amistad2 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario2, usuario1, true)
-        return amistad1 != null || amistad2 != null
-    }
-
-    fun usuarioEsAdmin(username: String):Boolean{
-        if (usuarioRepository.findFirstByUsername(username).orElseThrow{
-            throw NotFoundException("Este usuario no existe")
-            }.roles=="ADMIN"){
-            return true
-        }else{
-            return false
-        }
-    }
-
     fun verActividadesPorUsername(username: String, usuarioSolicitante: String): List<ActividadDTO> {
-        // Verificar que el usuario objetivo existe
         val usuarioObjetivo = usuarioRepository.findFirstByUsername(username)
             .orElseThrow { NotFoundException("Usuario $username no encontrado") }
 
-        // Verificar que el usuario solicitante existe
         usuarioRepository.findFirstByUsername(usuarioSolicitante)
             .orElseThrow { NotFoundException("Usuario solicitante $usuarioSolicitante no encontrado") }
 
-        // Si es el propio usuario, mostrar todas sus actividades
+        val existeBloqueo = bloqueoRepository.existsByBloqueadorAndBloqueado(username, usuarioSolicitante) ||
+                bloqueoRepository.existsByBloqueadorAndBloqueado(usuarioSolicitante, username)
+
+        if (existeBloqueo && username != usuarioSolicitante) {
+            return emptyList()
+        }
+
         if (username == usuarioSolicitante) {
             val participantes = participantesActividadRepository.findByUsername(username)
             val actividadesIds = participantes.map { it.idActividad }
@@ -1457,22 +1446,18 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
             }
         }
 
-        // Si no es el propio usuario, verificar configuración de privacidad
         when (usuarioObjetivo.privacidadActividades.uppercase()) {
             "NADIE" -> return emptyList()
             "AMIGOS" -> {
-                // Verificar si son amigos
                 val sonAmigos = verificarAmistad(username, usuarioSolicitante)
                 if (!sonAmigos) {
                     return emptyList()
                 }
             }
             "TODOS" -> {
-                // Permitir ver las actividades
             }
         }
 
-        // Si llega aquí, puede ver las actividades
         val participantes = participantesActividadRepository.findByUsername(username)
         val actividadesIds = participantes.map { it.idActividad }
         val actividadesEncontradas = mutableListOf<Actividad>()
@@ -1495,6 +1480,22 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
                 coordenadas = actividad.coordenadas,
                 lugar = actividad.lugar
             )
+        }
+    }
+
+    fun verificarAmistad(usuario1: String, usuario2: String): Boolean {
+        val amistad1 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario1, usuario2, true)
+        val amistad2 = solicitudesAmistadRepository.findByRemitenteAndDestinatarioAndAceptada(usuario2, usuario1, true)
+        return amistad1 != null || amistad2 != null
+    }
+
+    fun usuarioEsAdmin(username: String):Boolean{
+        if (usuarioRepository.findFirstByUsername(username).orElseThrow{
+            throw NotFoundException("Este usuario no existe")
+            }.roles=="ADMIN"){
+            return true
+        }else{
+            return false
         }
     }
     fun cambiarRadarDistancia(username: String, radar: String): UsuarioDTO {
