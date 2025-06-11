@@ -426,7 +426,7 @@ class ComunidadService {
         if (codigo == comunidad.codigoUnion) {
             val union = ParticipantesComunidad(
                 _id = null,
-                comunidad = participantesComunidadDTO.comunidad,
+                comunidad = url,
                 username = participantesComunidadDTO.username,
                 fechaUnion = Date.from(Instant.now())
             )
