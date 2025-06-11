@@ -460,6 +460,36 @@ class ActividadService {
         return actividadDTO
     }
 
+
+    private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
+        if (coordenadasActividad == null || coordenadasUser == null || distanciaKm == null) {
+            return true
+        }
+
+        val distanciaCalculada = GeoUtils.calcularDistancia(coordenadasUser, coordenadasActividad)
+
+        return distanciaCalculada <= distanciaKm
+    }
+
+    fun salirActividad(participantesActividadDTO: ParticipantesActividadDTO):ParticipantesActividadDTO{
+        val union = participantesActividadRepository.findByUsernameAndIdActividad(username = participantesActividadDTO.username, actividadId = participantesActividadDTO.actividadId).orElseThrow {
+            throw NotFoundException("No te has unido a esta actividad")
+        }
+        participantesActividadRepository.delete(union)
+
+        return participantesActividadDTO
+    }
+
+    fun booleanUsuarioApuntadoActividad(participantesActividadDTO: ParticipantesActividadDTO):Boolean{
+        actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
+            .orElseThrow { BadRequestException("Esta actividad no existe") }
+
+        if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
+            throw NotFoundException("Usuario no encontrado")
+        }
+
+        return participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent
+    }
     fun verActividadesPublicasEnZonaFechaSuperior(
         username: String
     ): List<ActividadDTO> {
@@ -499,6 +529,10 @@ class ActividadService {
                 } else {
                     true
                 }
+            }
+            .filter { actividad ->
+                val comunidad = actividadesComunidades[actividad]
+                comunidad?.expulsadosUsername?.contains(username) != true
             }
             .filter { actividad ->
                 actividad.fechaInicio.after(fechaActual)
@@ -568,6 +602,10 @@ class ActividadService {
                 }
             }
             .filter { actividad ->
+                val comunidad = actividadesComunidades[actividad]
+                comunidad?.expulsadosUsername?.contains(username) != true
+            }
+            .filter { actividad ->
                 verificarDistancia(actividad.coordenadas, coordenadasUser, distancia)
             }
             .map { actividad ->
@@ -592,39 +630,13 @@ class ActividadService {
             })
     }
 
-    private fun verificarDistancia(coordenadasActividad: Coordenadas?, coordenadasUser: Coordenadas?, distanciaKm: Float?): Boolean {
-        if (coordenadasActividad == null || coordenadasUser == null || distanciaKm == null) {
-            return true
-        }
-
-        val distanciaCalculada = GeoUtils.calcularDistancia(coordenadasUser, coordenadasActividad)
-
-        return distanciaCalculada <= distanciaKm
-    }
-
-    fun salirActividad(participantesActividadDTO: ParticipantesActividadDTO):ParticipantesActividadDTO{
-        val union = participantesActividadRepository.findByUsernameAndIdActividad(username = participantesActividadDTO.username, actividadId = participantesActividadDTO.actividadId).orElseThrow {
-            throw NotFoundException("No te has unido a esta actividad")
-        }
-        participantesActividadRepository.delete(union)
-
-        return participantesActividadDTO
-    }
-
-    fun booleanUsuarioApuntadoActividad(participantesActividadDTO: ParticipantesActividadDTO):Boolean{
-        actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
-            .orElseThrow { BadRequestException("Esta actividad no existe") }
-
-        if (usuarioRepository.findFirstByUsername(participantesActividadDTO.username).isEmpty) {
-            throw NotFoundException("Usuario no encontrado")
-        }
-
-        return participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent
-    }
-
-    fun verActividadesPorComunidadFechaSuperior(comunidad: String): List<ActividadDTO> {
-        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
+    fun verActividadesPorComunidadFechaSuperior(comunidad: String, username: String): List<ActividadDTO> {
+        val comunidadObj = comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
             throw NotFoundException("Esta comunidad no existe")
+        }
+
+        if (comunidadObj.expulsadosUsername.contains(username)) {
+            return emptyList()
         }
 
         val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad)
@@ -658,9 +670,13 @@ class ActividadService {
         return actividadesDTO
     }
 
-    fun verActividadesPorComunidadCualquierFecha(comunidad: String): List<ActividadDTO> {
-        comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
+    fun verActividadesPorComunidadCualquierFecha(comunidad: String, username: String): List<ActividadDTO> {
+        val comunidadObj = comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
             throw NotFoundException("Esta comunidad no existe")
+        }
+
+        if (comunidadObj.expulsadosUsername.contains(username)) {
+            return emptyList()
         }
 
         val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidad)
