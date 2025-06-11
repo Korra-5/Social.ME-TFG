@@ -191,14 +191,14 @@ class UsuarioService : UserDetailsService {
 
         // Validar provincia si se está modificando
         if (!externalAPIService.verificarProvinciaExiste(usuarioUpdateDTO.direccion.provincia)) {
-            throw BadRequestException("La provincia '${usuarioUpdateDTO.direccion.provincia}' no es válida")
+            throw BadRequestException("La provincia no es válida")
         }
 
         // Validar municipio si se está modificando
         val provinciaAValidar = usuarioUpdateDTO.direccion.provincia ?: usuario.direccion?.provincia
         if (provinciaAValidar != null) {
             if (!externalAPIService.verificarMunicipioExiste(usuarioUpdateDTO.direccion.municipio, provinciaAValidar)) {
-                throw BadRequestException("El municipio '${usuarioUpdateDTO.direccion.municipio}' no existe en la provincia '$provinciaAValidar'")
+                throw BadRequestException("El municipio no existe en la provincia indicada")
             }
         } else {
             throw BadRequestException("Se debe proporcionar una provincia válida para validar el municipio")
