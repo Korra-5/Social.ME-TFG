@@ -127,7 +127,8 @@ class ComunidadService {
                 url = usuarioService.normalizarTexto(formattedUrl),
                 privada = comunidadCreateDTO.privada,
                 coordenadas = comunidadCreateDTO.coordenadas,
-                codigoUnion = if (comunidadCreateDTO.privada) {
+                expulsadosUsername = listOf(),
+                        codigoUnion = if (comunidadCreateDTO.privada) {
                     generarCodigoUnico()
                 }else{
                     null
@@ -156,7 +157,8 @@ class ComunidadService {
             administradores = null,
             privada = comunidadCreateDTO.privada,
             coordenadas = comunidadCreateDTO.coordenadas,
-            codigoUnion = comunidadCreateDTO.codigoUnion
+            codigoUnion = comunidadCreateDTO.codigoUnion,
+            expulsadosUsername = listOf(),
         )
     }
 
@@ -353,20 +355,23 @@ class ComunidadService {
             administradores = comunidadActualizada.administradores,
             privada = comunidadActualizada.privada,
             coordenadas = comunidadActualizada.coordenadas,
-            codigoUnion = comunidadActualizada.codigoUnion
+            codigoUnion = comunidadActualizada.codigoUnion,
+            expulsadosUsername = comunidadActualizada.expulsadosUsername
         )
     }
-
     fun unirseComunidad(participantesComunidadDTO: ParticipantesComunidadDTO): ParticipantesComunidadDTO {
-        comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+        val comunidad = comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
             .orElseThrow { BadRequestException("La comunidad no existe") }
 
         val usuario = usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
 
-        // Los ADMIN no pueden unirse a comunidades
         if (usuario.roles == "ADMIN") {
             throw BadRequestException("Los administradores no pueden unirse a comunidades")
+        }
+
+        if (comunidad.expulsadosUsername.contains(participantesComunidadDTO.username)) {
+            throw BadRequestException("Has sido expulsado de esta comunidad y no puedes volver a unirte")
         }
 
         if (participantesComunidadRepository.findByUsernameAndComunidad(
@@ -385,7 +390,6 @@ class ComunidadService {
         )
 
         participantesComunidadRepository.insert(union)
-
         return participantesComunidadDTO
     }
 
@@ -400,9 +404,12 @@ class ComunidadService {
         val usuario = usuarioRepository.findFirstByUsername(participantesComunidadDTO.username)
             .orElseThrow { NotFoundException("Usuario no encontrado") }
 
-        // Los ADMIN no pueden unirse a comunidades
         if (usuario.roles == "ADMIN") {
             throw BadRequestException("Los administradores no pueden unirse a comunidades")
+        }
+
+        if (comunidad.expulsadosUsername.contains(participantesComunidadDTO.username)) {
+            throw BadRequestException("Has sido expulsado de esta comunidad y no puedes volver a unirte")
         }
 
         if (participantesComunidadRepository.findByUsernameAndComunidad(
@@ -422,11 +429,86 @@ class ComunidadService {
             )
 
             participantesComunidadRepository.insert(union)
-
             return participantesComunidadDTO
         } else {
             throw BadRequestException("El codigo de union no es correcto")
         }
+    }
+
+    fun expulsarUsuario(username: String, url: String, usuarioSolicitante: String): ComunidadDTO {
+        val comunidad = comunidadRepository.findComunidadByUrl(url)
+            .orElseThrow { NotFoundException("Comunidad no encontrada") }
+
+        usuarioRepository.findFirstByUsername(username)
+            .orElseThrow { NotFoundException("Usuario a eliminar no encontrado") }
+
+        usuarioRepository.findFirstByUsername(usuarioSolicitante)
+            .orElseThrow { NotFoundException("Usuario solicitante no encontrado") }
+
+        if (comunidad.expulsadosUsername.contains(username)) {
+            throw BadRequestException("El usuario ya está expulsado de esta comunidad")
+        }
+
+        val participacion = participantesComunidadRepository.findByUsernameAndComunidad(username, url)
+            .orElseThrow { BadRequestException("El usuario a eliminar no pertenece a esta comunidad") }
+
+        val esCreador = comunidad.creador == usuarioSolicitante
+        val esAdmin = comunidad.administradores?.contains(usuarioSolicitante) ?: false
+
+        if (!esCreador && !esAdmin) {
+            throw ForbiddenException("No tienes permisos para eliminar usuarios de esta comunidad")
+        }
+
+        if (!esCreador && esAdmin) {
+            val usuarioAEliminarEsCreador = comunidad.creador == username
+            val usuarioAEliminarEsAdmin = comunidad.administradores?.contains(username) ?: false
+
+            if (usuarioAEliminarEsCreador || usuarioAEliminarEsAdmin) {
+                throw ForbiddenException("Los administradores no pueden eliminar al creador ni a otros administradores")
+            }
+        }
+
+        if (esCreador && username == usuarioSolicitante) {
+            throw BadRequestException("El creador no puede abandonar la comunidad")
+        }
+
+        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(url).orElse(emptyList())
+        actividadesComunidad.forEach { actividadComunidad ->
+            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad).orElse(null)
+            if (actividad != null && actividad.privada) {
+                val participacionActividad = participantesActividadRepository.findByUsernameAndIdActividad(
+                    username,
+                    actividadComunidad.idActividad ?: ""
+                )
+                if (participacionActividad.isPresent) {
+                    participantesActividadRepository.delete(participacionActividad.get())
+                }
+            }
+        }
+
+        participantesComunidadRepository.delete(participacion)
+
+        val expulsadosActualizados = comunidad.expulsadosUsername.toMutableList()
+        expulsadosActualizados.add(username)
+
+        val comunidadActualizada = comunidad.copy(expulsadosUsername = expulsadosActualizados)
+        comunidadRepository.save(comunidadActualizada)
+
+        return ComunidadDTO(
+            url = comunidadActualizada.url,
+            nombre = comunidadActualizada.nombre,
+            descripcion = comunidadActualizada.descripcion,
+            intereses = comunidadActualizada.intereses,
+            fotoPerfilId = comunidadActualizada.fotoPerfilId,
+            fotoCarruselIds = comunidadActualizada.fotoCarruselIds,
+            creador = comunidadActualizada.creador,
+            administradores = comunidadActualizada.administradores,
+            fechaCreacion = comunidadActualizada.fechaCreacion,
+            privada = comunidadActualizada.privada,
+            coordenadas = comunidadActualizada.coordenadas,
+            codigoUnion = comunidadActualizada.codigoUnion,
+            expulsadosUsername = comunidadActualizada.expulsadosUsername
+        )
     }
 
     fun verComunidadPorUrl(url: String) : ComunidadDTO {
@@ -445,7 +527,8 @@ class ComunidadService {
             privada = comunidad.privada,
             url =comunidad.url,
             coordenadas = comunidad.coordenadas,
-            codigoUnion = comunidad.codigoUnion
+            codigoUnion = comunidad.codigoUnion,
+            expulsadosUsername = comunidad.expulsadosUsername
         )
     }
 
@@ -494,7 +577,8 @@ class ComunidadService {
                     fechaCreacion = comunidad.fechaCreacion,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
+                    codigoUnion = comunidad.codigoUnion,
+                    expulsadosUsername = comunidad.expulsadosUsername
                 )
             }
             .sortedWith(compareByDescending<ComunidadDTO> { comunidadDTO ->
@@ -535,7 +619,8 @@ class ComunidadService {
             administradores = comunidad.administradores,
             privada = comunidad.privada,
             coordenadas = comunidad.coordenadas,
-            codigoUnion = comunidad.codigoUnion
+            codigoUnion = comunidad.codigoUnion,
+            expulsadosUsername = comunidad.expulsadosUsername
         )
 
         // Obtener todas las actividades de la comunidad y eliminar participaciones
@@ -673,7 +758,8 @@ class ComunidadService {
                     fechaCreacion = comunidad.fechaCreacion,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
+                    codigoUnion = comunidad.codigoUnion,
+                    expulsadosUsername = comunidad.expulsadosUsername
                 )
             }
     }
@@ -728,79 +814,13 @@ class ComunidadService {
                 administradores = comunidad.administradores,
                 privada = comunidad.privada,
                 coordenadas = comunidad.coordenadas,
-                codigoUnion = comunidad.codigoUnion
+                codigoUnion = comunidad.codigoUnion,
+                expulsadosUsername = comunidad.expulsadosUsername
+
             )
         }
     }
 
-    fun eliminarUsuarioDeComunidad(
-        participantesComunidadDTO: ParticipantesComunidadDTO,
-        usuarioSolicitante: String
-    ): ParticipantesComunidadDTO {
-        val usuarioAEliminar = participantesComunidadDTO.username
-        val comunidadUrl = participantesComunidadDTO.comunidad
-
-        // Verificar que la comunidad existe
-        val comunidad = comunidadRepository.findComunidadByUrl(comunidadUrl)
-            .orElseThrow { NotFoundException("Comunidad no encontrada") }
-
-        // Verificar que el usuario a eliminar existe
-        usuarioRepository.findFirstByUsername(usuarioAEliminar)
-            .orElseThrow { NotFoundException("Usuario a eliminar no encontrado") }
-
-        // Verificar que el usuario solicitante existe
-        usuarioRepository.findFirstByUsername(usuarioSolicitante)
-            .orElseThrow { NotFoundException("Usuario solicitante no encontrado") }
-
-        // Verificar si el usuario a eliminar pertenece a la comunidad
-        val participacion = participantesComunidadRepository.findByUsernameAndComunidad(
-            usuarioAEliminar, comunidadUrl
-        ).orElseThrow { BadRequestException("El usuario a eliminar no pertenece a esta comunidad") }
-
-        // Verificar si el usuario solicitante es creador o administrador
-        val esCreador = comunidad.creador == usuarioSolicitante
-        val esAdmin = comunidad.administradores?.contains(usuarioSolicitante) ?: false
-
-        if (!esCreador && !esAdmin) {
-            throw ForbiddenException("No tienes permisos para eliminar usuarios de esta comunidad")
-        }
-
-        // Verificar permisos según roles
-        if (!esCreador && esAdmin) {
-            val usuarioAEliminarEsCreador = comunidad.creador == usuarioAEliminar
-            val usuarioAEliminarEsAdmin = comunidad.administradores?.contains(usuarioAEliminar) ?: false
-
-            if (usuarioAEliminarEsCreador || usuarioAEliminarEsAdmin) {
-                throw ForbiddenException("Los administradores no pueden eliminar al creador ni a otros administradores")
-            }
-        }
-
-        // No permitir que el creador se elimine a sí mismo
-        if (esCreador && usuarioAEliminar == usuarioSolicitante) {
-            throw BadRequestException("El creador no puede abandonar la comunidad")
-        }
-
-        // NUEVO: Eliminar participaciones en actividades privadas de esta comunidad
-        val actividadesComunidad = actividadesComunidadRepository.findByComunidad(comunidadUrl).orElse(emptyList())
-        actividadesComunidad.forEach { actividadComunidad ->
-            val actividad = actividadRepository.findActividadBy_id(actividadComunidad.idActividad).orElse(null)
-            // Si la actividad es privada, eliminar la participación del usuario
-            if (actividad != null && actividad.privada) {
-                val participacionActividad = participantesActividadRepository.findByUsernameAndIdActividad(
-                    usuarioAEliminar,
-                    actividadComunidad.idActividad ?: ""
-                )
-                if (participacionActividad.isPresent) {
-                    participantesActividadRepository.delete(participacionActividad.get())
-                }
-            }
-        }
-
-        // Eliminar al usuario de la comunidad
-        participantesComunidadRepository.delete(participacion)
-
-        return participantesComunidadDTO
-    }
 
     fun cambiarCreadorComunidad(comunidadUrl: String, creadorActual: String, nuevoCreador: String): ComunidadDTO {
         // Verificar que la comunidad existe
@@ -858,7 +878,9 @@ class ComunidadService {
             administradores = comunidadActualizada.administradores,
             privada = comunidadActualizada.privada,
             coordenadas = comunidadActualizada.coordenadas,
-            codigoUnion = comunidadActualizada.codigoUnion
+            codigoUnion = comunidadActualizada.codigoUnion,
+            expulsadosUsername = comunidad.expulsadosUsername
+
         )
     }
 

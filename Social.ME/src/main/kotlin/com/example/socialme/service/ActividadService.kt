@@ -40,6 +40,7 @@ class ActividadService {
     @Autowired
     private lateinit var gridFSService: GridFSService
 
+
     fun unirseActividad(participantesActividadDTO: ParticipantesActividadDTO): ParticipantesActividadDTO {
         val actividad = actividadRepository.findActividadBy_id(participantesActividadDTO.actividadId)
             .orElseThrow { BadRequestException("Esta actividad no existe") }
@@ -49,6 +50,13 @@ class ActividadService {
 
         if (usuario.roles == "ADMIN") {
             throw BadRequestException("Los administradores no pueden unirse a actividades")
+        }
+
+        val comunidad = comunidadRepository.findComunidadByUrl(actividad.comunidad)
+            .orElseThrow { BadRequestException("La comunidad de la actividad no existe") }
+
+        if (comunidad.expulsadosUsername.contains(participantesActividadDTO.username)) {
+            throw BadRequestException("Has sido expulsado de la comunidad de esta actividad y no puedes unirte")
         }
 
         if (actividad.fechaFinalizacion.before(Date())) {
@@ -79,7 +87,6 @@ class ActividadService {
         )
 
         participantesActividadRepository.insert(participante)
-
         return participantesActividadDTO
     }
 
@@ -777,7 +784,9 @@ class ActividadService {
             privada = comunidad.privada,
             url =comunidad.url,
             coordenadas = comunidad.coordenadas,
-            codigoUnion = comunidad.codigoUnion
+            codigoUnion = comunidad.codigoUnion,
+            expulsadosUsername = comunidad.expulsadosUsername
+
         )
     }
 }

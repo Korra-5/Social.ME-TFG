@@ -1361,7 +1361,8 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
                         fechaCreacion = comunidad.fechaCreacion,
                         privada = comunidad.privada,
                         coordenadas = comunidad.coordenadas,
-                        codigoUnion = comunidad.codigoUnion
+                        codigoUnion = comunidad.codigoUnion,
+                        expulsadosUsername = comunidad.expulsadosUsername
                     )
                 } else null
             }
@@ -1400,7 +1401,8 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
                     fechaCreacion = comunidad.fechaCreacion,
                     privada = comunidad.privada,
                     coordenadas = comunidad.coordenadas,
-                    codigoUnion = comunidad.codigoUnion
+                    codigoUnion = comunidad.codigoUnion,
+                    expulsadosUsername = comunidad.expulsadosUsername
                 )
             } else null
         }

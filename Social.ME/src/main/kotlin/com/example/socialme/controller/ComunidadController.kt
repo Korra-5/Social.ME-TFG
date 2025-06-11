@@ -1,9 +1,6 @@
 package com.example.socialme.controller
 
-import com.example.socialme.dto.ComunidadCreateDTO
-import com.example.socialme.dto.ComunidadDTO
-import com.example.socialme.dto.ComunidadUpdateDTO
-import com.example.socialme.dto.ParticipantesComunidadDTO
+import com.example.socialme.dto.*
 import com.example.socialme.model.Comunidad
 import com.example.socialme.model.ParticipantesComunidad
 import com.example.socialme.service.ComunidadService
@@ -30,6 +27,17 @@ class ComunidadController {
         @RequestBody comunidadCreateDTO: ComunidadCreateDTO
     ) : ResponseEntity<ComunidadDTO> {
         val comunidad=comunidadService.crearComunidad(comunidadCreateDTO)
+        return ResponseEntity(comunidad, HttpStatus.CREATED)
+    }
+
+    @PutMapping("/expulsarUsuario/{username}/{url}/{usuarioSolicitante}")
+    fun expulsarUsuario(
+        httpRequest: HttpServletRequest,
+        @PathVariable("username") username: String,
+        @PathVariable("url") url: String,
+        @PathVariable("usuarioSolicitante") usuarioSolicitante: String
+    ): ResponseEntity<ComunidadDTO> {
+        val comunidad=comunidadService.expulsarUsuario(username, url, usuarioSolicitante)
         return ResponseEntity(comunidad, HttpStatus.CREATED)
     }
 
@@ -145,14 +153,6 @@ class ComunidadController {
         return ResponseEntity(comunidadService.verificarCreadorAdministradorComunidad(comunidadUrl, username), HttpStatus.OK)
     }
 
-    @DeleteMapping("/eliminarUsuarioDeComunidad/{usuarioSolicitante}")
-    fun eliminarUsuarioDeComunidad(
-        httpRequest: HttpServletRequest,
-        @RequestBody participantesComunidadDTO: ParticipantesComunidadDTO,
-        @PathVariable usuarioSolicitante: String
-    ) : ResponseEntity<ParticipantesComunidadDTO> {
-        return ResponseEntity(comunidadService.eliminarUsuarioDeComunidad(participantesComunidadDTO, usuarioSolicitante), HttpStatus.OK)
-    }
     @PutMapping("/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}")
     fun cambiarCreadorComunidad(
         httpRequest: HttpServletRequest,

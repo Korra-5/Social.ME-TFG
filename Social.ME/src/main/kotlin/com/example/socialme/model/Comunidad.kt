@@ -20,5 +20,6 @@ data class Comunidad(
     val fechaCreacion: Date,
     var privada: Boolean,
     var coordenadas: Coordenadas?,
-    val codigoUnion: String?
+    val codigoUnion: String?,
+    val expulsadosUsername:List<String>
 )
