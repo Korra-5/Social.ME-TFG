@@ -18,8 +18,6 @@ class TokenService {
 
     fun generarToken(authentication: Authentication) : String {
 
-        println("diediejdei")
-
         val roles: String = authentication.authorities.joinToString(" ") { it.authority } // Contiene los roles del usuario
 
         val payload: JwtClaimsSet = JwtClaimsSet.builder()

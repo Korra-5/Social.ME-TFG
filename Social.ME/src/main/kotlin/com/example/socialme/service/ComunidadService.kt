@@ -394,7 +394,10 @@ class ComunidadService {
     }
 
     fun unirseComunidadPorCodigo(participantesComunidadDTO: ParticipantesComunidadDTO, codigo: String): ParticipantesComunidadDTO {
-        val comunidad = comunidadRepository.findComunidadByUrl(participantesComunidadDTO.comunidad)
+
+        val url = participantesComunidadDTO.comunidad.trim().split(Regex("\\s+")).joinToString("-").toLowerCase()
+
+        val comunidad = comunidadRepository.findComunidadByUrl(url)
             .orElseThrow { BadRequestException("La comunidad no existe") }
 
         if (comunidad.codigoUnion == null) {
