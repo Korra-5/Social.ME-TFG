@@ -490,6 +490,7 @@ class ActividadService {
 
         return participantesActividadRepository.findByUsernameAndIdActividad(participantesActividadDTO.username, participantesActividadDTO.actividadId).isPresent
     }
+
     fun verActividadesPublicasEnZonaFechaSuperior(
         username: String
     ): List<ActividadDTO> {
@@ -630,6 +631,76 @@ class ActividadService {
             })
     }
 
+    fun verTodasActividadesPublicasFechaSuperior(username: String): List<ActividadDTO> {
+        val todasLasActividades = actividadRepository.findAll()
+        val fechaActual = Date()
+
+        return todasLasActividades
+            .filter { !it.privada }
+            .filter { actividad ->
+                actividad.fechaInicio.after(fechaActual)
+            }
+            .filter { actividad ->
+                val actividadComunidad = actividadesComunidadRepository.findActividadesComunidadByIdActividad(actividad._id!!)
+                    .orElse(null)
+
+                if (actividadComunidad != null) {
+                    val comunidad = comunidadRepository.findComunidadByUrl(actividadComunidad.comunidad!!)
+                        .orElse(null)
+                    comunidad?.expulsadosUsername?.contains(username) != true
+                } else {
+                    true
+                }
+            }
+            .map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    _id = actividad._id,
+                    coordenadas = actividad.coordenadas,
+                    lugar = actividad.lugar
+                )
+            }
+    }
+
+    fun verTodasActividadesPublicasCualquierFecha(username: String): List<ActividadDTO> {
+        val todasLasActividades = actividadRepository.findAll()
+
+        return todasLasActividades
+            .filter { !it.privada }
+            .filter { actividad ->
+                val actividadComunidad = actividadesComunidadRepository.findActividadesComunidadByIdActividad(actividad._id!!)
+                    .orElse(null)
+
+                if (actividadComunidad != null) {
+                    val comunidad = comunidadRepository.findComunidadByUrl(actividadComunidad.comunidad!!)
+                        .orElse(null)
+                    comunidad?.expulsadosUsername?.contains(username) != true
+                } else {
+                    true
+                }
+            }
+            .map { actividad ->
+                ActividadDTO(
+                    nombre = actividad.nombre,
+                    descripcion = actividad.descripcion,
+                    privada = actividad.privada,
+                    creador = actividad.creador,
+                    fotosCarruselIds = actividad.fotosCarruselIds,
+                    fechaFinalizacion = actividad.fechaFinalizacion,
+                    fechaInicio = actividad.fechaInicio,
+                    _id = actividad._id,
+                    coordenadas = actividad.coordenadas,
+                    lugar = actividad.lugar
+                )
+            }
+    }
+
     fun verActividadesPorComunidadFechaSuperior(comunidad: String, username: String): List<ActividadDTO> {
         val comunidadObj = comunidadRepository.findComunidadByUrl(comunidad).orElseThrow {
             throw NotFoundException("Esta comunidad no existe")
@@ -734,61 +805,7 @@ class ActividadService {
 
         return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
-    fun verTodasActividadesPublicasFechaSuperior(username: String): List<ActividadDTO> {
-        val todasLasActividades = actividadRepository.findAll()
-        val fechaActual = Date()
-        val todasLasComunidades = comunidadRepository.findAll()
 
-        return todasLasActividades
-            .filter { !it.privada }
-            .filter { actividad ->
-                actividad.fechaInicio.after(fechaActual)
-            }
-            .filter { actividad ->
-                val comunidadCreadora = todasLasComunidades.find { it.creador == actividad.creador }
-                comunidadCreadora?.expulsadosUsername?.contains(username) != true
-            }
-            .map { actividad ->
-                ActividadDTO(
-                    nombre = actividad.nombre,
-                    descripcion = actividad.descripcion,
-                    privada = actividad.privada,
-                    creador = actividad.creador,
-                    fotosCarruselIds = actividad.fotosCarruselIds,
-                    fechaFinalizacion = actividad.fechaFinalizacion,
-                    fechaInicio = actividad.fechaInicio,
-                    _id = actividad._id,
-                    coordenadas = actividad.coordenadas,
-                    lugar = actividad.lugar
-                )
-            }
-    }
-
-    fun verTodasActividadesPublicasCualquierFecha(username: String): List<ActividadDTO> {
-        val todasLasActividades = actividadRepository.findAll()
-        val todasLasComunidades = comunidadRepository.findAll()
-
-        return todasLasActividades
-            .filter { !it.privada }
-            .filter { actividad ->
-                val comunidadCreadora = todasLasComunidades.find { it.creador == actividad.creador }
-                comunidadCreadora?.expulsadosUsername?.contains(username) != true
-            }
-            .map { actividad ->
-                ActividadDTO(
-                    nombre = actividad.nombre,
-                    descripcion = actividad.descripcion,
-                    privada = actividad.privada,
-                    creador = actividad.creador,
-                    fotosCarruselIds = actividad.fotosCarruselIds,
-                    fechaFinalizacion = actividad.fechaFinalizacion,
-                    fechaInicio = actividad.fechaInicio,
-                    _id = actividad._id,
-                    coordenadas = actividad.coordenadas,
-                    lugar = actividad.lugar
-                )
-            }
-    }
 
     fun verComunidadPorActividad(IdActividad:String):ComunidadDTO{
         val comunidad=comunidadRepository.findComunidadByUrl(
