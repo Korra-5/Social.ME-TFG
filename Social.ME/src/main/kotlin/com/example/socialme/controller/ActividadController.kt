@@ -100,20 +100,18 @@ class ActividadController {
         return  ResponseEntity(actividadService.verActividadesPublicasEnZonaCualquierFecha(username), HttpStatus.OK)
     }
 
-    @GetMapping("/verTodasActividadesPublicasFechaSuperior/{username}")
+    @GetMapping("/verTodasActividadesPublicasFechaSuperior")
     fun verTodasActividadesPublicasFechaSuperior(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verTodasActividadesPublicasFechaSuperior(username), HttpStatus.OK)
+    ): ResponseEntity<List<ActividadDTO>>{
+        return  ResponseEntity(actividadService.verTodasActividadesPublicasFechaSuperior(), HttpStatus.OK)
     }
 
-    @GetMapping("/verTodasActividadesPublicasCualquierFecha/{username}")
+    @GetMapping("/verTodasActividadesPublicasCualquierFecha")
     fun verTodasActividadesPublicasCualquierFecha(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String,
-        ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verTodasActividadesPublicasCualquierFecha(username), HttpStatus.OK)
+    ): ResponseEntity<List<ActividadDTO>>{
+        return  ResponseEntity(actividadService.verTodasActividadesPublicasCualquierFecha(), HttpStatus.OK)
     }
 
     @PutMapping("/modificarActividad")
@@ -132,22 +130,20 @@ class ActividadController {
         return ResponseEntity(actividadService.booleanUsuarioApuntadoActividad(participantesActividadDTO), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadesPorComunidadFechaSuperior/{comunidad}/{username}")
+    @GetMapping("/verActividadesPorComunidadFechaSuperior/{comunidad}")
     fun verActividadesPorComunidadFechaSuperior(
         httpRequest: HttpServletRequest,
-        @PathVariable comunidad: String,
-        @PathVariable username: String,
-        ):ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(actividadService.verActividadesPorComunidadFechaSuperior(comunidad, username), HttpStatus.OK)
+        @PathVariable comunidad: String
+    ):ResponseEntity<List<ActividadDTO>> {
+        return ResponseEntity(actividadService.verActividadesPorComunidadFechaSuperior(comunidad), HttpStatus.OK)
     }
 
-    @GetMapping("/verActividadesPorComunidadCualquierFecha/{comunidad}/{username}")
+    @GetMapping("/verActividadesPorComunidadCualquierFecha/{comunidad}")
     fun verActividadesPorComunidadCualquierFecha(
         httpRequest: HttpServletRequest,
-        @PathVariable comunidad: String,
-        @PathVariable username: String
+        @PathVariable comunidad: String
     ):ResponseEntity<List<ActividadDTO>> {
-        return ResponseEntity(actividadService.verActividadesPorComunidadCualquierFecha(comunidad, username), HttpStatus.OK)
+        return ResponseEntity(actividadService.verActividadesPorComunidadCualquierFecha(comunidad), HttpStatus.OK)
     }
 
     @GetMapping("/contarUsuariosEnUnaActividad/{actividadId}")
