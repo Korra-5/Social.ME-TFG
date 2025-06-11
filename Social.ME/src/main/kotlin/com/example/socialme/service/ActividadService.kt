@@ -734,14 +734,19 @@ class ActividadService {
 
         return comunidad.creador == username || comunidad.administradores!!.contains(username)
     }
-
-    fun verTodasActividadesPublicasFechaSuperior():List<ActividadDTO>{
+    fun verTodasActividadesPublicasFechaSuperior(username: String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
         val fechaActual = Date()
+        val todasLasComunidades = comunidadRepository.findAll()
+
         return todasLasActividades
             .filter { !it.privada }
             .filter { actividad ->
                 actividad.fechaInicio.after(fechaActual)
+            }
+            .filter { actividad ->
+                val comunidadCreadora = todasLasComunidades.find { it.creador == actividad.creador }
+                comunidadCreadora?.expulsadosUsername?.contains(username) != true
             }
             .map { actividad ->
                 ActividadDTO(
@@ -759,10 +764,16 @@ class ActividadService {
             }
     }
 
-    fun verTodasActividadesPublicasCualquierFecha():List<ActividadDTO>{
+    fun verTodasActividadesPublicasCualquierFecha(username: String): List<ActividadDTO> {
         val todasLasActividades = actividadRepository.findAll()
+        val todasLasComunidades = comunidadRepository.findAll()
+
         return todasLasActividades
             .filter { !it.privada }
+            .filter { actividad ->
+                val comunidadCreadora = todasLasComunidades.find { it.creador == actividad.creador }
+                comunidadCreadora?.expulsadosUsername?.contains(username) != true
+            }
             .map { actividad ->
                 ActividadDTO(
                     nombre = actividad.nombre,

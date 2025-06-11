@@ -100,18 +100,20 @@ class ActividadController {
         return  ResponseEntity(actividadService.verActividadesPublicasEnZonaCualquierFecha(username), HttpStatus.OK)
     }
 
-    @GetMapping("/verTodasActividadesPublicasFechaSuperior")
+    @GetMapping("/verTodasActividadesPublicasFechaSuperior/{username}")
     fun verTodasActividadesPublicasFechaSuperior(
         httpRequest: HttpServletRequest,
+        @PathVariable username: String
     ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verTodasActividadesPublicasFechaSuperior(), HttpStatus.OK)
+        return  ResponseEntity(actividadService.verTodasActividadesPublicasFechaSuperior(username), HttpStatus.OK)
     }
 
-    @GetMapping("/verTodasActividadesPublicasCualquierFecha")
+    @GetMapping("/verTodasActividadesPublicasCualquierFecha/{username}")
     fun verTodasActividadesPublicasCualquierFecha(
         httpRequest: HttpServletRequest,
+        @PathVariable username: String
     ): ResponseEntity<List<ActividadDTO>>{
-        return  ResponseEntity(actividadService.verTodasActividadesPublicasCualquierFecha(), HttpStatus.OK)
+        return  ResponseEntity(actividadService.verTodasActividadesPublicasCualquierFecha(username), HttpStatus.OK)
     }
 
     @PutMapping("/modificarActividad")
