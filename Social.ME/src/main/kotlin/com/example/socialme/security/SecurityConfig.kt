@@ -94,6 +94,7 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/verComunidadesPublicasEnZona/{username}").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadPorUrl/{url}").authenticated()
                 auth.requestMatchers("/Comunidad/booleanUsuarioApuntadoComunidad").authenticated()
+                auth.requestMatchers("/Comunidad/expulsarUsuario/{username}/{url}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Comunidad/contarUsuariosEnUnaComunidad/{comunidad}").authenticated()
                 auth.requestMatchers("/Comunidad/verificarCreadorAdministradorComunidad/{username}/{comunidadUrl}").authenticated()
                 auth.requestMatchers("/Comunidad/eliminarUsuarioDeComunidad/{usuarioSolicitante}").authenticated()
