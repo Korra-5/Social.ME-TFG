@@ -103,16 +103,16 @@ class ActividadController {
     @GetMapping("/verTodasActividadesPublicasFechaSuperior/{username}")
     fun verTodasActividadesPublicasFechaSuperior(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String
-    ): ResponseEntity<List<ActividadDTO>>{
+        @PathVariable username: String,
+        ): ResponseEntity<List<ActividadDTO>>{
         return  ResponseEntity(actividadService.verTodasActividadesPublicasFechaSuperior(username), HttpStatus.OK)
     }
 
     @GetMapping("/verTodasActividadesPublicasCualquierFecha/{username}")
     fun verTodasActividadesPublicasCualquierFecha(
         httpRequest: HttpServletRequest,
-        @PathVariable username: String
-    ): ResponseEntity<List<ActividadDTO>>{
+        @PathVariable username: String,
+        ): ResponseEntity<List<ActividadDTO>>{
         return  ResponseEntity(actividadService.verTodasActividadesPublicasCualquierFecha(username), HttpStatus.OK)
     }
 
@@ -136,8 +136,8 @@ class ActividadController {
     fun verActividadesPorComunidadFechaSuperior(
         httpRequest: HttpServletRequest,
         @PathVariable comunidad: String,
-        @PathVariable username: String
-    ):ResponseEntity<List<ActividadDTO>> {
+        @PathVariable username: String,
+        ):ResponseEntity<List<ActividadDTO>> {
         return ResponseEntity(actividadService.verActividadesPorComunidadFechaSuperior(comunidad, username), HttpStatus.OK)
     }
 

@@ -37,16 +37,14 @@ class SecurityConfig {
             .csrf { csrf -> csrf.disable() }
             .authorizeHttpRequests { auth ->
 
-                // ==================== ENDPOINTS PÚBLICOS ====================
                 auth.requestMatchers("/Usuario/login").permitAll()
                 auth.requestMatchers("/Usuario/iniciarRegistro").permitAll()
                 auth.requestMatchers("/Usuario/completarRegistro").permitAll()
                 auth.requestMatchers("/Usuario/reenviarCodigo/{email}").permitAll()
                 auth.requestMatchers("/Usuario/verificarCodigo").permitAll()
-                auth.requestMatchers("/ws/**").permitAll() // WebSockets
-                auth.requestMatchers("/api/paypal/health-check").permitAll() // Health check público
+                auth.requestMatchers("/ws/**").permitAll()
+                auth.requestMatchers("/api/paypal/health-check").permitAll()
 
-                // ==================== USUARIO ====================
                 auth.requestMatchers("/Usuario/iniciarModificacionUsuario").authenticated()
                 auth.requestMatchers("/Usuario/completarModificacionUsuario").authenticated()
                 auth.requestMatchers("/Usuario/modificarUsuario").authenticated()
@@ -76,13 +74,11 @@ class SecurityConfig {
                 auth.requestMatchers("/Usuario/cambiarContrasena").authenticated()
                 auth.requestMatchers("/Usuario/usuarioEsAdmin/{username}").authenticated()
 
-                // ==================== PAYPAL ====================
                 auth.requestMatchers("/api/paypal/create-payment").authenticated()
                 auth.requestMatchers("/api/paypal/verify-payment").authenticated()
                 auth.requestMatchers("/api/paypal/payment-status/{paymentId}").authenticated()
                 auth.requestMatchers("/api/paypal/simulate-premium-purchase").authenticated()
 
-                // ==================== COMUNIDAD ====================
                 auth.requestMatchers("/Comunidad/crearComunidad").authenticated()
                 auth.requestMatchers("/Comunidad/unirseComunidad").authenticated()
                 auth.requestMatchers("/Comunidad/unirseComunidadPorCodigo/{codigo}").authenticated()
@@ -101,7 +97,6 @@ class SecurityConfig {
                 auth.requestMatchers("/Comunidad/cambiarCreadorComunidad/{comunidadUrl}/{creadorActual}/{nuevoCreador}").authenticated()
                 auth.requestMatchers("/Comunidad/verComunidadPorUsuario/{username}/{usuarioSolicitante}").authenticated()
 
-                // ==================== ACTIVIDAD ====================
                 auth.requestMatchers("/Actividad/crearActividad").authenticated()
                 auth.requestMatchers("/Actividad/unirseActividad").authenticated()
                 auth.requestMatchers("/Actividad/salirActividad").authenticated()
@@ -112,36 +107,32 @@ class SecurityConfig {
                 auth.requestMatchers("/Actividad/verActividadNoParticipaUsuarioCualquierFecha/{username}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadesPublicasEnZonaFechaSuperior/{username}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadesPublicasEnZonaCualquierFecha/{username}").authenticated()
-                auth.requestMatchers("/Actividad/verTodasActividadesPublicasFechaSuperior").authenticated()
-                auth.requestMatchers("/Actividad/verTodasActividadesPublicasCualquierFecha").authenticated()
+                auth.requestMatchers("/Actividad/verTodasActividadesPublicasFechaSuperior/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verTodasActividadesPublicasCualquierFecha/{username}").authenticated()
                 auth.requestMatchers("/Actividad/booleanUsuarioApuntadoActividad").authenticated()
-                auth.requestMatchers("/Actividad/verActividadesPorComunidadFechaSuperior/{comunidad}").authenticated()
-                auth.requestMatchers("/Actividad/verActividadesPorComunidadCualquierFecha/{comunidad}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPorComunidadFechaSuperior/{comunidad}/{username}").authenticated()
+                auth.requestMatchers("/Actividad/verActividadesPorComunidadCualquierFecha/{comunidad}/{username}").authenticated()
                 auth.requestMatchers("/Actividad/contarUsuariosEnUnaActividad/{actividadId}").authenticated()
                 auth.requestMatchers("/Actividad/verificarCreadorAdministradorActividad/{username}/{idActividad}").authenticated()
                 auth.requestMatchers("/Actividad/verActividadPorUsernameFechaSuperior/{username}/{usuarioSolicitante}").authenticated()
                 auth.requestMatchers("/Actividad/verComunidadPorActividad/{idActividad}").authenticated()
 
-                // ==================== DENUNCIA ====================
                 auth.requestMatchers("/Denuncia/verDenunciasPuestas/{username}").authenticated()
                 auth.requestMatchers("/Denuncia/crearDenuncia").authenticated()
                 auth.requestMatchers("/Denuncia/verTodasLasDenuncias").authenticated()
                 auth.requestMatchers("/Denuncia/verDenunciasNoCompletadas").authenticated()
                 auth.requestMatchers("/Denuncia/completarDenuncia/{denunciaId}/{completado}").authenticated()
 
-                // ==================== NOTIFICACIONES ====================
                 auth.requestMatchers("/Notificacion/obtenerNotificaciones/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/contarNoLeidas/{username}").authenticated()
                 auth.requestMatchers("/Notificacion/marcarComoLeida/{notificacionId}").authenticated()
 
-                // ==================== CHAT ====================
                 auth.requestMatchers("/Chat/enviarMensaje").authenticated()
                 auth.requestMatchers("/Chat/obtenerMensajes/{comunidadUrl}").authenticated()
 
-                // ==================== FILES ====================
                 auth.requestMatchers("/files/download/{id}").authenticated()
 
-            } // Los recursos protegidos y publicos
+            }
             .oauth2ResourceServer { oauth2 -> oauth2.jwt(Customizer.withDefaults()) }
             .sessionManagement { session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .httpBasic(Customizer.withDefaults())
