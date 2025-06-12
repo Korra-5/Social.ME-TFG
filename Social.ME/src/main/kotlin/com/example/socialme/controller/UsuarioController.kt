@@ -2,7 +2,6 @@ package com.example.socialme.controller
 
 import com.example.socialme.dto.*
 import com.example.socialme.error.exception.UnauthorizedException
-import com.example.socialme.model.PaymentVerificationRequest
 import com.example.socialme.model.VerificacionDTO
 import com.example.socialme.service.TokenService
 import com.example.socialme.service.UsuarioService

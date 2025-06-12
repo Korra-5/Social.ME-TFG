@@ -29,9 +29,6 @@ class UsuarioService : UserDetailsService {
     private lateinit var mensajeRepository: MensajeRepository
 
     @Autowired
-    private lateinit var notificacionRepository: NotificacionRepository
-
-    @Autowired
     private lateinit var bloqueoRepository: BloqueoRepository
 
     @Autowired
@@ -622,25 +619,21 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
 
         val usuarioActualizado = usuarioRepository.save(usuario)
 
-        // Si se ha cambiado el username, actualizar referencias en todas las colecciones
         if (antiguoUsername != usuario.username) {
             val nuevoUsername = usuario.username
 
-            // 1. Actualizar ParticipantesActividad
             val participantesActividad = participantesActividadRepository.findByUsername(antiguoUsername)
             participantesActividad.forEach { participante ->
                 participante.username = nuevoUsername
                 participantesActividadRepository.save(participante)
             }
 
-            // 2. Actualizar ParticipantesComunidad
             val participantesComunidad = participantesComunidadRepository.findByUsername(antiguoUsername)
             participantesComunidad.forEach { participante ->
                 participante.username = nuevoUsername
                 participantesComunidadRepository.save(participante)
             }
 
-            // 3. Actualizar Mensajes
             val mensajes = mensajeRepository.findAll().filter { it.username == antiguoUsername }
             mensajes.forEach { mensaje ->
                 val mensajeActualizado = Mensaje(
@@ -654,24 +647,7 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
                 mensajeRepository.save(mensajeActualizado)
             }
 
-            // 4. Actualizar Notificaciones (usuarioDestino)
-            val notificaciones = notificacionRepository.findByUsuarioDestinoOrderByFechaCreacionDesc(antiguoUsername)
-            notificaciones.forEach { notificacion ->
-                val notificacionActualizada = Notificacion(
-                    _id = notificacion._id,
-                    tipo = notificacion.tipo,
-                    titulo = notificacion.titulo,
-                    mensaje = notificacion.mensaje,
-                    usuarioDestino = nuevoUsername,
-                    entidadId = notificacion.entidadId,
-                    entidadNombre = notificacion.entidadNombre,
-                    fechaCreacion = notificacion.fechaCreacion,
-                    leida = notificacion.leida
-                )
-                notificacionRepository.save(notificacionActualizada)
-            }
 
-            // 5. Actualizar Bloqueos (tanto bloqueador como bloqueado)
             val bloqueosBloqueador = bloqueoRepository.findAllByBloqueador(antiguoUsername)
             bloqueosBloqueador.forEach { bloqueo ->
                 val bloqueoActualizado = Bloqueo(

@@ -16,8 +16,6 @@ class ActividadService {
     @Autowired
     private lateinit var denunciaRepository: DenunciaRepository
 
-    @Autowired
-    private lateinit var notificacionRepository: NotificacionRepository
 
     @Autowired
     private lateinit var participantesComunidadRepository: ParticipantesComunidadRepository
@@ -278,23 +276,7 @@ class ActividadService {
                 denunciaRepository.save(denunciaActualizada)
             }
 
-            val notificacionesActividad = notificacionRepository.findAll().filter {
-                it.entidadNombre == nombreAntiguo
-            }
-            notificacionesActividad.forEach { notificacion ->
-                val notificacionActualizada = Notificacion(
-                    _id = notificacion._id,
-                    tipo = notificacion.tipo,
-                    titulo = notificacion.titulo,
-                    mensaje = notificacion.mensaje,
-                    usuarioDestino = notificacion.usuarioDestino,
-                    entidadId = notificacion.entidadId,
-                    entidadNombre = nombreNuevo,
-                    fechaCreacion = notificacion.fechaCreacion,
-                    leida = notificacion.leida
-                )
-                notificacionRepository.save(notificacionActualizada)
-            }
+
         }
 
         return ActividadDTO(

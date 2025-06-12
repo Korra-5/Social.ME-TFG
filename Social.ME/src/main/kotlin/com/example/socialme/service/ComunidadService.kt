@@ -28,9 +28,6 @@ class ComunidadService {
     private lateinit var denunciaRepository: DenunciaRepository
 
     @Autowired
-    private lateinit var notificacionRepository: NotificacionRepository
-
-    @Autowired
     private lateinit var actividadesComunidadRepository: ActividadesComunidadRepository
 
     @Autowired
@@ -324,23 +321,6 @@ class ComunidadService {
                 denunciaRepository.save(denunciaActualizada)
             }
 
-            val notificacionesComunidad = notificacionRepository.findAll().filter {
-                it.entidadNombre == nombreAntiguo
-            }
-            notificacionesComunidad.forEach { notificacion ->
-                val notificacionActualizada = Notificacion(
-                    _id = notificacion._id,
-                    tipo = notificacion.tipo,
-                    titulo = notificacion.titulo,
-                    mensaje = notificacion.mensaje,
-                    usuarioDestino = notificacion.usuarioDestino,
-                    entidadId = notificacion.entidadId,
-                    entidadNombre = nombreNuevo,
-                    fechaCreacion = notificacion.fechaCreacion,
-                    leida = notificacion.leida
-                )
-                notificacionRepository.save(notificacionActualizada)
-            }
         }
 
         return ComunidadDTO(
@@ -626,30 +606,23 @@ class ComunidadService {
             expulsadosUsername = comunidad.expulsadosUsername
         )
 
-        // Obtener todas las actividades de la comunidad y eliminar participaciones
         val actividadesComunidad = actividadesComunidadRepository.findByComunidad(url).orElse(emptyList())
         actividadesComunidad.forEach { actividadComunidad ->
-            // Eliminar todas las participaciones en cada actividad de la comunidad
             participantesActividadRepository.deleteByIdActividad(actividadComunidad.idActividad ?: "")
         }
 
-        // Elimina imagenes de GridFS
         try {
             gridFSService.deleteFile(comunidad.fotoPerfilId)
             comunidad.fotoCarruselIds?.forEach { fileId ->
                 gridFSService.deleteFile(fileId)
             }
         } catch (e: Exception) {
-            // Log para mis pruebas
             println("Error deleting GridFS files: ${e.message}")
         }
 
         participantesComunidadRepository.deleteByComunidad(comunidad.url)
-
         actividadesComunidadRepository.deleteByComunidad(comunidad.url)
-
         comunidadRepository.delete(comunidad)
-
         chatService.eliminarMensajesComunidad(url)
 
         return comunidadDto

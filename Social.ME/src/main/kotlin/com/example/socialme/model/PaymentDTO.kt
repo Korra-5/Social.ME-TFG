@@ -37,13 +37,3 @@ data class PaymentVerificationDTO(
     @field:NotBlank(message = "El username es obligatorio")
     val username: String
 )
-
-data class PaymentStatusDTO(
-    val paymentId: String,
-    val status: String,
-    val amount: Double,
-    val currency: String,
-    val description: String,
-    val createTime: String,
-    val updateTime: String? = null
-)
