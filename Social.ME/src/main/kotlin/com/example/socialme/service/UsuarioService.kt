@@ -884,32 +884,52 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
         return enviarCodigoVerificacion(gmail)
     }
 
-    // RESTO DE MÉTODOS IGUALES - NO TOCAR
     fun eliminarUsuario(username: String): UsuarioDTO {
         val usuario = usuarioRepository.findFirstByUsername(username).orElseThrow {
             NotFoundException("Usuario $username no encontrado")
         }
 
-        // Verificar si el usuario es creador de alguna comunidad
-        val comunidadesCreadas = comunidadRepository.findAll().filter { it.creador == username }
-
+        val comunidadesCreadas = comunidadRepository.findByCreador(username)
         if (comunidadesCreadas.isNotEmpty()) {
-            // El usuario es creador de al menos una comunidad
             val nombresComunidades = comunidadesCreadas.joinToString(", ") { it.nombre }
             throw BadRequestException("No se puede eliminar la cuenta mientras seas el creador de las siguientes comunidades: $nombresComunidades. Por favor, elimina o cede la propiedad de estas comunidades primero.")
         }
 
-        // Si no es creador de ninguna comunidad, proceder con la eliminación
         val fotoId = usuario.fotoPerfilId
         try {
             if (!fotoId.isNullOrBlank()) {
                 gridFSService.deleteFile(fotoId)
             }
         } catch (e: Exception) {
-            println("Error deleting profile photo: ${e.message}")
+            println("Error al eliminar la foto de perfil: ${e.message}")
         }
 
-        // En el DTO se garantiza que fotoPerfilId no es null usando el operador Elvis
+        participantesComunidadRepository.findByUsername(username).forEach {
+            participantesComunidadRepository.delete(it)
+        }
+
+        participantesActividadRepository.findByUsername(username).forEach {
+            participantesActividadRepository.delete(it)
+        }
+
+        val mensajes = mensajeRepository.findAll().filter { it.username == username }
+        mensajeRepository.deleteAll(mensajes)
+
+        solicitudesAmistadRepository.findByRemitenteAndAceptada(username, true).forEach {
+            solicitudesAmistadRepository.delete(it)
+        }
+        solicitudesAmistadRepository.findByDestinatarioAndAceptada(username, true).forEach {
+            solicitudesAmistadRepository.delete(it)
+        }
+
+        val bloqueosHechos = bloqueoRepository.findAllByBloqueador(username)
+        val bloqueosRecibidos = bloqueoRepository.findAllByBloqueado(username)
+        bloqueoRepository.deleteAll(bloqueosHechos + bloqueosRecibidos)
+
+        denunciaRepository.findByUsuarioDenunciante(username).ifPresent {
+            denunciaRepository.delete(it)
+        }
+
         val userDTO = UsuarioDTO(
             username = usuario.username,
             email = usuario.email,
@@ -927,8 +947,10 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
         )
 
         usuarioRepository.delete(usuario)
+
         return userDTO
     }
+
 
     fun verUsuarioPorUsername(username: String):UsuarioDTO{
         val usuario=usuarioRepository.findFirstByUsername(username).orElseThrow {
