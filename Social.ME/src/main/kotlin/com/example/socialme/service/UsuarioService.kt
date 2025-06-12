@@ -880,7 +880,7 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
     }
 
     fun verificarGmail(gmail: String): Boolean {
-        // Esta función ahora solo la usamos para reenviar códigos
+        // Esta función solo la usamos para reenviar códigos
         return enviarCodigoVerificacion(gmail)
     }
 
@@ -915,6 +915,12 @@ fun verificarCodigoYModificarUsuario(email: String, codigo: String): UsuarioDTO 
         val mensajes = mensajeRepository.findAll().filter { it.username == username }
         mensajeRepository.deleteAll(mensajes)
 
+        solicitudesAmistadRepository.findByRemitenteAndAceptada(username, false).forEach {
+            solicitudesAmistadRepository.delete(it)
+        }
+        solicitudesAmistadRepository.findByDestinatarioAndAceptada(username, false).forEach {
+            solicitudesAmistadRepository.delete(it)
+        }
         solicitudesAmistadRepository.findByRemitenteAndAceptada(username, true).forEach {
             solicitudesAmistadRepository.delete(it)
         }
